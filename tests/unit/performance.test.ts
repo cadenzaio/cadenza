@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import Cadenza from "../../Cadenza";
+import Cadenza from "../../src/Cadenza";
 
 describe("Performance", async () => {
   it("should not add too much CPU latency overhead", () => {

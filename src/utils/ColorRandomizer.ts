@@ -50,6 +50,11 @@ export default class ColorRandomizer {
         g = 0;
         b = q;
         break;
+      default:
+        r = 0;
+        g = 0;
+        b = 0;
+        break;
     }
     // @ts-ignore
     const c =

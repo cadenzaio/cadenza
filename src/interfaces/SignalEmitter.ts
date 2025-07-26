@@ -1,4 +1,4 @@
-import Cadenza from "../../Cadenza";
+import Cadenza from "../Cadenza";
 
 export default abstract class SignalEmitter {
   protected silent: boolean;

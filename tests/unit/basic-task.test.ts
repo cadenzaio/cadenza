@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import Cadenza from "../../Cadenza";
+import Cadenza from "../../src/Cadenza";
 
 describe("Basic Task", () => {
   it("should run task with context", async () => {

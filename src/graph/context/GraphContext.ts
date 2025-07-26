@@ -1,6 +1,6 @@
 import { v4 as uuid } from "uuid";
-import { deepCloneFilter } from "../../../utils/tools";
-import { AnyObject } from "../../../types/global";
+import { deepCloneFilter } from "../../utils/tools";
+import { AnyObject } from "../../types/global";
 
 export default class GraphContext {
   readonly id: string;

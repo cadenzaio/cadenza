@@ -1,5 +1,5 @@
 import GraphRunner from "./GraphRunner";
-import { AnyObject } from "../../types/global";
+import { AnyObject } from "../types/global";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 

@@ -1,5 +1,5 @@
 import GraphBuilder from "../../interfaces/GraphBuilder";
-import { sleep } from "../../../utils/promise";
+import { sleep } from "../../utils/promise";
 import AsyncGraphLayer from "../../graph/execution/AsyncGraphLayer";
 import GraphNode from "../../graph/execution/GraphNode";
 

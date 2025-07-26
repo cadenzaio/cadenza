@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import Cadenza from "../../Cadenza";
-import { sleep } from "../../utils/promise";
+import Cadenza from "../../src/Cadenza";
+import { sleep } from "../../src/utils/promise";
 
 describe("Basic Graph", () => {
   it("should define graph with .then() method", async () => {

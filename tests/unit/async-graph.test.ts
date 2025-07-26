@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import Cadenza from "../../Cadenza";
-import { sleep } from "../../utils/promise";
+import Cadenza from "../../src/Cadenza";
+import { sleep } from "../../src/utils/promise";
 
 describe("Async Graph", () => {
   it("should run async graph with context", async () => {

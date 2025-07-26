@@ -1,6 +1,6 @@
 import SignalEmitter from "./SignalEmitter";
 import GraphContext from "../graph/context/GraphContext";
-import Cadenza from "../../Cadenza";
+import Cadenza from "../Cadenza";
 
 export default class SignalParticipant extends SignalEmitter {
   protected signalsToEmit: Set<string> = new Set(); // Use Set to prevent duplicates

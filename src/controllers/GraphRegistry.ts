@@ -1,8 +1,8 @@
-import Cadenza from "../../Cadenza";
+import Cadenza from "../Cadenza";
 import MetaTask from "../graph/definition/meta/MetaTask";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
-import { AnyObject } from "../../types/global";
+import { AnyObject } from "../types/global";
 
 export default class GraphRegistry {
   private static _instance: GraphRegistry;

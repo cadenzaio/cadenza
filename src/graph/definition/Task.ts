@@ -3,7 +3,7 @@ import GraphContext from "../context/GraphContext";
 import GraphVisitor from "../../interfaces/GraphVisitor";
 import TaskIterator from "../iterators/TaskIterator";
 import Graph from "../../interfaces/Graph";
-import { AnyObject } from "../../../types/global";
+import { AnyObject } from "../../types/global";
 import SignalParticipant from "../../interfaces/SignalParticipant";
 
 export type TaskFunction = (

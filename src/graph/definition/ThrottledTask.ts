@@ -1,5 +1,5 @@
 import Task, { TaskFunction } from "./Task";
-import { AnyObject } from "../../../types/global";
+import { AnyObject } from "../../types/global";
 
 export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
 

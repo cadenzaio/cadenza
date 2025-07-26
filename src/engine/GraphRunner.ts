@@ -3,10 +3,10 @@ import Task from "../graph/definition/Task";
 import GraphRun from "./GraphRun";
 import GraphNode from "../graph/execution/GraphNode";
 import GraphRunStrategy from "../interfaces/GraphRunStrategy";
-import { AnyObject } from "../../types/global";
+import { AnyObject } from "../types/global";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import SignalEmitter from "../interfaces/SignalEmitter";
-import Cadenza from "../../Cadenza";
+import Cadenza from "../Cadenza";
 import GraphRegistry from "../controllers/GraphRegistry";
 import GraphContext from "../graph/context/GraphContext";
 

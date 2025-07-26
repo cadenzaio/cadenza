@@ -2,7 +2,7 @@ import GraphVisitor from "../../../interfaces/GraphVisitor";
 import SyncGraphLayer from "../../../graph/execution/SyncGraphLayer";
 import GraphNode from "../../../graph/execution/GraphNode";
 import Task from "../../../graph/definition/Task";
-import ColorRandomizer from "../../../../utils/ColorRandomizer";
+import ColorRandomizer from "../../../utils/ColorRandomizer";
 
 export default class VueFlowExportVisitor implements GraphVisitor {
   private nodeCount = 0;

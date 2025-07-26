@@ -1,24 +1,22 @@
-import SignalBroker from "./src/engine/SignalBroker";
-import GraphRunner from "./src/engine/GraphRunner";
-import GraphRegistry from "./src/controllers/GraphRegistry";
-import Task, { TaskFunction } from "./src/graph/definition/Task";
-import MetaTask from "./src/graph/definition/meta/MetaTask";
-import UniqueTask from "./src/graph/definition/UniqueTask";
-import UniqueMetaTask from "./src/graph/definition/meta/UniqueMetaTask";
+import SignalBroker from "./engine/SignalBroker";
+import GraphRunner from "./engine/GraphRunner";
+import GraphRegistry from "./controllers/GraphRegistry";
+import Task, { TaskFunction } from "./graph/definition/Task";
+import MetaTask from "./graph/definition/meta/MetaTask";
+import UniqueTask from "./graph/definition/UniqueTask";
+import UniqueMetaTask from "./graph/definition/meta/UniqueMetaTask";
 import ThrottledTask, {
   ThrottleTagGetter,
-} from "./src/graph/definition/ThrottledTask";
-import ThrottledMetaTask from "./src/graph/definition/meta/ThrottledMetaTask";
-import DebounceTask, {
-  DebounceOptions,
-} from "./src/graph/definition/DebounceTask";
-import DebouncedMetaTask from "./src/graph/definition/meta/DebouncedMetaTask";
-import EphemeralTask from "./src/graph/definition/EphemeralTask";
-import EphemeralMetaTask from "./src/graph/definition/meta/EphemeralMetaTask";
-import GraphRoutine from "./src/graph/definition/GraphRoutine";
-import MetaRoutine from "./src/graph/definition/meta/MetaRoutine";
-import GraphAsyncRun from "./src/engine/strategy/GraphAsyncRun";
-import GraphStandardRun from "./src/engine/strategy/GraphStandardRun";
+} from "./graph/definition/ThrottledTask";
+import ThrottledMetaTask from "./graph/definition/meta/ThrottledMetaTask";
+import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
+import DebouncedMetaTask from "./graph/definition/meta/DebouncedMetaTask";
+import EphemeralTask from "./graph/definition/EphemeralTask";
+import EphemeralMetaTask from "./graph/definition/meta/EphemeralMetaTask";
+import GraphRoutine from "./graph/definition/GraphRoutine";
+import MetaRoutine from "./graph/definition/meta/MetaRoutine";
+import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
+import GraphStandardRun from "./engine/strategy/GraphStandardRun";
 
 export interface TaskOptions {
   concurrency?: number;
