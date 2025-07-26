@@ -1,0 +1,187 @@
+import { v4 as uuid } from "uuid";
+import Task from "../graph/definition/Task";
+import GraphRun from "./GraphRun";
+import GraphNode from "../graph/execution/GraphNode";
+import GraphRunStrategy from "../interfaces/GraphRunStrategy";
+import { AnyObject } from "../../types/global";
+import GraphRoutine from "../graph/definition/GraphRoutine";
+import SignalEmitter from "../interfaces/SignalEmitter";
+import Cadenza from "../../Cadenza";
+import GraphRegistry from "../controllers/GraphRegistry";
+import GraphContext from "../graph/context/GraphContext";
+
+export default class GraphRunner extends SignalEmitter {
+  readonly id: string;
+  protected currentRun: GraphRun;
+  private debug: boolean = false;
+  protected isRunning: boolean = false;
+  private readonly isMeta: boolean = false;
+
+  protected strategy: GraphRunStrategy;
+
+  /**
+   * Constructs a runner.
+   * @param isMeta Meta flag (default false).
+   * @edge Creates 'Start run' meta-task chained to registry gets.
+   */
+  constructor(isMeta: boolean = false) {
+    super(isMeta);
+    this.id = uuid();
+    this.isMeta = isMeta;
+    this.strategy = Cadenza.runStrategy.PARALLEL;
+    this.currentRun = new GraphRun(this.strategy);
+  }
+
+  init() {
+    if (this.isMeta) return;
+
+    Cadenza.createMetaTask(
+      "Start run",
+      this.startRun.bind(this),
+      "Starts a run",
+    ).doAfter(
+      GraphRegistry.instance.getTaskByName,
+      GraphRegistry.instance.getRoutineByName,
+    );
+  }
+
+  /**
+   * Adds tasks/routines to current run.
+   * @param tasks Tasks/routines.
+   * @param context Context (defaults {}).
+   * @edge Flattens routines to tasks; generates routineExecId if not in context.
+   * @edge Emits 'meta.runner.added_tasks' with metadata.
+   * @edge Empty tasks warns no-op.
+   */
+  protected addTasks(
+    tasks: Task | GraphRoutine | (Task | GraphRoutine)[],
+    context: AnyObject,
+  ): void {
+    let _tasks = Array.isArray(tasks) ? tasks : [tasks];
+    if (_tasks.length === 0) {
+      console.warn("No tasks/routines to add.");
+      return;
+    }
+
+    let routineName = _tasks.map((t) => t.name).join(" | ");
+    let isMeta = _tasks.every((t) => t.isMeta);
+    let routineId = null;
+
+    const allTasks = _tasks.flatMap((t) => {
+      if (t instanceof GraphRoutine) {
+        routineName = t.name;
+        isMeta = t.isMeta;
+        routineId = t.id;
+        const routineTasks: Task[] = [];
+        t.forEachTask((task: Task) => routineTasks.push(task));
+        return routineTasks;
+      }
+      return t;
+    });
+
+    const ctx = new GraphContext(context || {});
+
+    const routineExecId = context.__routineExecId ?? uuid();
+    const data = {
+      __routineExecId: routineExecId,
+      __routineName: routineName,
+      __isMeta: isMeta,
+      __routineId: routineId,
+      __context: ctx.export(),
+      __previousRoutineExecution: context.__metaData?.__routineExecId ?? null,
+      __contractId:
+        context.__metaData?.__contractId ?? context.__contractId ?? null,
+      __task: {
+        __name: routineName,
+      },
+      __scheduled: Date.now(),
+    };
+
+    this.emit("meta.runner.added_tasks", data);
+
+    allTasks.forEach((task) =>
+      this.currentRun.addNode(new GraphNode(task, ctx, routineExecId)),
+    );
+  }
+
+  /**
+   * Runs tasks/routines.
+   * @param tasks Optional tasks/routines.
+   * @param context Optional context.
+   * @returns Current/last run (Promise if async).
+   * @edge If running, returns current; else runs and resets.
+   */
+  public run(
+    tasks?: Task | GraphRoutine | (Task | GraphRoutine)[],
+    context?: AnyObject,
+  ): GraphRun | Promise<GraphRun> {
+    if (tasks) {
+      this.addTasks(tasks, context ?? {});
+    }
+
+    if (this.isRunning) {
+      return this.currentRun;
+    }
+
+    if (this.currentRun) {
+      this.isRunning = true;
+      const runResult = this.currentRun.run();
+
+      if (runResult instanceof Promise) {
+        return this.runAsync(runResult);
+      }
+    }
+
+    return this.reset();
+  }
+
+  private async runAsync(run: Promise<void>): Promise<GraphRun> {
+    await run;
+    return this.reset();
+  }
+
+  protected reset(): GraphRun {
+    if (this.debug) {
+      this.currentRun.log();
+    }
+
+    this.isRunning = false;
+
+    const lastRun = this.currentRun;
+
+    if (!this.debug) {
+      this.destroy();
+    }
+
+    this.currentRun = new GraphRun(this.strategy);
+
+    return lastRun;
+  }
+
+  public setDebug(value: boolean): void {
+    this.debug = value;
+  }
+
+  public destroy(): void {
+    this.currentRun.destroy();
+  }
+
+  public setStrategy(strategy: GraphRunStrategy): void {
+    this.strategy = strategy;
+    if (!this.isRunning) {
+      this.currentRun = new GraphRun(this.strategy);
+    }
+  }
+
+  private startRun(context: AnyObject): boolean {
+    if (context.__task || context.__routine) {
+      const routine = context.__task ?? context.__routine;
+      this.run(routine, context);
+      return true;
+    } else {
+      context.errored = true;
+      context.__error = "No routine or task defined.";
+      return false;
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "name": "@cadenza.io/core",
+  "version": "1.0.0",
+  "description": "This is a framework for building asynchronous graphs and flows of tasks and signals.",
+  "scripts": {
+    "start": "node --loader ts-node/esm src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc && tsup"
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "release": {
+    "branches": [
+      "main"
+    ],
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      "@semantic-release/changelog",
+      "@semantic-release/npm",
+      "@semantic-release/github",
+      [
+        "@semantic-release/git",
+        {
+          "assets": [
+            "CHANGELOG.md",
+            "package.json"
+          ],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ]
+    ]
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.2",
+    "@semantic-release/npm": "^12.0.1",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^24.0.1",
+    "prettier": "3.6.2",
+    "semantic-release": "^24.2.3",
+    "tsup": "^8.4.0",
+    "tsx": "^4.20.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.3"
+  },
+  "dependencies": {
+    "uuid": "^10.0.0"
+  }
+}
