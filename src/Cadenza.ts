@@ -1,6 +1,6 @@
 import SignalBroker from "./engine/SignalBroker";
 import GraphRunner from "./engine/GraphRunner";
-import GraphRegistry from "./controllers/GraphRegistry";
+import GraphRegistry from "./registry/GraphRegistry";
 import Task, { TaskFunction } from "./graph/definition/Task";
 import MetaTask from "./graph/definition/meta/MetaTask";
 import UniqueTask from "./graph/definition/UniqueTask";

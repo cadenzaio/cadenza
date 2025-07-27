@@ -7,7 +7,7 @@ import { AnyObject } from "../types/global";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import SignalEmitter from "../interfaces/SignalEmitter";
 import Cadenza from "../Cadenza";
-import GraphRegistry from "../controllers/GraphRegistry";
+import GraphRegistry from "../registry/GraphRegistry";
 import GraphContext from "../graph/context/GraphContext";
 
 export default class GraphRunner extends SignalEmitter {
