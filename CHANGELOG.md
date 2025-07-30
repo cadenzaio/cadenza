@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/cadenzaio/cadenza/compare/v1.0.1...v1.1.0) (2025-07-30)
+
+
+### Features
+
+* Added exports of all types of tasks and routines in index.ts ([dce85f6](https://github.com/cadenzaio/cadenza/commit/dce85f651aa898a5879af47b19ba19088b3bc2d3))
+
 ## [1.0.1](https://github.com/cadenzaio/cadenza/compare/v1.0.0...v1.0.1) (2025-07-27)
 
 
