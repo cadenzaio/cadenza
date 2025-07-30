@@ -1,4 +1,5 @@
 import Cadenza from "./Cadenza";
+import GraphContext from "./graph/context/GraphContext";
 import DebounceTask from "./graph/definition/DebounceTask";
 import EphemeralTask from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
@@ -15,6 +16,7 @@ import ThrottledTask from "./graph/definition/ThrottledTask";
 import UniqueTask from "./graph/definition/UniqueTask";
 import SignalEmitter from "./interfaces/SignalEmitter";
 import SignalParticipant from "./interfaces/SignalParticipant";
+import GraphRegistry from "./registry/GraphRegistry";
 import { AnyObject } from "./types/global";
 
 export default Cadenza;
@@ -35,5 +37,7 @@ export {
   SignalMetaTask,
   SignalEmitter,
   SignalParticipant,
+  GraphContext,
+  GraphRegistry,
   AnyObject,
 };
