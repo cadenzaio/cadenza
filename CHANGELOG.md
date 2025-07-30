@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/cadenzaio/cadenza/compare/v1.2.0...v1.3.0) (2025-07-30)
+
+
+### Features
+
+* More exports in index.ts ([8f67a14](https://github.com/cadenzaio/cadenza/commit/8f67a1456d3496b843765b99f03454c94e4a33ce))
+
 # [1.2.0](https://github.com/cadenzaio/cadenza/compare/v1.1.0...v1.2.0) (2025-07-30)
 
 
