@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/cadenzaio/cadenza/compare/v1.3.0...v1.4.0) (2025-07-31)
+
+
+### Features
+
+* SignalBroker is now exposing the observed signals. ([2c955dd](https://github.com/cadenzaio/cadenza/commit/2c955dd3d05b1c9f251172d4123125c4f2f8b415))
+
 # [1.3.0](https://github.com/cadenzaio/cadenza/compare/v1.2.0...v1.3.0) (2025-07-30)
 
 
