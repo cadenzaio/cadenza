@@ -14,8 +14,19 @@ export default class EphemeralTask extends Task {
     concurrency: number = 0,
     timeout: number = 0,
     register: boolean = false,
+    isUnique: boolean = false,
+    isMeta: boolean = false,
   ) {
-    super(name, task, description, concurrency, timeout, register);
+    super(
+      name,
+      task,
+      description,
+      concurrency,
+      timeout,
+      register,
+      isUnique,
+      isMeta,
+    );
     this.once = once;
     this.condition = condition;
   }

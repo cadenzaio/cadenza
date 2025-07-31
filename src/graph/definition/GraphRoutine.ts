@@ -9,11 +9,17 @@ export default class GraphRoutine extends SignalParticipant {
   readonly isMeta: boolean = false;
   private tasks: Set<Task> = new Set();
 
-  constructor(name: string, tasks: Task[], description: string) {
+  constructor(
+    name: string,
+    tasks: Task[],
+    description: string,
+    isMeta: boolean = false,
+  ) {
     super();
     this.id = uuid();
     this.name = name;
     this.description = description;
+    this.isMeta = isMeta;
     tasks.forEach((t) => this.tasks.add(t));
     this.emit("meta.routine.created", { __routine: this });
   }

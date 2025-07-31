@@ -18,10 +18,11 @@ export default class Task extends SignalParticipant implements Graph {
   readonly description: string;
   concurrency: number;
   timeout: number;
+  readonly isMeta: boolean = false;
   readonly isUnique: boolean = false;
+
   readonly throttled: boolean = false;
   readonly isSignal: boolean = false;
-  readonly isMeta: boolean = false;
   readonly isDeputy: boolean = false;
   readonly isEphemeral: boolean = false;
 
@@ -42,6 +43,8 @@ export default class Task extends SignalParticipant implements Graph {
    * @param concurrency Limit.
    * @param timeout ms.
    * @param register Register via signal (default true).
+   * @param isUnique
+   * @param isMeta
    * @edge Emits 'meta.task.created' with { __task: this } for seed.
    */
   constructor(
@@ -51,6 +54,8 @@ export default class Task extends SignalParticipant implements Graph {
     concurrency: number = 0,
     timeout: number = 0,
     register: boolean = true,
+    isUnique: boolean = false,
+    isMeta: boolean = false,
   ) {
     super();
     this.id = uuid();
@@ -59,6 +64,8 @@ export default class Task extends SignalParticipant implements Graph {
     this.description = description;
     this.concurrency = concurrency;
     this.timeout = timeout;
+    this.isUnique = isUnique;
+    this.isMeta = isMeta;
 
     if (register) {
       this.emit("meta.task.created", { __task: this });
@@ -280,6 +287,7 @@ export default class Task extends SignalParticipant implements Graph {
       __concurrency: this.concurrency,
       __timeout: this.timeout,
       __functionString: this.taskFunction.toString(),
+      __getTagCallback: this.getTag.toString(),
       __nextTasks: Array.from(this.nextTasks).map((t) => t.id),
       __onFailTasks: Array.from(this.onFailTasks).map((t) => t.id),
       __previousTasks: Array.from(this.predecessorTasks).map((t) => t.id),

@@ -2,6 +2,7 @@ import GraphRunner from "./GraphRunner";
 import { AnyObject } from "../types/global";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
+import Cadenza from "../Cadenza";
 
 export default class SignalBroker {
   private static instance_: SignalBroker;
@@ -20,6 +21,8 @@ export default class SignalBroker {
   protected runner: GraphRunner | undefined;
   protected metaRunner: GraphRunner | undefined;
 
+  public getSignalsTask: Task | undefined;
+
   protected signalObservers: Map<
     string,
     {
@@ -32,19 +35,44 @@ export default class SignalBroker {
     }
   > = new Map();
 
-  // For loop prevention: Per-execId recent emits (cleared post-run or TTL)
-  protected emitStacks: Map<string, Set<string>> = new Map(); // execId -> emitted signals
+  protected emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
 
-  protected constructor() {}
+  protected constructor() {
+    this.addSignal("meta.signal.added");
+  }
 
   /**
    * Initializes with runners.
    * @param runner Standard runner for user signals.
    * @param metaRunner Meta runner for 'meta.' signals (suppresses further meta-emits).
    */
-  init(runner: GraphRunner, metaRunner: GraphRunner): void {
+  bootstrap(runner: GraphRunner, metaRunner: GraphRunner): void {
     this.runner = runner;
     this.metaRunner = metaRunner;
+  }
+
+  init() {
+    Cadenza.createMetaTask(
+      "Execute and clear queued signals",
+      () => {
+        for (const [id, signals] of this.emitStacks.entries()) {
+          signals.forEach((context, signal) => {
+            this.execute(signal, context);
+            signals.delete(signal);
+          });
+          this.emitStacks.delete(id);
+        }
+        return true;
+      },
+      "Executes queued signals and clears the stack",
+    ).doOn("meta.clear_signal_queue_requested"); // TODO
+
+    this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
+      return {
+        __signals: Array.from(this.signalObservers.keys()),
+        ...ctx,
+      };
+    });
   }
 
   /**
@@ -84,37 +112,43 @@ export default class SignalBroker {
    */
   emit(signal: string, context: AnyObject = {}): void {
     const execId = context.__graphExecId || "global"; // Assume from metadata
-    if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Set());
+    if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
 
     const stack = this.emitStacks.get(execId)!;
-    if (stack.has(signal)) {
-      throw new Error(`Signal loop detected for ${signal} in exec ${execId}`);
-    }
-    stack.add(signal);
+    stack.set(signal, context);
 
-    this.executeListener(signal, context); // Exact signal
-
+    let executed = false;
     try {
-      const parts = signal
-        .slice(0, Math.max(signal.lastIndexOf(":"), signal.lastIndexOf(".")))
-        .split(".");
-      for (let i = parts.length; i > 0; i--) {
-        const parent = parts.slice(0, i).join(".");
-        this.executeListener(parent, context); // Exact parent
-        this.executeListener(parent + ".*", context); // Wildcard
-      }
+      executed = this.execute(signal, context);
     } finally {
-      stack.delete(signal); // Clean up
+      if (executed) stack.delete(signal); // Clean up
       // Optional: Clear stack post-run via meta-signal
     }
   }
 
-  private executeListener(signal: string, context: AnyObject): void {
+  execute(signal: string, context: AnyObject): boolean {
+    let executed;
+    executed = this.executeListener(signal, context); // Exact signal
+
+    const parts = signal
+      .slice(0, Math.max(signal.lastIndexOf(":"), signal.lastIndexOf(".")))
+      .split(".");
+    for (let i = parts.length; i > 0; i--) {
+      const parent = parts.slice(0, i).join(".");
+      executed = executed || this.executeListener(parent + ".*", context); // Wildcard
+    }
+
+    return executed;
+  }
+
+  private executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
     const runner = this.getRunner(signal);
     if (obs && runner) {
       obs.fn(runner, Array.from(obs.tasks), context);
+      return true;
     }
+    return false;
   }
 
   private addSignal(signal: string): void {
@@ -127,6 +161,8 @@ export default class SignalBroker {
         ) => runner.run(tasks, context),
         tasks: new Set(),
       });
+
+      this.emit("meta.signal.added", { __signal: signal });
     }
   }
 

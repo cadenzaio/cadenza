@@ -15,15 +15,19 @@ export default class ThrottledTask extends Task {
     concurrency: number = 1,
     timeout: number = 0,
     register: boolean = true,
+    isUnique: boolean = false,
+    isMeta: boolean = false,
   ) {
-    super(name, task, description, concurrency, timeout, register);
+    super(
+      name,
+      task,
+      description,
+      concurrency,
+      timeout,
+      register,
+      isUnique,
+      isMeta,
+    );
     this.getTag = (context?: AnyObject) => getTagCallback(context, this);
-  }
-
-  export() {
-    return {
-      ...super.export(),
-      __getTagCallback: this.getTag.toString(),
-    };
   }
 }

@@ -2,19 +2,12 @@ import SignalBroker from "./engine/SignalBroker";
 import GraphRunner from "./engine/GraphRunner";
 import GraphRegistry from "./registry/GraphRegistry";
 import Task, { TaskFunction } from "./graph/definition/Task";
-import MetaTask from "./graph/definition/meta/MetaTask";
-import UniqueTask from "./graph/definition/UniqueTask";
-import UniqueMetaTask from "./graph/definition/meta/UniqueMetaTask";
 import ThrottledTask, {
   ThrottleTagGetter,
 } from "./graph/definition/ThrottledTask";
-import ThrottledMetaTask from "./graph/definition/meta/ThrottledMetaTask";
 import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
-import DebouncedMetaTask from "./graph/definition/meta/DebouncedMetaTask";
 import EphemeralTask from "./graph/definition/EphemeralTask";
-import EphemeralMetaTask from "./graph/definition/meta/EphemeralMetaTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
-import MetaRoutine from "./graph/definition/meta/MetaRoutine";
 import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
 import GraphStandardRun from "./engine/strategy/GraphStandardRun";
 
@@ -22,6 +15,8 @@ export interface TaskOptions {
   concurrency?: number;
   timeout?: number;
   register?: boolean;
+  isUnique?: boolean;
+  isMeta?: boolean;
 }
 
 export default class Cadenza {
@@ -29,9 +24,9 @@ export default class Cadenza {
   static runner: GraphRunner;
   static metaRunner: GraphRunner;
   static registry: GraphRegistry;
-  private static isBootstrapped = false;
+  protected static isBootstrapped = false;
 
-  private static bootstrap(): void {
+  protected static bootstrap(): void {
     if (this.isBootstrapped) return;
     this.isBootstrapped = true;
 
@@ -41,12 +36,13 @@ export default class Cadenza {
     // 2. Runners (now init broker with them)
     this.runner = new GraphRunner();
     this.metaRunner = new GraphRunner(true);
-    this.broker.init(this.runner, this.metaRunner);
+    this.broker.bootstrap(this.runner, this.metaRunner);
 
     // 3. GraphRegistry (seed observes on broker)
     this.registry = GraphRegistry.instance;
 
     // 4. Runners (create meta tasks)
+    this.broker.init();
     this.runner.init();
     this.metaRunner.init();
   }
@@ -63,7 +59,7 @@ export default class Cadenza {
    * @param name The name to validate.
    * @throws Error if invalid.
    */
-  private static validateName(name: string): void {
+  protected static validateName(name: string): void {
     if (!name || typeof name !== "string") {
       throw new Error("Task or Routine name must be a non-empty string.");
     }
@@ -87,6 +83,8 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: false,
+      isMeta: false,
     },
   ): Task {
     this.bootstrap();
@@ -98,6 +96,8 @@ export default class Cadenza {
       options.concurrency,
       options.timeout,
       options.register,
+      options.isUnique,
+      options.isMeta,
     );
   }
 
@@ -119,18 +119,12 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: false,
+      isMeta: true,
     },
-  ): MetaTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new MetaTask(
-      name,
-      func,
-      description,
-      options.concurrency,
-      options.timeout,
-      options.register,
-    );
+  ): Task {
+    options.isMeta = true;
+    return this.createTask(name, func, description, options);
   }
 
   /**
@@ -151,18 +145,12 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: true,
+      isMeta: false,
     },
-  ): UniqueTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new UniqueTask(
-      name,
-      func,
-      description,
-      options.concurrency,
-      options.timeout,
-      options.register,
-    );
+  ): Task {
+    options.isUnique = true;
+    return this.createTask(name, func, description, options);
   }
 
   /**
@@ -181,18 +169,12 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: true,
+      isMeta: true,
     },
-  ): UniqueMetaTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new UniqueMetaTask(
-      name,
-      func,
-      description,
-      options.concurrency,
-      options.timeout,
-      options.register,
-    );
+  ): Task {
+    options.isMeta = true;
+    return this.createUniqueTask(name, func, description, options);
   }
 
   /**
@@ -214,6 +196,8 @@ export default class Cadenza {
       concurrency: 1,
       timeout: 0,
       register: true,
+      isUnique: false,
+      isMeta: false,
     },
   ): ThrottledTask {
     this.bootstrap();
@@ -226,6 +210,8 @@ export default class Cadenza {
       options.concurrency,
       options.timeout,
       options.register,
+      options.isUnique,
+      options.isMeta,
     );
   }
 
@@ -247,18 +233,17 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: false,
+      isMeta: true,
     },
-  ): ThrottledMetaTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new ThrottledMetaTask(
+  ): ThrottledTask {
+    options.isMeta = true;
+    return this.createThrottledTask(
       name,
       func,
-      description,
       throttledIdGetter,
-      options.concurrency,
-      options.timeout,
-      options.register,
+      description,
+      options,
     );
   }
 
@@ -283,6 +268,8 @@ export default class Cadenza {
       register: true,
       leading: false,
       trailing: true,
+      isUnique: false,
+      isMeta: false,
     },
   ): DebounceTask {
     this.bootstrap();
@@ -297,6 +284,8 @@ export default class Cadenza {
       options.concurrency,
       options.timeout,
       options.register,
+      options.isUnique,
+      options.isMeta,
     );
   }
 
@@ -320,20 +309,17 @@ export default class Cadenza {
       register: true,
       leading: false,
       trailing: true,
+      isUnique: false,
+      isMeta: false,
     },
-  ): DebouncedMetaTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new DebouncedMetaTask(
+  ): DebounceTask {
+    options.isMeta = true;
+    return this.createDebounceTask(
       name,
       func,
       description,
       debounceTime,
-      options.leading,
-      options.trailing,
-      options.concurrency,
-      options.timeout,
-      options.register,
+      options,
     );
   }
 
@@ -359,6 +345,8 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: false,
+      isMeta: false,
     },
   ): EphemeralTask {
     this.bootstrap();
@@ -372,6 +360,8 @@ export default class Cadenza {
       options.concurrency,
       options.timeout,
       options.register,
+      options.isUnique,
+      options.isMeta,
     );
   }
 
@@ -396,18 +386,15 @@ export default class Cadenza {
       timeout: 0,
       register: true,
     },
-  ): EphemeralMetaTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new EphemeralMetaTask(
+  ): EphemeralTask {
+    options.isMeta = true;
+    return this.createEphemeralTask(
       name,
       func,
       description,
       once,
       destroyCondition,
-      options.concurrency,
-      options.timeout,
-      options.register,
+      options,
     );
   }
 
@@ -443,13 +430,13 @@ export default class Cadenza {
     name: string,
     tasks: Task[],
     description: string = "",
-  ): MetaRoutine {
+  ): GraphRoutine {
     this.bootstrap();
     this.validateName(name);
     if (tasks.length === 0) {
-      console.warn(`MetaRoutine '${name}' created with no starting tasks.`);
+      console.warn(`Routine '${name}' created with no starting tasks (no-op).`);
     }
-    return new MetaRoutine(name, tasks, description);
+    return new GraphRoutine(name, tasks, description, true);
   }
 
   static reset() {

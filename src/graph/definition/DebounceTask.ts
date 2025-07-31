@@ -26,8 +26,19 @@ export default class DebounceTask extends Task {
     concurrency: number = 0,
     timeout: number = 0,
     register: boolean = true,
+    isUnique: boolean = false,
+    isMeta: boolean = false,
   ) {
-    super(name, task, description, concurrency, timeout, register);
+    super(
+      name,
+      task,
+      description,
+      concurrency,
+      timeout,
+      register,
+      isUnique,
+      isMeta,
+    );
     this.debounceTime = debounceTime;
     this.leading = leading;
     this.trailing = trailing;

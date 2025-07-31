@@ -1,5 +1,4 @@
 import Cadenza from "../Cadenza";
-import MetaTask from "../graph/definition/meta/MetaTask";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import { AnyObject } from "../types/global";
@@ -14,25 +13,25 @@ export default class GraphRegistry {
   private tasks: Map<string, Task> = new Map();
   private routines: Map<string, GraphRoutine> = new Map();
 
-  registerTask: MetaTask;
-  updateTaskId: MetaTask;
-  getTaskById: MetaTask;
-  getTaskByName: MetaTask;
-  getTasksByLayer: MetaTask;
-  getAllTasks: MetaTask;
-  doForEachTask: MetaTask;
-  deleteTask: MetaTask;
-  registerRoutine: MetaTask;
-  updateRoutineId: MetaTask;
-  getRoutineById: MetaTask;
-  getRoutineByName: MetaTask;
-  getAllRoutines: MetaTask;
-  doForEachRoutine: MetaTask;
-  deleteRoutine: MetaTask;
+  registerTask: Task;
+  updateTaskId: Task;
+  getTaskById: Task;
+  getTaskByName: Task;
+  getTasksByLayer: Task;
+  getAllTasks: Task;
+  doForEachTask: Task;
+  deleteTask: Task;
+  registerRoutine: Task;
+  updateRoutineId: Task;
+  getRoutineById: Task;
+  getRoutineByName: Task;
+  getAllRoutines: Task;
+  doForEachRoutine: Task;
+  deleteRoutine: Task;
 
   private constructor() {
     // Hardcode seed MetaTask (observes on existing broker)
-    this.registerTask = new MetaTask(
+    this.registerTask = new Task(
       "Registry Seed",
       (context: AnyObject) => {
         const { __task } = context;
@@ -43,6 +42,11 @@ export default class GraphRegistry {
         return true;
       },
       "Registers tasks. Seed for meta.taskCreated",
+      0,
+      0,
+      true,
+      false,
+      true,
     ).doOn("meta.task.created");
 
     // Manual seed register
