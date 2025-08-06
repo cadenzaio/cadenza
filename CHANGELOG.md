@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/cadenzaio/cadenza/compare/v1.4.0...v1.5.0) (2025-08-06)
+
+
+### Features
+
+* input and output context schema definition and validation. ([091c9b3](https://github.com/cadenzaio/cadenza/commit/091c9b3d68357ad956b8e4525ee3d5aa7a972b9e))
+
 # [1.4.0](https://github.com/cadenzaio/cadenza/compare/v1.3.0...v1.4.0) (2025-07-31)
 
 
