@@ -1,5 +1,6 @@
 import Task, { TaskFunction, TaskResult } from "./Task";
 import GraphContext from "../context/GraphContext";
+import { SchemaDefinition } from "../../types/schema";
 
 export interface DebounceOptions {
   leading?: boolean;
@@ -28,6 +29,10 @@ export default class DebounceTask extends Task {
     register: boolean = true,
     isUnique: boolean = false,
     isMeta: boolean = false,
+    inputSchema: SchemaDefinition | undefined = undefined,
+    validateInputSchema: boolean = false,
+    outputSchema: SchemaDefinition | undefined = undefined,
+    validateOutputSchema: boolean = false,
   ) {
     super(
       name,
@@ -38,6 +43,11 @@ export default class DebounceTask extends Task {
       register,
       isUnique,
       isMeta,
+      undefined,
+      inputSchema,
+      validateInputSchema,
+      outputSchema,
+      validateOutputSchema,
     );
     this.debounceTime = debounceTime;
     this.leading = leading;

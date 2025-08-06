@@ -6,6 +6,7 @@ import GraphVisitor from "../../interfaces/GraphVisitor";
 import GraphNodeIterator from "../iterators/GraphNodeIterator";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 import GraphLayer from "../../interfaces/GraphLayer";
+import { AnyObject } from "../../types/global";
 
 export default class GraphNode extends SignalEmitter implements Graph {
   id: string;
@@ -171,6 +172,15 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.start();
       this.processing = true;
 
+      const inputValidation = this.task.validateInput(
+        this.context.getContext(),
+      );
+      if (inputValidation !== true) {
+        this.onError(inputValidation.__validationErrors);
+        this.postProcess();
+        return this.nextNodes;
+      }
+
       try {
         this.result = this.work();
       } catch (e: unknown) {
@@ -242,12 +252,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.end();
   }
 
-  private onError(error: unknown) {
+  private onError(error: unknown, errorData: AnyObject = {}) {
     this.result = {
       ...this.context.getFullContext(),
       __error: `Node error: ${error}`,
       error: `Node error: ${error}`,
       returnedValue: this.result,
+      ...errorData,
     };
     this.migrate(this.result);
     this.errored = true;
@@ -263,15 +274,28 @@ export default class GraphNode extends SignalEmitter implements Graph {
       const generator = this.result as Generator;
       let current = generator.next();
       while (!current.done && current.value !== undefined) {
-        newNodes.push(...this.generateNewNodes(current.value));
-        current = generator.next();
+        const outputValidation = this.task.validateOutput(current.value as any);
+        if (outputValidation !== true) {
+          this.onError(outputValidation.__validationErrors);
+          break;
+        } else {
+          newNodes.push(...this.generateNewNodes(current.value));
+          current = generator.next();
+        }
       }
     } else if (this.result !== undefined && !this.errored) {
       newNodes.push(...this.generateNewNodes(this.result));
+
       if (typeof this.result !== "boolean") {
+        const outputValidation = this.task.validateOutput(this.result as any);
+        if (outputValidation !== true) {
+          this.onError(outputValidation.__validationErrors);
+        }
         this.migrate({ ...this.result, ...this.context.getMetaData() });
       }
-    } else if (this.errored) {
+    }
+
+    if (this.errored) {
       newNodes.push(
         ...this.task.mapNext(
           (t: Task) =>

@@ -144,7 +144,7 @@ export default class SignalBroker {
   private executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
     const runner = this.getRunner(signal);
-    if (obs && runner) {
+    if (obs && obs.tasks.size && runner) {
       obs.fn(runner, Array.from(obs.tasks), context);
       return true;
     }

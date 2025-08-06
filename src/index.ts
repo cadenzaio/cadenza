@@ -6,8 +6,6 @@ import EphemeralTask from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
 import SignalTask from "./graph/definition/SignalTask";
 import Task, { TaskResult } from "./graph/definition/Task";
-import ThrottledTask from "./graph/definition/ThrottledTask";
-import UniqueTask from "./graph/definition/UniqueTask";
 import SignalEmitter from "./interfaces/SignalEmitter";
 import SignalParticipant from "./interfaces/SignalParticipant";
 import GraphRegistry from "./registry/GraphRegistry";
@@ -17,8 +15,6 @@ export default Cadenza;
 export {
   Task,
   GraphRoutine,
-  UniqueTask,
-  ThrottledTask,
   DebounceTask,
   EphemeralTask,
   SignalTask,

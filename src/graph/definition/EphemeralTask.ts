@@ -1,4 +1,5 @@
-import Task, { TaskFunction } from "./Task";
+import Task, { TaskFunction, ThrottleTagGetter } from "./Task";
+import { SchemaDefinition } from "../../types/schema";
 
 export default class EphemeralTask extends Task {
   private readonly once: boolean;
@@ -16,6 +17,11 @@ export default class EphemeralTask extends Task {
     register: boolean = false,
     isUnique: boolean = false,
     isMeta: boolean = false,
+    getTagCallback: ThrottleTagGetter | undefined = undefined,
+    inputSchema: SchemaDefinition | undefined = undefined,
+    validateInputContext: boolean = false,
+    outputSchema: SchemaDefinition | undefined = undefined,
+    validateOutputContext: boolean = false,
   ) {
     super(
       name,
@@ -26,6 +32,11 @@ export default class EphemeralTask extends Task {
       register,
       isUnique,
       isMeta,
+      getTagCallback,
+      inputSchema,
+      validateInputContext,
+      outputSchema,
+      validateOutputContext,
     );
     this.once = once;
     this.condition = condition;

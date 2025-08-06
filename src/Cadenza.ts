@@ -1,15 +1,13 @@
 import SignalBroker from "./engine/SignalBroker";
 import GraphRunner from "./engine/GraphRunner";
 import GraphRegistry from "./registry/GraphRegistry";
-import Task, { TaskFunction } from "./graph/definition/Task";
-import ThrottledTask, {
-  ThrottleTagGetter,
-} from "./graph/definition/ThrottledTask";
+import Task, { TaskFunction, ThrottleTagGetter } from "./graph/definition/Task";
 import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
 import EphemeralTask from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
 import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
 import GraphStandardRun from "./engine/strategy/GraphStandardRun";
+import { SchemaDefinition } from "./types/schema";
 
 export interface TaskOptions {
   concurrency?: number;
@@ -17,6 +15,11 @@ export interface TaskOptions {
   register?: boolean;
   isUnique?: boolean;
   isMeta?: boolean;
+  getTagCallback?: ThrottleTagGetter;
+  inputSchema?: SchemaDefinition;
+  validateInputContext?: boolean;
+  outputSchema?: SchemaDefinition;
+  validateOutputContext?: boolean;
 }
 
 export default class Cadenza {
@@ -85,6 +88,11 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: false,
+      getTagCallback: undefined,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): Task {
     this.bootstrap();
@@ -98,6 +106,11 @@ export default class Cadenza {
       options.register,
       options.isUnique,
       options.isMeta,
+      options.getTagCallback,
+      options.inputSchema,
+      options.validateInputContext,
+      options.outputSchema,
+      options.validateOutputContext,
     );
   }
 
@@ -121,6 +134,11 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: true,
+      getTagCallback: undefined,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): Task {
     options.isMeta = true;
@@ -147,6 +165,11 @@ export default class Cadenza {
       register: true,
       isUnique: true,
       isMeta: false,
+      getTagCallback: undefined,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): Task {
     options.isUnique = true;
@@ -171,6 +194,11 @@ export default class Cadenza {
       register: true,
       isUnique: true,
       isMeta: true,
+      getTagCallback: undefined,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): Task {
     options.isMeta = true;
@@ -190,7 +218,7 @@ export default class Cadenza {
   static createThrottledTask(
     name: string,
     func: TaskFunction,
-    throttledIdGetter?: ThrottleTagGetter,
+    throttledIdGetter: ThrottleTagGetter = () => "default",
     description?: string,
     options: TaskOptions = {
       concurrency: 1,
@@ -198,21 +226,14 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: false,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
-  ): ThrottledTask {
-    this.bootstrap();
-    this.validateName(name);
-    return new ThrottledTask(
-      name,
-      func,
-      description,
-      throttledIdGetter,
-      options.concurrency,
-      options.timeout,
-      options.register,
-      options.isUnique,
-      options.isMeta,
-    );
+  ): Task {
+    options.getTagCallback = throttledIdGetter;
+    return this.createTask(name, func, description, options);
   }
 
   /**
@@ -227,7 +248,7 @@ export default class Cadenza {
   static createThrottledMetaTask(
     name: string,
     func: TaskFunction,
-    throttledIdGetter?: ThrottleTagGetter,
+    throttledIdGetter: ThrottleTagGetter,
     description?: string,
     options: TaskOptions = {
       concurrency: 0,
@@ -235,8 +256,12 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: true,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
-  ): ThrottledTask {
+  ): Task {
     options.isMeta = true;
     return this.createThrottledTask(
       name,
@@ -270,6 +295,10 @@ export default class Cadenza {
       trailing: true,
       isUnique: false,
       isMeta: false,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): DebounceTask {
     this.bootstrap();
@@ -286,6 +315,10 @@ export default class Cadenza {
       options.register,
       options.isUnique,
       options.isMeta,
+      options.inputSchema,
+      options.validateInputContext,
+      options.outputSchema,
+      options.validateOutputContext,
     );
   }
 
@@ -311,6 +344,10 @@ export default class Cadenza {
       trailing: true,
       isUnique: false,
       isMeta: false,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): DebounceTask {
     options.isMeta = true;
@@ -347,6 +384,11 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: false,
+      getTagCallback: undefined,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): EphemeralTask {
     this.bootstrap();
@@ -362,6 +404,11 @@ export default class Cadenza {
       options.register,
       options.isUnique,
       options.isMeta,
+      options.getTagCallback,
+      options.inputSchema,
+      options.validateInputContext,
+      options.outputSchema,
+      options.validateOutputContext,
     );
   }
 
@@ -385,6 +432,13 @@ export default class Cadenza {
       concurrency: 0,
       timeout: 0,
       register: true,
+      isUnique: false,
+      isMeta: true,
+      getTagCallback: undefined,
+      inputSchema: undefined,
+      validateInputContext: false,
+      outputSchema: undefined,
+      validateOutputContext: false,
     },
   ): EphemeralTask {
     options.isMeta = true;

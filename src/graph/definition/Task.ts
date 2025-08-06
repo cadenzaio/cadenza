@@ -5,12 +5,14 @@ import TaskIterator from "../iterators/TaskIterator";
 import Graph from "../../interfaces/Graph";
 import { AnyObject } from "../../types/global";
 import SignalParticipant from "../../interfaces/SignalParticipant";
+import { SchemaDefinition } from "../../types/schema";
 
 export type TaskFunction = (
   context: AnyObject,
   progressCallback: (progress: number) => void,
 ) => TaskResult;
 export type TaskResult = boolean | object | Generator | Promise<any> | void;
+export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
 
 export default class Task extends SignalParticipant implements Graph {
   id: string;
@@ -20,11 +22,16 @@ export default class Task extends SignalParticipant implements Graph {
   timeout: number;
   readonly isMeta: boolean = false;
   readonly isUnique: boolean = false;
-
   readonly throttled: boolean = false;
+
   readonly isSignal: boolean = false;
   readonly isDeputy: boolean = false;
   readonly isEphemeral: boolean = false;
+
+  protected inputContextSchema: SchemaDefinition | undefined = undefined;
+  protected validateInputContext: boolean = false;
+  protected outputContextSchema: SchemaDefinition | undefined = undefined;
+  protected validateOutputContext: boolean = false;
 
   layerIndex: number = 0;
   progressWeight: number = 0;
@@ -45,6 +52,11 @@ export default class Task extends SignalParticipant implements Graph {
    * @param register Register via signal (default true).
    * @param isUnique
    * @param isMeta
+   * @param getTagCallback
+   * @param inputSchema
+   * @param validateInputContext
+   * @param outputSchema
+   * @param validateOutputContext
    * @edge Emits 'meta.task.created' with { __task: this } for seed.
    */
   constructor(
@@ -56,6 +68,11 @@ export default class Task extends SignalParticipant implements Graph {
     register: boolean = true,
     isUnique: boolean = false,
     isMeta: boolean = false,
+    getTagCallback: ThrottleTagGetter | undefined = undefined,
+    inputSchema: SchemaDefinition | undefined = undefined,
+    validateInputContext: boolean = false,
+    outputSchema: SchemaDefinition | undefined = undefined,
+    validateOutputContext: boolean = false,
   ) {
     super();
     this.id = uuid();
@@ -66,6 +83,15 @@ export default class Task extends SignalParticipant implements Graph {
     this.timeout = timeout;
     this.isUnique = isUnique;
     this.isMeta = isMeta;
+    this.inputContextSchema = inputSchema;
+    this.validateInputContext = validateInputContext;
+    this.outputContextSchema = outputSchema;
+    this.validateOutputContext = validateOutputContext;
+
+    if (getTagCallback) {
+      this.getTag = (context?: AnyObject) => getTagCallback(context, this);
+      this.throttled = true;
+    }
 
     if (register) {
       this.emit("meta.task.created", { __task: this });
@@ -94,6 +120,215 @@ export default class Task extends SignalParticipant implements Graph {
     this.progressWeight = weight;
   }
 
+  public setInputContextSchema(schema: SchemaDefinition): void {
+    this.inputContextSchema = schema;
+  }
+
+  public setOutputContextSchema(schema: SchemaDefinition): void {
+    this.outputContextSchema = schema;
+  }
+
+  public setValidateInputContext(value: boolean): void {
+    this.validateInputContext = value;
+  }
+
+  public setValidateOutputContext(value: boolean): void {
+    this.validateOutputContext = value;
+  }
+
+  /**
+   * Validates a context deeply against a schema.
+   * @param data - The data to validate (input context or output result).
+   * @param schema - The schema definition.
+   * @param path - The current path for error reporting (default: 'root').
+   * @returns { { valid: boolean, errors: Record<string, string> } } - Validation result with detailed errors if invalid.
+   * @description Recursively checks types, required fields, and constraints; allows extra properties not in schema.
+   */
+  protected validateSchema(
+    data: any,
+    schema: SchemaDefinition | undefined,
+    path: string = "context",
+  ): { valid: boolean; errors: Record<string, string> } {
+    const errors: Record<string, string> = {};
+
+    if (!schema || typeof schema !== "object") return { valid: true, errors };
+
+    // Check required fields
+    const required = schema.required || [];
+    for (const key of required) {
+      if (!(key in data)) {
+        errors[`${path}.${key}`] = `Required field '${key}' is missing`;
+      }
+    }
+
+    // Validate defined properties (ignore extras)
+    const properties = schema.properties || {};
+    for (const [key, value] of Object.entries(data)) {
+      if (key in properties) {
+        const prop = properties[key];
+        const propType = prop.type;
+
+        if (propType === "string" && typeof value !== "string") {
+          errors[`${path}.${key}`] =
+            `Expected 'string' for '${key}', got '${typeof value}'`;
+        } else if (propType === "number" && typeof value !== "number") {
+          errors[`${path}.${key}`] =
+            `Expected 'number' for '${key}', got '${typeof value}'`;
+        } else if (propType === "boolean" && typeof value !== "boolean") {
+          errors[`${path}.${key}`] =
+            `Expected 'boolean' for '${key}', got '${typeof value}'`;
+        } else if (propType === "array" && !Array.isArray(value)) {
+          errors[`${path}.${key}`] =
+            `Expected 'array' for '${key}', got '${typeof value}'`;
+        } else if (
+          propType === "object" &&
+          (typeof value !== "object" || value === null || Array.isArray(value))
+        ) {
+          errors[`${path}.${key}`] =
+            `Expected 'object' for '${key}', got '${typeof value}'`;
+        } else if (propType === "array" && prop.items) {
+          if (Array.isArray(value)) {
+            value.forEach((item, index) => {
+              const subValidation = this.validateSchema(
+                item,
+                prop.items,
+                `${path}.${key}[${index}]`,
+              );
+              if (!subValidation.valid) {
+                Object.assign(errors, subValidation.errors);
+              }
+            });
+          }
+        } else if (
+          propType === "object" &&
+          !Array.isArray(value) &&
+          value !== null
+        ) {
+          const subValidation = this.validateSchema(
+            value,
+            prop,
+            `${path}.${key}`,
+          );
+          if (!subValidation.valid) {
+            Object.assign(errors, subValidation.errors);
+          }
+        }
+
+        // Check constraints (extended as discussed)
+        const constraints = prop.constraints || {};
+        if (typeof value === "string") {
+          if (constraints.minLength && value.length < constraints.minLength) {
+            errors[`${path}.${key}`] =
+              `String '${key}' shorter than minLength ${constraints.minLength}`;
+          }
+          if (constraints.maxLength && value.length > constraints.maxLength) {
+            errors[`${path}.${key}`] =
+              `String '${key}' exceeds maxLength ${constraints.maxLength}`;
+          }
+          if (
+            constraints.pattern &&
+            !new RegExp(constraints.pattern).test(value)
+          ) {
+            errors[`${path}.${key}`] =
+              `String '${key}' does not match pattern ${constraints.pattern}`;
+          }
+        } else if (typeof value === "number") {
+          if (constraints.min && value < constraints.min) {
+            errors[`${path}.${key}`] =
+              `Number '${key}' below min ${constraints.min}`;
+          }
+          if (constraints.max && value > constraints.max) {
+            errors[`${path}.${key}`] =
+              `Number '${key}' exceeds max ${constraints.max}`;
+          }
+          if (constraints.multipleOf && value % constraints.multipleOf !== 0) {
+            errors[`${path}.${key}`] =
+              `Number '${key}' not multiple of ${constraints.multipleOf}`;
+          }
+        } else if (constraints.enum && !constraints.enum.includes(value)) {
+          errors[`${path}.${key}`] =
+            `Value '${value}' for '${key}' not in enum ${JSON.stringify(constraints.enum)}`;
+        } else if (constraints.format) {
+          const formats = {
+            email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+            url: /^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$/,
+            "date-time":
+              /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/,
+            uuid: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+            custom: /.*/, // Placeholder; override with prop.constraints.pattern if present
+          } as any;
+          const regex =
+            formats[constraints.format] ||
+            new RegExp(constraints.pattern || ".*");
+          if (typeof value === "string" && !regex.test(value)) {
+            errors[`${path}.${key}`] =
+              `Value '${value}' for '${key}' does not match format '${constraints.format}'`;
+          }
+        } else if (constraints.oneOf && !constraints.oneOf.includes(value)) {
+          errors[`${path}.${key}`] =
+            `Value '${value}' for '${key}' not in oneOf ${JSON.stringify(constraints.oneOf)}`;
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      return { valid: false, errors };
+    }
+    return { valid: true, errors: {} };
+  }
+
+  public validateInput(context: AnyObject): true | AnyObject {
+    if (this.validateInputContext) {
+      const validationResult = this.validateSchema(
+        context,
+        this.inputContextSchema,
+      );
+      if (!validationResult.valid) {
+        this.emit("meta.task.validationFailed", {
+          __taskId: this.id,
+          __context: context,
+          __errors: validationResult.errors,
+        });
+        return {
+          errored: true,
+          __error: "Input context validation failed",
+          __validationErrors: JSON.stringify(validationResult.errors),
+        };
+      }
+    }
+    return true;
+  }
+
+  public validateOutput(context: AnyObject): true | AnyObject {
+    if (this.validateOutputContext) {
+      const validationResult = this.validateSchema(
+        context,
+        this.outputContextSchema,
+      );
+      if (!validationResult.valid) {
+        this.emit("meta.task.outputValidationFailed", {
+          __taskId: this.id,
+          __result: context,
+          __errors: validationResult.errors,
+        });
+        return {
+          errored: true,
+          __error: "Output context validation failed",
+          __validationErrors: JSON.stringify(validationResult.errors),
+        };
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Executes the task function after optional input validation.
+   * @param context - The GraphContext to validate and execute.
+   * @param progressCallback - Callback for progress updates.
+   * @returns TaskResult from the taskFunction or error object on validation failure.
+   * @edge If validateInputContext is true, validates context; on failure, emits 'meta.task.validationFailed' with detailed errors.
+   * @edge If validateOutputContext is true, validates output; on failure, emits 'meta.task.outputValidationFailed' with detailed errors.
+   */
   public execute(
     context: GraphContext,
     progressCallback: (progress: number) => void,
@@ -288,6 +523,10 @@ export default class Task extends SignalParticipant implements Graph {
       __timeout: this.timeout,
       __functionString: this.taskFunction.toString(),
       __getTagCallback: this.getTag.toString(),
+      __inputSchema: this.inputContextSchema,
+      __validateInputContext: this.validateInputContext,
+      __outputSchema: this.outputContextSchema,
+      __validateOutputContext: this.validateOutputContext,
       __nextTasks: Array.from(this.nextTasks).map((t) => t.id),
       __onFailTasks: Array.from(this.onFailTasks).map((t) => t.id),
       __previousTasks: Array.from(this.predecessorTasks).map((t) => t.id),

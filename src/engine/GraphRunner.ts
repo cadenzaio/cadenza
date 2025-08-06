@@ -55,7 +55,7 @@ export default class GraphRunner extends SignalEmitter {
    */
   protected addTasks(
     tasks: Task | GraphRoutine | (Task | GraphRoutine)[],
-    context: AnyObject,
+    context: AnyObject = {},
   ): void {
     let _tasks = Array.isArray(tasks) ? tasks : [tasks];
     if (_tasks.length === 0) {
