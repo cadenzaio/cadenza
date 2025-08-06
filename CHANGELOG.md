@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/cadenzaio/cadenza/compare/v1.5.0...v1.5.1) (2025-08-06)
+
+
+### Bug Fixes
+
+* Added more index exports to enable extensions. ([88c32a3](https://github.com/cadenzaio/cadenza/commit/88c32a3424f604d7ebfa4b80fe6ec34422785598))
+
 # [1.5.0](https://github.com/cadenzaio/cadenza/compare/v1.4.0...v1.5.0) (2025-08-06)
 
 
