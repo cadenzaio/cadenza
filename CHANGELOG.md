@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/cadenzaio/cadenza/compare/v1.5.1...v1.6.0) (2025-08-07)
+
+
+### Features
+
+* Added possibility to update task schemas. ([3879b74](https://github.com/cadenzaio/cadenza/commit/3879b74e45552bc8f9fb7eab10ff7ca44a719126))
+
 ## [1.5.1](https://github.com/cadenzaio/cadenza/compare/v1.5.0...v1.5.1) (2025-08-06)
 
 
