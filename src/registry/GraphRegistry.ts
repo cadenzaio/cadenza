@@ -15,6 +15,8 @@ export default class GraphRegistry {
 
   registerTask: Task;
   updateTaskId: Task;
+  updateTaskInputSchema: Task;
+  updateTaskOutputSchema: Task;
   getTaskById: Task;
   getTaskByName: Task;
   getTasksByLayer: Task;
@@ -64,6 +66,30 @@ export default class GraphRegistry {
       },
       "Updates task id.",
     ).doOn("meta.task.global_id_set");
+
+    this.updateTaskInputSchema = Cadenza.createMetaTask(
+      "Update task input schema",
+      (context) => {
+        const { __id, __schema } = context;
+        const task = this.tasks.get(__id);
+        if (!task) return true;
+        task.setInputContextSchema(__schema);
+        return true;
+      },
+      "Updates task input schema.",
+    ).doOn("meta.task.input_schema_updated");
+
+    this.updateTaskOutputSchema = Cadenza.createMetaTask(
+      "Update task input schema",
+      (context) => {
+        const { __id, __schema } = context;
+        const task = this.tasks.get(__id);
+        if (!task) return true;
+        task.setOutputContextSchema(__schema);
+        return true;
+      },
+      "Updates task input schema.",
+    ).doOn("meta.task.output_schema_updated");
 
     this.getTaskById = Cadenza.createMetaTask(
       "Get task by id",

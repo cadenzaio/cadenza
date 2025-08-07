@@ -30,4 +30,5 @@ export type SchemaDefinition = {
   items?: SchemaDefinition; // For arrays
   constraints?: SchemaConstraints;
   description?: string; // Optional for docs
+  strict?: boolean; // Optional for strict mode
 };

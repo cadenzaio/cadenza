@@ -268,6 +268,8 @@ export default class Task extends SignalParticipant implements Graph {
           errors[`${path}.${key}`] =
             `Value '${value}' for '${key}' not in oneOf ${JSON.stringify(constraints.oneOf)}`;
         }
+      } else if (schema.strict) {
+        errors[`${path}.${key}`] = `Key '${key}' is not allowed`;
       }
     }
 
