@@ -82,6 +82,8 @@ export default class GraphRunner extends SignalEmitter {
     const ctx = new GraphContext(context || {});
 
     const routineExecId = context.__routineExecId ?? uuid();
+    context.__routineExecId = routineExecId;
+
     const data = {
       __routineExecId: routineExecId,
       __routineName: routineName,
@@ -98,6 +100,12 @@ export default class GraphRunner extends SignalEmitter {
     };
 
     this.emit("meta.runner.added_tasks", data);
+
+    if (this.debug) {
+      console.log(
+        `Running routine ${routineName} with context ${JSON.stringify(ctx.getContext())}`,
+      );
+    }
 
     allTasks.forEach((task) =>
       this.currentRun.addNode(new GraphNode(task, ctx, routineExecId)),

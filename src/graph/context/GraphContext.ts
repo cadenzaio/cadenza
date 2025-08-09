@@ -20,8 +20,6 @@ export default class GraphContext {
       Object.entries(this.fullContext).filter(([key]) => key.startsWith("__")),
     );
     this.id = uuid();
-    // this.deepFreeze(this.userData);
-    // this.deepFreeze(this.metaData);
   }
 
   /**

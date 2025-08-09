@@ -18,6 +18,36 @@ export default class SignalBroker {
     return this.instance_;
   }
 
+  private debug: boolean = false;
+
+  setDebug(value: boolean) {
+    this.debug = value;
+  }
+
+  protected sanitizeSignalName(signalName: string) {
+    if (signalName.length > 100) {
+      throw new Error("Signal name must be less than 100 characters");
+    }
+
+    if (signalName.includes(" ")) {
+      throw new Error("Signal name must not contain spaces");
+    }
+
+    if (signalName.includes("/")) {
+      throw new Error("Signal name must not contain slashes");
+    }
+
+    if (signalName.includes("\\")) {
+      throw new Error("Signal name must not contain backslashes");
+    }
+
+    if (/[A-Z]/.test(signalName.split(".").slice(1).join("."))) {
+      throw new Error(
+        "Signal name must not contain uppercase letters in the middle of the signal name. It is only allowed in the first part of the signal name.",
+      );
+    }
+  }
+
   protected runner: GraphRunner | undefined;
   protected metaRunner: GraphRunner | undefined;
 
@@ -38,7 +68,7 @@ export default class SignalBroker {
   protected emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
 
   protected constructor() {
-    this.addSignal("meta.signal.added");
+    this.addSignal("meta.signal_broker.added");
   }
 
   /**
@@ -111,7 +141,7 @@ export default class SignalBroker {
    * @throws Error on detected loop.
    */
   emit(signal: string, context: AnyObject = {}): void {
-    const execId = context.__graphExecId || "global"; // Assume from metadata
+    const execId = context.__routineExecId || "global"; // Assume from metadata
     if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
 
     const stack = this.emitStacks.get(execId)!;
@@ -143,9 +173,16 @@ export default class SignalBroker {
 
   private executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
-    const runner = this.getRunner(signal);
+    const runner = signal.startsWith("meta") ? this.metaRunner : this.runner;
     if (obs && obs.tasks.size && runner) {
       obs.fn(runner, Array.from(obs.tasks), context);
+
+      if (this.debug) {
+        console.log(
+          `Emitted signal ${signal} with context ${JSON.stringify(context)}`,
+        );
+        // TODO
+      }
       return true;
     }
     return false;
@@ -153,6 +190,7 @@ export default class SignalBroker {
 
   private addSignal(signal: string): void {
     if (!this.signalObservers.has(signal)) {
+      this.sanitizeSignalName(signal);
       this.signalObservers.set(signal, {
         fn: (
           runner: GraphRunner,
@@ -162,7 +200,7 @@ export default class SignalBroker {
         tasks: new Set(),
       });
 
-      this.emit("meta.signal.added", { __signal: signal });
+      this.emit("meta.signal_broker.added", { __signalName: signal });
     }
   }
 
@@ -172,10 +210,6 @@ export default class SignalBroker {
    */
   listObservedSignals(): string[] {
     return Array.from(this.signalObservers.keys());
-  }
-
-  private getRunner(signal: string): GraphRunner | undefined {
-    return signal.startsWith("meta") ? this.metaRunner : this.runner;
   }
 
   reset() {

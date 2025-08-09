@@ -46,8 +46,19 @@
   "files": [
     "dist"
   ],
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "graph-framework",
+    "task-orchestration",
+    "event-driven",
+    "signal-processing",
+    "workflow-engine",
+    "asynchronous-tasks",
+    "distributed-systems",
+    "meta-layer",
+    "ai-agents",
+    "self-evolving-systems"
+  ],
+  "author": "Emil Forsvall",
   "license": "ISC",
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",

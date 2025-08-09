@@ -22,12 +22,15 @@ export interface TaskOptions {
   validateOutputContext?: boolean;
 }
 
+export type CadenzaMode = "dev" | "debug" | "production";
+
 export default class Cadenza {
   static broker: SignalBroker;
   static runner: GraphRunner;
   static metaRunner: GraphRunner;
   static registry: GraphRegistry;
   protected static isBootstrapped = false;
+  protected static mode: CadenzaMode = "production";
 
   protected static bootstrap(): void {
     if (this.isBootstrapped) return;
@@ -55,6 +58,14 @@ export default class Cadenza {
       PARALLEL: new GraphAsyncRun(),
       SEQUENTIAL: new GraphStandardRun(),
     };
+  }
+
+  public static setMode(mode: CadenzaMode) {
+    this.mode = mode;
+
+    if (mode === "debug" || mode === "dev") {
+      this.broker.setDebug(true);
+    }
   }
 
   /**
