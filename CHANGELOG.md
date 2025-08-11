@@ -1,3 +1,10 @@
+## [1.7.2](https://github.com/cadenzaio/cadenza/compare/v1.7.1...v1.7.2) (2025-08-11)
+
+
+### Bug Fixes
+
+* exposed functions in Cadenza class for extensions ([1fadb5b](https://github.com/cadenzaio/cadenza/commit/1fadb5b938af4bd7ddb366f8ee47ba320754fe71))
+
 ## [1.7.1](https://github.com/cadenzaio/cadenza/compare/v1.7.0...v1.7.1) (2025-08-11)
 
 
