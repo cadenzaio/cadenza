@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/cadenzaio/cadenza/compare/v1.7.0...v1.7.1) (2025-08-11)
+
+
+### Bug Fixes
+
+* Fixed Cadenza mode ([04bb869](https://github.com/cadenzaio/cadenza/commit/04bb86903ac606f5ec744a0fc6e9be068fbf03bd))
+
 # [1.7.0](https://github.com/cadenzaio/cadenza/compare/v1.6.0...v1.7.0) (2025-08-09)
 
 
