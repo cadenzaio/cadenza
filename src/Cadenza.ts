@@ -25,14 +25,14 @@ export interface TaskOptions {
 export type CadenzaMode = "dev" | "debug" | "production";
 
 export default class Cadenza {
-  static broker: SignalBroker;
-  static runner: GraphRunner;
-  static metaRunner: GraphRunner;
-  static registry: GraphRegistry;
+  public static broker: SignalBroker;
+  public static runner: GraphRunner;
+  public static metaRunner: GraphRunner;
+  public static registry: GraphRegistry;
   protected static isBootstrapped = false;
   protected static mode: CadenzaMode = "production";
 
-  protected static bootstrap(): void {
+  public static bootstrap(): void {
     if (this.isBootstrapped) return;
     this.isBootstrapped = true;
 
@@ -81,7 +81,7 @@ export default class Cadenza {
    * @param name The name to validate.
    * @throws Error if invalid.
    */
-  protected static validateName(name: string): void {
+  public static validateName(name: string): void {
     if (!name || typeof name !== "string") {
       throw new Error("Task or Routine name must be a non-empty string.");
     }
