@@ -1,7 +1,11 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import Cadenza from "../../src/Cadenza";
 
 describe("Task schema", () => {
+  beforeEach(() => {
+    Cadenza.setMode("debug");
+  });
+
   it("should register input and output schema", async () => {
     const task = Cadenza.createTask(
       "basic task",

@@ -27,12 +27,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
   private failed: boolean = false;
   private errored: boolean = false;
   destroyed: boolean = false;
+  protected debug: boolean = false;
 
   constructor(
     task: Task,
     context: GraphContext,
     routineExecId: string,
     prevNodes: GraphNode[] = [],
+    debug: boolean = false,
   ) {
     super(task.isMeta);
     this.task = task;
@@ -41,6 +43,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.id = uuid();
     this.routineExecId = routineExecId;
     this.splitGroupId = routineExecId;
+    this.debug = debug;
+  }
+
+  setDebug(value: boolean) {
+    this.debug = value;
   }
 
   public isUnique() {
@@ -135,6 +142,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.emit("meta.node.started_routine_execution", memento);
     }
 
+    if (this.debug) {
+      this.log();
+    }
+
     this.emit("meta.node.started", memento);
 
     return this.executionStart;
@@ -169,7 +180,6 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
   public execute() {
     if (!this.divided && !this.processing) {
-      this.start();
       this.processing = true;
 
       const inputValidation = this.task.validateInput(
@@ -383,7 +393,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   public clone(): GraphNode {
-    return new GraphNode(this.task, this.context, this.routineExecId, [this]);
+    return new GraphNode(
+      this.task,
+      this.context,
+      this.routineExecId,
+      [this],
+      this.debug,
+    );
   }
 
   public consume(node: GraphNode) {
@@ -495,6 +511,6 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   public log() {
-    console.log(this.task.name, this.context.getContext(), this.executionTime);
+    console.log(this.task.name, this.context.getContext(), this.routineExecId);
   }
 }

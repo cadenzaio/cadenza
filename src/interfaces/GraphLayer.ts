@@ -13,10 +13,18 @@ export default abstract class GraphLayer
   protected nodes: GraphNode[] = [];
   private executionTime: number = 0;
   private executionStart: number = 0;
+  protected debug: boolean = false;
 
   constructor(index: number) {
     super();
     this.index = index;
+  }
+
+  setDebug(value: boolean) {
+    this.debug = value;
+    for (const node of this.nodes) {
+      node.setDebug(value);
+    }
   }
 
   abstract execute(context?: GraphContext): unknown;

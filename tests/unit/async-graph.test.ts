@@ -3,6 +3,10 @@ import Cadenza from "../../src/Cadenza";
 import { sleep } from "../../src/utils/promise";
 
 describe("Async Graph", () => {
+  beforeEach(() => {
+    Cadenza.setMode("debug");
+  });
+
   it("should run async graph with context", async () => {
     const task1 = Cadenza.createTask("task1", async () => true);
     const task2 = Cadenza.createTask("task2", async () => sleep(100));
@@ -10,7 +14,6 @@ describe("Async Graph", () => {
     task1.then(task2);
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();

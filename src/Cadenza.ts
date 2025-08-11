@@ -44,6 +44,11 @@ export default class Cadenza {
     this.metaRunner = new GraphRunner(true);
     this.broker.bootstrap(this.runner, this.metaRunner);
 
+    if (this.mode === "debug" || this.mode === "dev") {
+      this.broker.setDebug(true);
+      this.runner.setDebug(true);
+    }
+
     // 3. GraphRegistry (seed observes on broker)
     this.registry = GraphRegistry.instance;
 
@@ -63,8 +68,11 @@ export default class Cadenza {
   public static setMode(mode: CadenzaMode) {
     this.mode = mode;
 
+    this.bootstrap();
+
     if (mode === "debug" || mode === "dev") {
       this.broker.setDebug(true);
+      this.runner.setDebug(true);
     }
   }
 
@@ -304,6 +312,7 @@ export default class Cadenza {
       register: true,
       leading: false,
       trailing: true,
+      maxWait: 0,
       isUnique: false,
       isMeta: false,
       inputSchema: undefined,
@@ -321,6 +330,7 @@ export default class Cadenza {
       debounceTime,
       options.leading,
       options.trailing,
+      options.maxWait,
       options.concurrency,
       options.timeout,
       options.register,
@@ -353,6 +363,7 @@ export default class Cadenza {
       register: true,
       leading: false,
       trailing: true,
+      maxWait: 0,
       isUnique: false,
       isMeta: false,
       inputSchema: undefined,

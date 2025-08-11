@@ -1,14 +1,17 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import Cadenza from "../../src/Cadenza";
 
 describe("Basic Task", () => {
+  beforeEach(() => {
+    Cadenza.setMode("debug");
+  });
+
   it("should run task with context", async () => {
     const task = Cadenza.createTask("basic task", (_) => {
       return true;
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, { foo: "bar" });
 
     const result = run.export();
@@ -31,7 +34,6 @@ describe("Basic Task", () => {
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, {});
 
     const result = run.export();
@@ -50,7 +52,6 @@ describe("Basic Task", () => {
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, { foo: "bar" });
 
     const result = run.export();
@@ -69,7 +70,6 @@ describe("Basic Task", () => {
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, {});
 
     const result = run.export();
@@ -87,7 +87,6 @@ describe("Basic Task", () => {
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, {});
 
     const result = run.export();
@@ -101,7 +100,6 @@ describe("Basic Task", () => {
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, {});
 
     const result = run.export();
@@ -115,7 +113,6 @@ describe("Basic Task", () => {
     });
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task, {});
 
     const result = run.export();

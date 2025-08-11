@@ -101,14 +101,10 @@ export default class GraphRunner extends SignalEmitter {
 
     this.emit("meta.runner.added_tasks", data);
 
-    if (this.debug) {
-      console.log(
-        `Running routine ${routineName} with context ${JSON.stringify(ctx.getContext())}`,
-      );
-    }
-
     allTasks.forEach((task) =>
-      this.currentRun.addNode(new GraphNode(task, ctx, routineExecId)),
+      this.currentRun.addNode(
+        new GraphNode(task, ctx, routineExecId, [], this.debug),
+      ),
     );
   }
 
@@ -149,10 +145,6 @@ export default class GraphRunner extends SignalEmitter {
   }
 
   protected reset(): GraphRun {
-    if (this.debug) {
-      this.currentRun.log();
-    }
-
     this.isRunning = false;
 
     const lastRun = this.currentRun;

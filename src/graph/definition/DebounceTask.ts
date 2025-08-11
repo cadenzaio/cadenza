@@ -5,17 +5,22 @@ import { SchemaDefinition } from "../../types/schema";
 export interface DebounceOptions {
   leading?: boolean;
   trailing?: boolean;
+  maxWait?: number;
 }
 
 export default class DebounceTask extends Task {
   private readonly debounceTime: number;
   private leading: boolean;
   private trailing: boolean;
+  private maxWait: number;
   private timer: NodeJS.Timeout | null = null;
+  private maxTimer: NodeJS.Timeout | null = null;
+  private hasLaterCall: boolean = false;
   private lastResolve: ((value: unknown) => void) | null = null;
   private lastReject: ((reason?: any) => void) | null = null;
   private lastContext: GraphContext | null = null;
   private lastTimeout: NodeJS.Timeout | null = null;
+  private lastProgressCallback: ((progress: number) => void) | null = null;
 
   constructor(
     name: string,
@@ -24,6 +29,7 @@ export default class DebounceTask extends Task {
     debounceTime: number = 1000,
     leading: boolean = false,
     trailing: boolean = true,
+    maxWait: number = 0,
     concurrency: number = 0,
     timeout: number = 0,
     register: boolean = true,
@@ -52,9 +58,10 @@ export default class DebounceTask extends Task {
     this.debounceTime = debounceTime;
     this.leading = leading;
     this.trailing = trailing;
+    this.maxWait = maxWait;
   }
 
-  private executeFunction(progressCallback: (progress: number) => void): void {
+  private executeFunction(): void {
     if (this.lastTimeout) {
       clearTimeout(this.lastTimeout);
     }
@@ -63,7 +70,7 @@ export default class DebounceTask extends Task {
     try {
       result = this.taskFunction(
         this.lastContext!.getClonedContext(),
-        progressCallback,
+        this.lastProgressCallback!,
       );
     } catch (error) {
       if (this.lastResolve) {
@@ -89,25 +96,52 @@ export default class DebounceTask extends Task {
     progressCallback: (progress: number) => void,
   ): void {
     const callNow = this.leading && this.timer === null;
+    const isNewBurst = this.timer === null;
 
     if (this.timer !== null) {
       clearTimeout(this.timer);
+      this.timer = null;
     }
 
     this.lastResolve = resolve;
     this.lastReject = reject;
     this.lastContext = context;
     this.lastTimeout = timeout;
+    this.lastProgressCallback = progressCallback;
+
+    if (!callNow) {
+      this.hasLaterCall = true;
+    }
 
     this.timer = setTimeout(() => {
       this.timer = null;
-      if (this.trailing) {
-        this.executeFunction(progressCallback);
+      if (this.trailing && this.hasLaterCall) {
+        this.executeFunction();
+        this.hasLaterCall = false;
+      }
+      if (this.maxTimer) {
+        clearTimeout(this.maxTimer);
+        this.maxTimer = null;
       }
     }, this.debounceTime);
 
     if (callNow) {
-      this.executeFunction(progressCallback);
+      this.executeFunction();
+      this.hasLaterCall = false;
+    }
+
+    if (this.maxWait > 0 && isNewBurst) {
+      this.maxTimer = setTimeout(() => {
+        this.maxTimer = null;
+        if (this.trailing && this.hasLaterCall) {
+          if (this.timer) {
+            clearTimeout(this.timer);
+            this.timer = null;
+          }
+          this.executeFunction();
+          this.hasLaterCall = false;
+        }
+      }, this.maxWait);
     }
   }
 

@@ -1,8 +1,12 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import Cadenza from "../../src/Cadenza";
 import { sleep } from "../../src/utils/promise";
 
 describe("Basic Graph", () => {
+  beforeEach(() => {
+    Cadenza.setMode("debug");
+  });
+
   it("should define graph with .then() method", async () => {
     const task1 = Cadenza.createTask("task1", (_) => true);
     const task2 = Cadenza.createTask("task2", (_) => true);
@@ -39,7 +43,6 @@ describe("Basic Graph", () => {
     task1.then(task2);
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -61,7 +64,6 @@ describe("Basic Graph", () => {
     task1.then(task2);
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -83,7 +85,6 @@ describe("Basic Graph", () => {
     task1.then(task2);
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     runner.setStrategy(Cadenza.runStrategy.SEQUENTIAL);
     const run = await runner.run(task1, { foo: "bar" });
     const result = run.export();
@@ -98,7 +99,6 @@ describe("Basic Graph", () => {
     task1.then(task2, task3);
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -126,7 +126,6 @@ describe("Basic Graph", () => {
     task1.then(task2.then(task4, task5), task3.then(task6, task7));
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -151,7 +150,6 @@ describe("Basic Graph", () => {
     );
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -179,7 +177,6 @@ describe("Basic Graph", () => {
     task1.then(task2.then(task4, task5), task3);
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -206,7 +203,6 @@ describe("Basic Graph", () => {
     );
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -235,7 +231,6 @@ describe("Basic Graph", () => {
     );
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(routine, { foo: "bar" });
 
     const result = run.export();
@@ -255,7 +250,6 @@ describe("Basic Graph", () => {
     task1.then(task2.then(task4, task5), task3.then(task6, task7));
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();
@@ -275,7 +269,6 @@ describe("Basic Graph", () => {
     task1.then(task2.then(task4, task5), task3.then(task6, task7));
 
     const runner = Cadenza.runner;
-    runner.setDebug(true);
     const run = await runner.run(task1, { foo: "bar" });
 
     const result = run.export();

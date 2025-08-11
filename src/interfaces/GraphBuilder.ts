@@ -6,6 +6,11 @@ export default abstract class GraphBuilder {
   graph: GraphLayer | undefined;
   topLayerIndex: number = 0;
   layers: GraphLayer[] = [];
+  debug: boolean = false;
+
+  setDebug(value: boolean) {
+    this.debug = value;
+  }
 
   getResult(): GraphLayer {
     return this.graph as GraphLayer;
@@ -61,7 +66,9 @@ export default abstract class GraphBuilder {
   }
 
   protected createLayer(index: number): GraphLayer {
-    return new SyncGraphLayer(index);
+    const layer = new SyncGraphLayer(index);
+    layer.setDebug(this.debug);
+    return layer;
   }
 
   protected getLayer(layerIndex: number) {

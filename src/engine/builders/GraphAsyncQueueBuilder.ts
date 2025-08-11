@@ -43,6 +43,8 @@ export default class GraphAsyncQueueBuilder extends GraphBuilder {
   }
 
   protected createLayer(index: number) {
-    return new AsyncGraphLayer(index);
+    const layer = new AsyncGraphLayer(index);
+    layer.setDebug(this.debug);
+    return layer;
   }
 }

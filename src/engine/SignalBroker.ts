@@ -33,10 +33,6 @@ export default class SignalBroker {
       throw new Error("Signal name must not contain spaces");
     }
 
-    if (signalName.includes("/")) {
-      throw new Error("Signal name must not contain slashes");
-    }
-
     if (signalName.includes("\\")) {
       throw new Error("Signal name must not contain backslashes");
     }
@@ -82,7 +78,7 @@ export default class SignalBroker {
   }
 
   init() {
-    Cadenza.createMetaTask(
+    Cadenza.createDebounceMetaTask(
       "Execute and clear queued signals",
       () => {
         for (const [id, signals] of this.emitStacks.entries()) {
@@ -90,12 +86,15 @@ export default class SignalBroker {
             this.execute(signal, context);
             signals.delete(signal);
           });
+
           this.emitStacks.delete(id);
         }
         return true;
       },
       "Executes queued signals and clears the stack",
-    ).doOn("meta.clear_signal_queue_requested"); // TODO
+      500,
+      { maxWait: 10000 },
+    ).doOn("meta.process_signal_queue_requested");
 
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       return {
@@ -138,7 +137,6 @@ export default class SignalBroker {
    * @param context The payload.
    * @edge Fire-and-forget; guards against loops per execId (from context.__graphExecId).
    * @edge For distribution, SignalTask can prefix and proxy remote.
-   * @throws Error on detected loop.
    */
   emit(signal: string, context: AnyObject = {}): void {
     const execId = context.__routineExecId || "global"; // Assume from metadata
@@ -151,8 +149,8 @@ export default class SignalBroker {
     try {
       executed = this.execute(signal, context);
     } finally {
-      if (executed) stack.delete(signal); // Clean up
-      // Optional: Clear stack post-run via meta-signal
+      if (executed) stack.delete(signal);
+      if (stack.size === 0) this.emitStacks.delete(execId);
     }
   }
 
@@ -168,6 +166,14 @@ export default class SignalBroker {
       executed = executed || this.executeListener(parent + ".*", context); // Wildcard
     }
 
+    if (this.debug) {
+      console.log(
+        `Emitted signal ${signal} with context ${JSON.stringify(context)}`,
+        executed ? "✅" : "❌",
+      );
+      // TODO
+    }
+
     return executed;
   }
 
@@ -176,13 +182,6 @@ export default class SignalBroker {
     const runner = signal.startsWith("meta") ? this.metaRunner : this.runner;
     if (obs && obs.tasks.size && runner) {
       obs.fn(runner, Array.from(obs.tasks), context);
-
-      if (this.debug) {
-        console.log(
-          `Emitted signal ${signal} with context ${JSON.stringify(context)}`,
-        );
-        // TODO
-      }
       return true;
     }
     return false;
@@ -203,6 +202,8 @@ export default class SignalBroker {
       this.emit("meta.signal_broker.added", { __signalName: signal });
     }
   }
+
+  // TODO schedule signals
 
   /**
    * Lists all observed signals.
