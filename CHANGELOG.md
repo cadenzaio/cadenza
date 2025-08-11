@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/cadenzaio/cadenza/compare/v1.6.0...v1.7.0) (2025-08-09)
+
+
+### Features
+
+* Added global debug and dev mode. ([1986f8f](https://github.com/cadenzaio/cadenza/commit/1986f8faa787aa2e7daa32db02febe5f8ea4695b))
+
 # [1.6.0](https://github.com/cadenzaio/cadenza/compare/v1.5.1...v1.6.0) (2025-08-07)
 
 
