@@ -104,9 +104,9 @@ export default class GraphRunner extends SignalEmitter {
     if (this.debug) {
       console.log(
         `${this.isMeta ? "Meta" : ""}Runner added tasks`,
-        allTasks,
+        allTasks.map((t) => t.name),
         "with context",
-        ctx,
+        ctx.getFullContext(),
       );
     }
 
