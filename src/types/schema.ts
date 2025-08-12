@@ -5,7 +5,6 @@ export type SchemaType =
   | "boolean"
   | "array"
   | "object"
-  | "null"
   | "any";
 
 // Define constraints for each type

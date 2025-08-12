@@ -168,6 +168,14 @@ export default class Task extends SignalParticipant implements Graph {
         const prop = properties[key];
         const propType = prop.type;
 
+        if (propType === "any") {
+          continue;
+        }
+
+        if ((value === undefined || value === null) && !prop.strict) {
+          continue;
+        }
+
         if (propType === "string" && typeof value !== "string") {
           errors[`${path}.${key}`] =
             `Expected 'string' for '${key}', got '${typeof value}'`;
