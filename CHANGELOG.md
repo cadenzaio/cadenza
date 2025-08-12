@@ -1,3 +1,10 @@
+## [1.7.9](https://github.com/cadenzaio/cadenza/compare/v1.7.8...v1.7.9) (2025-08-12)
+
+
+### Bug Fixes
+
+* Fixed issues with context for meta execution ([336dde4](https://github.com/cadenzaio/cadenza/commit/336dde4204cc83d233a0f1acc85a1c8dab802224))
+
 ## [1.7.8](https://github.com/cadenzaio/cadenza/compare/v1.7.7...v1.7.8) (2025-08-12)
 
 
