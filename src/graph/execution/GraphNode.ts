@@ -511,6 +511,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   public log() {
-    console.log(this.task.name, this.context.getContext(), this.routineExecId);
+    console.log(
+      "Node execution:",
+      this.task.name,
+      this.context.getFullContext(),
+      this.routineExecId,
+    );
   }
 }
