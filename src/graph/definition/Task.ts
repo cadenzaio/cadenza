@@ -336,7 +336,10 @@ export default class Task extends SignalParticipant implements Graph {
     context: GraphContext,
     progressCallback: (progress: number) => void,
   ): TaskResult {
-    return this.taskFunction(context.getClonedContext(), progressCallback);
+    return this.taskFunction(
+      this.isMeta ? context.getClonedFullContext() : context.getClonedContext(),
+      progressCallback,
+    );
   }
 
   public doAfter(...tasks: Task[]): this {

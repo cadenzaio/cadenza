@@ -183,7 +183,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.processing = true;
 
       const inputValidation = this.task.validateInput(
-        this.context.getContext(),
+        this.isMeta() ? this.context.getMetaData() : this.context.getContext(),
       );
       if (inputValidation !== true) {
         this.onError(inputValidation.__validationErrors);

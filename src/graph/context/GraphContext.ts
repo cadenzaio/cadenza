@@ -42,6 +42,10 @@ export default class GraphContext {
     return this.fullContext;
   }
 
+  getClonedFullContext(): AnyObject {
+    return deepCloneFilter(this.fullContext);
+  }
+
   /**
    * Gets frozen metadata (read-only).
    * @returns Frozen metadata object.
