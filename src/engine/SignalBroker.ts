@@ -41,7 +41,7 @@ export default class SignalBroker {
       );
     }
 
-    if (/[A-Z]/.test(signalName.split(".").slice(1).join("."))) {
+    if (/[A-Z]/.test(signalName.split(":")[0].split(".").slice(1).join("."))) {
       throw new Error(
         `Signal name must not contain uppercase letters in the middle of the signal name. It is only allowed in the first part of the signal name: ${signalName}`,
       );
