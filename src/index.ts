@@ -1,11 +1,17 @@
-import Cadenza, { TaskOptions } from "./Cadenza";
+import Cadenza, { CadenzaMode, TaskOptions } from "./Cadenza";
 import GraphRun from "./engine/GraphRun";
+import GraphRunner from "./engine/GraphRunner";
+import SignalBroker from "./engine/SignalBroker";
 import GraphContext from "./graph/context/GraphContext";
-import DebounceTask from "./graph/definition/DebounceTask";
+import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
 import EphemeralTask from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
 import SignalTask from "./graph/definition/SignalTask";
-import Task, { TaskResult, ThrottleTagGetter } from "./graph/definition/Task";
+import Task, {
+  TaskFunction,
+  TaskResult,
+  ThrottleTagGetter,
+} from "./graph/definition/Task";
 import SignalEmitter from "./interfaces/SignalEmitter";
 import SignalParticipant from "./interfaces/SignalParticipant";
 import GraphRegistry from "./registry/GraphRegistry";
@@ -35,4 +41,9 @@ export {
   SchemaConstraints,
   SchemaType,
   ThrottleTagGetter,
+  SignalBroker,
+  GraphRunner,
+  CadenzaMode,
+  TaskFunction,
+  DebounceOptions,
 };
