@@ -1,3 +1,10 @@
+## [1.7.4](https://github.com/cadenzaio/cadenza/compare/v1.7.3...v1.7.4) (2025-08-12)
+
+
+### Bug Fixes
+
+* Better signal validation error ([85074ae](https://github.com/cadenzaio/cadenza/commit/85074ae001b061ed670b9b906eb12fc175c399f1))
+
 ## [1.7.3](https://github.com/cadenzaio/cadenza/compare/v1.7.2...v1.7.3) (2025-08-12)
 
 
