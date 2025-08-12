@@ -1,3 +1,10 @@
+## [1.7.7](https://github.com/cadenzaio/cadenza/compare/v1.7.6...v1.7.7) (2025-08-12)
+
+
+### Bug Fixes
+
+* Added debugging to meta runner as well ([19d0470](https://github.com/cadenzaio/cadenza/commit/19d04700805d2a831a6ae519bd022a2b0c3ca91a))
+
 ## [1.7.6](https://github.com/cadenzaio/cadenza/compare/v1.7.5...v1.7.6) (2025-08-12)
 
 
