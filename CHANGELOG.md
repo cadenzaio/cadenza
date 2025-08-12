@@ -1,3 +1,10 @@
+## [1.7.8](https://github.com/cadenzaio/cadenza/compare/v1.7.7...v1.7.8) (2025-08-12)
+
+
+### Bug Fixes
+
+* Fixed debug log ([b3c11da](https://github.com/cadenzaio/cadenza/commit/b3c11da9a78d4a3902ffe342f3e413b9e36860dc))
+
 ## [1.7.7](https://github.com/cadenzaio/cadenza/compare/v1.7.6...v1.7.7) (2025-08-12)
 
 
