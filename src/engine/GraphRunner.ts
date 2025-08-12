@@ -102,7 +102,12 @@ export default class GraphRunner extends SignalEmitter {
     this.emit("meta.runner.added_tasks", data);
 
     if (this.debug) {
-      console.log("Runner added tasks", allTasks, "with context", ctx);
+      console.log(
+        `${this.isMeta ? "Meta" : ""}Runner added tasks`,
+        allTasks,
+        "with context",
+        ctx,
+      );
     }
 
     allTasks.forEach((task) =>

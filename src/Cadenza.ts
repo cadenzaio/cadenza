@@ -47,6 +47,7 @@ export default class Cadenza {
     if (this.mode === "debug" || this.mode === "dev") {
       this.broker.setDebug(true);
       this.runner.setDebug(true);
+      this.metaRunner.setDebug(true);
     }
 
     // 3. GraphRegistry (seed observes on broker)
