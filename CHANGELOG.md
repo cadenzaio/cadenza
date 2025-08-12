@@ -1,3 +1,10 @@
+## [1.7.10](https://github.com/cadenzaio/cadenza/compare/v1.7.9...v1.7.10) (2025-08-12)
+
+
+### Bug Fixes
+
+* Improved schema validation to account for undefined and null values ([79f3d90](https://github.com/cadenzaio/cadenza/commit/79f3d900c536fda3bb394dd62e99df2c4b80e8e0))
+
 ## [1.7.9](https://github.com/cadenzaio/cadenza/compare/v1.7.8...v1.7.9) (2025-08-12)
 
 
