@@ -1,3 +1,10 @@
+## [1.7.6](https://github.com/cadenzaio/cadenza/compare/v1.7.5...v1.7.6) (2025-08-12)
+
+
+### Bug Fixes
+
+* Fixed bug in SignalParticipant.ts that would pass the GraphContext object as a context to the emitted signals. ([ec483bc](https://github.com/cadenzaio/cadenza/commit/ec483bc504f3cf8675ea62c2a10c79186a261296))
+
 ## [1.7.5](https://github.com/cadenzaio/cadenza/compare/v1.7.4...v1.7.5) (2025-08-12)
 
 
