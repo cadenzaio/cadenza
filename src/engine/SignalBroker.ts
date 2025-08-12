@@ -26,20 +26,24 @@ export default class SignalBroker {
 
   protected sanitizeSignalName(signalName: string) {
     if (signalName.length > 100) {
-      throw new Error("Signal name must be less than 100 characters");
+      throw new Error(
+        `Signal name must be less than 100 characters: ${signalName}`,
+      );
     }
 
     if (signalName.includes(" ")) {
-      throw new Error("Signal name must not contain spaces");
+      throw new Error(`Signal name must not contain spaces: ${signalName}"`);
     }
 
     if (signalName.includes("\\")) {
-      throw new Error("Signal name must not contain backslashes");
+      throw new Error(
+        `Signal name must not contain backslashes: ${signalName}`,
+      );
     }
 
     if (/[A-Z]/.test(signalName.split(".").slice(1).join("."))) {
       throw new Error(
-        "Signal name must not contain uppercase letters in the middle of the signal name. It is only allowed in the first part of the signal name.",
+        `Signal name must not contain uppercase letters in the middle of the signal name. It is only allowed in the first part of the signal name: ${signalName}`,
       );
     }
   }
