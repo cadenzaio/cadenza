@@ -286,8 +286,9 @@ export default class Task extends SignalParticipant implements Graph {
         this.inputContextSchema,
       );
       if (!validationResult.valid) {
-        this.emit("meta.task.validationFailed", {
+        this.emit("meta.task.input_validation_failed", {
           __taskId: this.id,
+          __taskName: this.name,
           __context: context,
           __errors: validationResult.errors,
         });

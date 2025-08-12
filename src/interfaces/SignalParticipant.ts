@@ -92,7 +92,7 @@ export default class SignalParticipant extends SignalEmitter {
   emitSignals(context: GraphContext): void {
     this.signalsToEmit.forEach((signal) => {
       // if ((this as any).isMeta && signal.startsWith('meta.')) return;  // Suppress meta recursion if isMeta
-      this.emit(signal, context);
+      this.emit(signal, context.getFullContext());
     });
   }
 
@@ -104,7 +104,7 @@ export default class SignalParticipant extends SignalEmitter {
   emitOnFailSignals(context: GraphContext): void {
     this.signalsToEmitOnFail.forEach((signal) => {
       // if ((this as any).isMeta && signal.startsWith('meta.')) return;  // Suppress meta recursion if isMeta
-      this.emit(signal, context);
+      this.emit(signal, context.getFullContext());
     });
   }
 

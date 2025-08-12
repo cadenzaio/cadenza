@@ -24,7 +24,7 @@ export default class SignalBroker {
     this.debug = value;
   }
 
-  protected sanitizeSignalName(signalName: string) {
+  protected validateSignalName(signalName: string) {
     if (signalName.length > 100) {
       throw new Error(
         `Signal name must be less than 100 characters: ${signalName}`,
@@ -193,7 +193,7 @@ export default class SignalBroker {
 
   private addSignal(signal: string): void {
     if (!this.signalObservers.has(signal)) {
-      this.sanitizeSignalName(signal);
+      this.validateSignalName(signal);
       this.signalObservers.set(signal, {
         fn: (
           runner: GraphRunner,
