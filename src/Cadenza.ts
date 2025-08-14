@@ -20,6 +20,10 @@ export interface TaskOptions {
   validateInputContext?: boolean;
   outputSchema?: SchemaDefinition;
   validateOutputContext?: boolean;
+  retryCount?: number;
+  retryDelay?: number;
+  retryDelayMax?: number;
+  retryDelayFactor?: number;
 }
 
 export type CadenzaMode = "dev" | "debug" | "production";
@@ -113,6 +117,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): Task {
     this.bootstrap();
@@ -131,6 +139,10 @@ export default class Cadenza {
       options.validateInputContext,
       options.outputSchema,
       options.validateOutputContext,
+      options.retryCount,
+      options.retryDelay,
+      options.retryDelayMax,
+      options.retryDelayFactor,
     );
   }
 
@@ -159,6 +171,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): Task {
     options.isMeta = true;
@@ -190,6 +206,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): Task {
     options.isUnique = true;
@@ -219,6 +239,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): Task {
     options.isMeta = true;
@@ -250,6 +274,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): Task {
     options.getTagCallback = throttledIdGetter;
@@ -280,6 +308,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): Task {
     options.isMeta = true;
@@ -412,6 +444,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): EphemeralTask {
     this.bootstrap();
@@ -432,6 +468,10 @@ export default class Cadenza {
       options.validateInputContext,
       options.outputSchema,
       options.validateOutputContext,
+      options.retryCount,
+      options.retryDelay,
+      options.retryDelayMax,
+      options.retryDelayFactor,
     );
   }
 
@@ -462,6 +502,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
+      retryCount: 0,
+      retryDelay: 0,
+      retryDelayMax: 0,
+      retryDelayFactor: 1,
     },
   ): EphemeralTask {
     options.isMeta = true;

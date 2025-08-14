@@ -22,6 +22,10 @@ export default class EphemeralTask extends Task {
     validateInputContext: boolean = false,
     outputSchema: SchemaDefinition | undefined = undefined,
     validateOutputContext: boolean = false,
+    retryCount: number = 0,
+    retryDelay: number = 0,
+    retryDelayMax: number = 0,
+    retryDelayFactor: number = 1,
   ) {
     super(
       name,
@@ -37,6 +41,10 @@ export default class EphemeralTask extends Task {
       validateInputContext,
       outputSchema,
       validateOutputContext,
+      retryCount,
+      retryDelay,
+      retryDelayMax,
+      retryDelayFactor,
     );
     this.once = once;
     this.condition = condition;

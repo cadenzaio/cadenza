@@ -11,7 +11,7 @@ export type TaskFunction = (
   context: AnyObject,
   progressCallback: (progress: number) => void,
 ) => TaskResult;
-export type TaskResult = boolean | object | Generator | Promise<any> | void;
+export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
 export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
 
 export default class Task extends SignalParticipant implements Graph {
@@ -32,6 +32,11 @@ export default class Task extends SignalParticipant implements Graph {
   protected validateInputContext: boolean = false;
   protected outputContextSchema: SchemaDefinition | undefined = undefined;
   protected validateOutputContext: boolean = false;
+
+  readonly retryCount: number = 0;
+  readonly retryDelay: number = 0;
+  readonly retryDelayMax: number = 0;
+  readonly retryDelayFactor: number = 1;
 
   layerIndex: number = 0;
   progressWeight: number = 0;
@@ -57,6 +62,10 @@ export default class Task extends SignalParticipant implements Graph {
    * @param validateInputContext
    * @param outputSchema
    * @param validateOutputContext
+   * @param retryCount
+   * @param retryDelay
+   * @param retryDelayMax
+   * @param retryDelayFactor
    * @edge Emits 'meta.task.created' with { __task: this } for seed.
    */
   constructor(
@@ -73,6 +82,10 @@ export default class Task extends SignalParticipant implements Graph {
     validateInputContext: boolean = false,
     outputSchema: SchemaDefinition | undefined = undefined,
     validateOutputContext: boolean = false,
+    retryCount: number = 0,
+    retryDelay: number = 0,
+    retryDelayMax: number = 0,
+    retryDelayFactor: number = 1,
   ) {
     super();
     this.id = uuid();
@@ -87,6 +100,10 @@ export default class Task extends SignalParticipant implements Graph {
     this.validateInputContext = validateInputContext;
     this.outputContextSchema = outputSchema;
     this.validateOutputContext = validateOutputContext;
+    this.retryCount = retryCount;
+    this.retryDelay = retryDelay;
+    this.retryDelayMax = retryDelayMax;
+    this.retryDelayFactor = retryDelayFactor;
 
     if (getTagCallback) {
       this.getTag = (context?: AnyObject) => getTagCallback(context, this);

@@ -1,10 +1,14 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import Cadenza from "../../src/Cadenza";
 import { sleep } from "../../src/utils/promise";
 
 describe("Basic Graph", () => {
   beforeEach(() => {
     Cadenza.setMode("debug");
+  });
+
+  afterEach(() => {
+    Cadenza.runner.setStrategy(Cadenza.runStrategy.PARALLEL);
   });
 
   it("should define graph with .then() method", async () => {
@@ -274,5 +278,36 @@ describe("Basic Graph", () => {
     const result = run.export();
 
     expect(result.__graph.numberOfNodes).toBe(5);
+  });
+
+  it("should retry a task", async () => {
+    let retries = 0;
+    const task1 = Cadenza.createTask(
+      "task1",
+      (context) => {
+        if (retries < 2) {
+          retries++;
+          throw new Error("error");
+        }
+
+        return true;
+      },
+      "",
+      { retryCount: 2 },
+    );
+    const task2 = Cadenza.createTask("task2", (context) => {
+      return true;
+    });
+
+    task1.then(task2);
+
+    const runner = Cadenza.runner;
+    const run = await runner.run(task1, { foo: "bar" });
+
+    const result = run.export();
+
+    expect(result.__graph.numberOfNodes).toBe(2);
+    expect(result.__graph.elements[0].data.context).not.toHaveProperty("error");
+    expect(result.__graph.elements[0].data.context.__retries).toBe(2);
   });
 });

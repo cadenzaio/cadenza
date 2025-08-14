@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import Task from "../definition/Task";
+import Task, { TaskResult } from "../definition/Task";
 import GraphContext from "../context/GraphContext";
 import Graph from "../../interfaces/Graph";
 import GraphVisitor from "../../interfaces/GraphVisitor";
@@ -7,6 +7,7 @@ import GraphNodeIterator from "../iterators/GraphNodeIterator";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 import GraphLayer from "../../interfaces/GraphLayer";
 import { AnyObject } from "../../types/global";
+import { sleep } from "../../utils/promise";
 
 export default class GraphNode extends SignalEmitter implements Graph {
   id: string;
@@ -19,7 +20,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
   private processing: boolean = false;
   private subgraphComplete: boolean = false;
   private graphComplete: boolean = false;
-  private result: unknown;
+  private result: TaskResult = false;
+  private retryCount: number = 0;
+  private retryDelay: number = 0;
+  private retries: number = 0;
   private previousNodes: GraphNode[] = [];
   private nextNodes: GraphNode[] = [];
   private executionTime: number = 0;
@@ -37,10 +41,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     debug: boolean = false,
   ) {
     super(task.isMeta);
+    this.id = uuid();
     this.task = task;
     this.context = context;
+    this.retryCount = task.retryCount;
+    this.retryDelay = task.retryDelay;
     this.previousNodes = prevNodes;
-    this.id = uuid();
     this.routineExecId = routineExecId;
     this.splitGroupId = routineExecId;
     this.debug = debug;
@@ -191,14 +197,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
         return this.nextNodes;
       }
 
-      try {
-        this.result = this.work();
-      } catch (e: unknown) {
-        this.onError(e);
-      }
+      this.result = this.work();
 
       if (this.result instanceof Promise) {
-        return this.processAsync();
+        return this.executeAsync();
       }
 
       this.postProcess();
@@ -207,20 +209,46 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.nextNodes;
   }
 
-  private async processAsync() {
+  private async workAsync() {
     try {
       this.result = await this.result;
     } catch (e: unknown) {
-      this.onError(e);
+      const result = await this.retryAsync(e);
+      if (result === e) {
+        this.onError(e);
+      }
     }
+  }
 
+  private async executeAsync() {
+    await this.workAsync();
     this.postProcess();
-
     return this.nextNodes;
   }
 
-  private work() {
-    return this.task.execute(this.context, this.onProgress.bind(this));
+  private work(): TaskResult | Promise<TaskResult> {
+    try {
+      const result = this.task.execute(
+        this.context,
+        this.onProgress.bind(this),
+      );
+
+      if ((result as any).errored || (result as any).failed) {
+        return this.retry(result);
+      }
+
+      return result;
+    } catch (e: unknown) {
+      const result = this.retry(e);
+      return result.then((result) => {
+        if (result !== e) {
+          return result;
+        }
+
+        this.onError(e);
+        return this.result;
+      });
+    }
   }
 
   private onProgress(progress: number) {
@@ -266,12 +294,42 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.result = {
       ...this.context.getFullContext(),
       __error: `Node error: ${error}`,
+      __retries: this.retries,
       error: `Node error: ${error}`,
       returnedValue: this.result,
       ...errorData,
     };
     this.migrate(this.result);
     this.errored = true;
+  }
+
+  private async retry(prevResult?: any): Promise<TaskResult> {
+    if (this.retryCount === 0) {
+      return prevResult;
+    }
+
+    await this.delayRetry();
+    return this.work();
+  }
+
+  private async retryAsync(prevResult?: any): Promise<TaskResult> {
+    if (this.retryCount === 0) {
+      return prevResult;
+    }
+
+    await this.delayRetry();
+    this.result = this.work();
+    return this.workAsync();
+  }
+
+  private async delayRetry() {
+    this.retryCount--;
+    this.retries++;
+    await sleep(this.retryDelay);
+    this.retryDelay *= this.task.retryDelayFactor;
+    if (this.retryDelay > this.task.retryDelayMax) {
+      this.retryDelay = this.task.retryDelayMax;
+    }
   }
 
   private divide(): GraphNode[] {
@@ -301,7 +359,16 @@ export default class GraphNode extends SignalEmitter implements Graph {
         if (outputValidation !== true) {
           this.onError(outputValidation.__validationErrors);
         }
-        this.migrate({ ...this.result, ...this.context.getMetaData() });
+
+        this.divided = true;
+        this.migrate({
+          ...this.result,
+          ...this.context.getMetaData(),
+          __nextNodes: newNodes.map((n) => n.id),
+          __retries: this.retries,
+        });
+
+        return newNodes;
       }
     }
 
@@ -322,6 +389,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.migrate({
       ...this.context.getFullContext(),
       __nextNodes: newNodes.map((n) => n.id),
+      __retries: this.retries,
     });
 
     return newNodes;
