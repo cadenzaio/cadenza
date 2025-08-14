@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/cadenzaio/cadenza/compare/v1.7.11...v1.8.0) (2025-08-14)
+
+
+### Features
+
+* Added per Task retrial functionality ([91505ee](https://github.com/cadenzaio/cadenza/commit/91505eec7b66a734e3c7d1572159c2543620c956))
+
 ## [1.7.11](https://github.com/cadenzaio/cadenza/compare/v1.7.10...v1.7.11) (2025-08-12)
 
 
