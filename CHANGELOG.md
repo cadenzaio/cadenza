@@ -1,3 +1,11 @@
+# [1.9.0](https://github.com/cadenzaio/cadenza/compare/v1.8.0...v1.9.0) (2025-08-19)
+
+
+### Features
+
+* Added better signal handling for extensions ([25b7484](https://github.com/cadenzaio/cadenza/commit/25b74846af4d7a8dac75b52d23ab09cbb5893ce0))
+* Added per Task retrial functionality ([9b45ead](https://github.com/cadenzaio/cadenza/commit/9b45ead906488c999c2073936b7eda5668dfb8bb))
+
 # [1.8.0](https://github.com/cadenzaio/cadenza/compare/v1.7.11...v1.8.0) (2025-08-14)
 
 
