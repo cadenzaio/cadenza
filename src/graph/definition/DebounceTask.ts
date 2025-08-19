@@ -21,6 +21,8 @@ export default class DebounceTask extends Task {
   private lastContext: GraphContext | null = null;
   private lastTimeout: NodeJS.Timeout | null = null;
   private lastProgressCallback: ((progress: number) => void) | null = null;
+  private lastEmitFunction: ((signal: string, context: any) => void) | null =
+    null;
 
   constructor(
     name: string,
@@ -70,6 +72,7 @@ export default class DebounceTask extends Task {
     try {
       result = this.taskFunction(
         this.lastContext!.getClonedContext(),
+        this.lastEmitFunction!,
         this.lastProgressCallback!,
       );
     } catch (error) {
@@ -93,6 +96,7 @@ export default class DebounceTask extends Task {
     reject: (reason?: any) => void,
     context: GraphContext,
     timeout: NodeJS.Timeout,
+    emit: (signal: string, context: any) => void,
     progressCallback: (progress: number) => void,
   ): void {
     const callNow = this.leading && this.timer === null;
@@ -108,6 +112,7 @@ export default class DebounceTask extends Task {
     this.lastContext = context;
     this.lastTimeout = timeout;
     this.lastProgressCallback = progressCallback;
+    this.lastEmitFunction = emit;
 
     if (!callNow) {
       this.hasLaterCall = true;
@@ -147,6 +152,7 @@ export default class DebounceTask extends Task {
 
   execute(
     context: GraphContext,
+    emit: (signal: string, context: any) => void,
     progressCallback: (progress: number) => void,
   ): TaskResult {
     return new Promise((resolve, reject) => {
@@ -159,6 +165,7 @@ export default class DebounceTask extends Task {
         reject,
         context,
         timeout,
+        emit,
         progressCallback,
       );
     });
