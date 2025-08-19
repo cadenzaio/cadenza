@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/cadenzaio/cadenza/compare/v1.9.0...v1.9.1) (2025-08-19)
+
+
+### Bug Fixes
+
+* Fixed bug related to tracking signal emission and consumption ([47763d4](https://github.com/cadenzaio/cadenza/commit/47763d422394b3eb3627863b98a4dbee6999941b))
+
 # [1.9.0](https://github.com/cadenzaio/cadenza/compare/v1.8.0...v1.9.0) (2025-08-19)
 
 
