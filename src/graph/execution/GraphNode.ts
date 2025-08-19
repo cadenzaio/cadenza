@@ -140,12 +140,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
       const context = this.context.getFullContext();
 
       if (
-        context.__signalName !== undefined &&
-        !context.__signalName.includes("meta.")
+        context.__emittedSignal !== undefined &&
+        context.__consumedByNode === undefined &&
+        !context.__emittedSignal.includes("meta.")
       ) {
         this.emit("meta.node.consumed_signal", {
           __signal_log: {
-            signal_name: context.__signalName,
+            signal_name: context.__emittedSignal,
             log_type: "consume",
             consumed_by_task_id: this.task.id,
             task_execution_id: this.id,
@@ -154,6 +155,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
             is_meta: false,
           },
         });
+        context.__consumedByNode = this.id;
       }
     }
   }
