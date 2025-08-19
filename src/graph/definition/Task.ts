@@ -9,6 +9,7 @@ import { SchemaDefinition } from "../../types/schema";
 
 export type TaskFunction = (
   context: AnyObject,
+  emit: (signal: string, context: AnyObject) => void,
   progressCallback: (progress: number) => void,
 ) => TaskResult;
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
@@ -352,6 +353,7 @@ export default class Task extends SignalParticipant implements Graph {
   /**
    * Executes the task function after optional input validation.
    * @param context - The GraphContext to validate and execute.
+   * @param emit
    * @param progressCallback - Callback for progress updates.
    * @returns TaskResult from the taskFunction or error object on validation failure.
    * @edge If validateInputContext is true, validates context; on failure, emits 'meta.task.validationFailed' with detailed errors.
@@ -359,10 +361,12 @@ export default class Task extends SignalParticipant implements Graph {
    */
   public execute(
     context: GraphContext,
+    emit: (signal: string, context: AnyObject) => void,
     progressCallback: (progress: number) => void,
   ): TaskResult {
     return this.taskFunction(
       this.isMeta ? context.getClonedFullContext() : context.getClonedContext(),
+      emit,
       progressCallback,
     );
   }
@@ -546,7 +550,7 @@ export default class Task extends SignalParticipant implements Graph {
       __isMeta: this.isMeta,
       __isSignal: this.isSignal,
       __eventTriggers: this.observedSignals,
-      __attachedEvents: this.signalsToEmit,
+      __attachedEvents: this.signalsToEmitAfter,
       __isDeputy: this.isDeputy,
       __throttled: this.throttled,
       __isEphemeral: this.isEphemeral,

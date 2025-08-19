@@ -3,7 +3,8 @@ import GraphContext from "../graph/context/GraphContext";
 import Cadenza from "../Cadenza";
 
 export default class SignalParticipant extends SignalEmitter {
-  protected signalsToEmit: Set<string> = new Set(); // Use Set to prevent duplicates
+  protected emitsSignals: Set<string> = new Set();
+  protected signalsToEmitAfter: Set<string> = new Set();
   protected signalsToEmitOnFail: Set<string> = new Set();
   protected observedSignals: Set<string> = new Set();
 
@@ -27,13 +28,19 @@ export default class SignalParticipant extends SignalEmitter {
    * @param signals The signal names.
    * @returns This for chaining.
    */
-  emits(...signals: string[]): this {
-    signals.forEach((signal) => this.signalsToEmit.add(signal));
+  emitsAfter(...signals: string[]): this {
+    signals.forEach((signal) => {
+      this.signalsToEmitAfter.add(signal);
+      this.emitsSignals.add(signal);
+    });
     return this;
   }
 
   emitsOnFail(...signals: string[]): this {
-    signals.forEach((signal) => this.signalsToEmitOnFail.add(signal));
+    signals.forEach((signal) => {
+      this.signalsToEmitOnFail.add(signal);
+      this.emitsSignals.add(signal);
+    });
     return this;
   }
 
@@ -71,7 +78,7 @@ export default class SignalParticipant extends SignalEmitter {
    * @returns This for chaining.
    */
   detachSignals(...signals: string[]): this {
-    signals.forEach((signal) => this.signalsToEmit.delete(signal));
+    signals.forEach((signal) => this.signalsToEmitAfter.delete(signal));
     return this;
   }
 
@@ -80,8 +87,16 @@ export default class SignalParticipant extends SignalEmitter {
    * @returns This for chaining.
    */
   detachAllSignals(): this {
-    this.signalsToEmit.clear();
+    this.signalsToEmitAfter.clear();
     return this;
+  }
+
+  mapSignals(callback: (signal: string) => void) {
+    return Array.from(this.signalsToEmitAfter).map(callback);
+  }
+
+  mapOnFailSignals(callback: (signal: string) => void) {
+    return Array.from(this.signalsToEmitOnFail).map(callback);
   }
 
   /**
@@ -90,8 +105,7 @@ export default class SignalParticipant extends SignalEmitter {
    * @edge If isMeta (from Task), suppresses further "meta.*" to prevent loops.
    */
   emitSignals(context: GraphContext): void {
-    this.signalsToEmit.forEach((signal) => {
-      // if ((this as any).isMeta && signal.startsWith('meta.')) return;  // Suppress meta recursion if isMeta
+    this.signalsToEmitAfter.forEach((signal) => {
       this.emit(signal, context.getFullContext());
     });
   }
@@ -103,7 +117,6 @@ export default class SignalParticipant extends SignalEmitter {
    */
   emitOnFailSignals(context: GraphContext): void {
     this.signalsToEmitOnFail.forEach((signal) => {
-      // if ((this as any).isMeta && signal.startsWith('meta.')) return;  // Suppress meta recursion if isMeta
       this.emit(signal, context.getFullContext());
     });
   }

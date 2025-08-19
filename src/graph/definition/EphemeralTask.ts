@@ -1,5 +1,6 @@
 import Task, { TaskFunction, ThrottleTagGetter } from "./Task";
 import { SchemaDefinition } from "../../types/schema";
+import { AnyObject } from "../../types/global";
 
 export default class EphemeralTask extends Task {
   private readonly once: boolean;
@@ -50,10 +51,12 @@ export default class EphemeralTask extends Task {
     this.condition = condition;
   }
 
-  public execute(context: any, progressCallback: (progress: number) => void) {
-    const result = super.execute(context, progressCallback);
-
-    this.emit("meta.ephemeral.executed", result);
+  public execute(
+    context: any,
+    emit: (signal: string, context: AnyObject) => void,
+    progressCallback: (progress: number) => void,
+  ) {
+    const result = super.execute(context, emit, progressCallback);
 
     if (this.once || !this.condition(result)) {
       this.destroy();

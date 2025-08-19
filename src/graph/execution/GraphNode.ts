@@ -8,6 +8,7 @@ import SignalEmitter from "../../interfaces/SignalEmitter";
 import GraphLayer from "../../interfaces/GraphLayer";
 import { AnyObject } from "../../types/global";
 import { sleep } from "../../utils/promise";
+import Cadenza from "../../Cadenza";
 
 export default class GraphNode extends SignalEmitter implements Graph {
   id: string;
@@ -135,6 +136,25 @@ export default class GraphNode extends SignalEmitter implements Graph {
         ...this.lightExport(),
         __scheduled: Date.now(),
       });
+
+      const context = this.context.getFullContext();
+
+      if (
+        context.__signalName !== undefined &&
+        !context.__signalName.includes("meta.")
+      ) {
+        this.emit("meta.node.consumed_signal", {
+          __signal_log: {
+            signal_name: context.__signalName,
+            log_type: "consume",
+            consumed_by_task_id: this.task.id,
+            task_execution_id: this.id,
+            relation_type: "listener",
+            metadata: {},
+            is_meta: false,
+          },
+        });
+      }
     }
   }
 
@@ -230,6 +250,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     try {
       const result = this.task.execute(
         this.context,
+        this.emitWithMetadata.bind(this),
         this.onProgress.bind(this),
       );
 
@@ -247,6 +268,28 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
         this.onError(e);
         return this.result;
+      });
+    }
+  }
+
+  protected emitWithMetadata(signal: string, context: AnyObject) {
+    this.emit(signal, {
+      ...context,
+      __emittedSignal: signal,
+      __emittedByNode: this.id,
+    });
+
+    if (!signal.includes(".meta")) {
+      this.emit("meta.node.emitted_signal", {
+        __signal_log: {
+          signal_name: signal,
+          log_type: "emit",
+          emitted_by_task_id: this.task.id,
+          task_execution_id: this.id,
+          relation_type: "emitter",
+          metadata: {},
+          is_meta: false,
+        },
       });
     }
   }
@@ -282,9 +325,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     if (this.errored || this.failed) {
-      this.task.emitOnFailSignals(this.context);
+      this.task.mapOnFailSignals((signal: string) =>
+        this.emitWithMetadata(signal, this.context),
+      );
     } else {
-      this.task.emitSignals(this.context);
+      this.task.mapSignals((signal: string) =>
+        this.emitWithMetadata(signal, this.context),
+      );
     }
 
     this.end();

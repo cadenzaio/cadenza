@@ -1,4 +1,5 @@
 import Cadenza from "../Cadenza";
+import { AnyObject } from "../types/global";
 
 export default abstract class SignalEmitter {
   protected silent: boolean;
@@ -17,7 +18,7 @@ export default abstract class SignalEmitter {
    * @param data Optional payload (defaults to empty object).
    * @edge No emission if silent; for metrics in silent mode, consider override or separate method.
    */
-  emit(signal: string, data: any = {}): void {
+  protected emit(signal: string, data: AnyObject = {}): void {
     if (this.silent) {
       return;
     }
@@ -29,7 +30,7 @@ export default abstract class SignalEmitter {
    * @param signal The signal name.
    * @param data Optional payload (defaults to empty object).
    */
-  emitMetric(signal: string, data: any = {}): void {
+  protected emitMetric(signal: string, data: AnyObject = {}): void {
     Cadenza.broker.emit(signal, data); // Ignore silent
   }
 }
