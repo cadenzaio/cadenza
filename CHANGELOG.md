@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/cadenzaio/cadenza/compare/v1.10.0...v1.10.1) (2025-08-26)
+
+
+### Bug Fixes
+
+* removed console log. ([7e123b4](https://github.com/cadenzaio/cadenza/commit/7e123b45e5a10726616145615dc99e2c6e46c549))
+
 # [1.10.0](https://github.com/cadenzaio/cadenza/compare/v1.9.1...v1.10.0) (2025-08-26)
 
 
