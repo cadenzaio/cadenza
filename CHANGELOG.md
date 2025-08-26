@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/cadenzaio/cadenza/compare/v1.9.1...v1.10.0) (2025-08-26)
+
+
+### Features
+
+* Improved signal registration and signal emission handling. More metadata is added in both cases. ([1bd3ef5](https://github.com/cadenzaio/cadenza/commit/1bd3ef53f1b834e7d176d06c7fc32720bb074edc))
+
 ## [1.9.1](https://github.com/cadenzaio/cadenza/compare/v1.9.0...v1.9.1) (2025-08-19)
 
 
