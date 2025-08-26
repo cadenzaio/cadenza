@@ -34,11 +34,10 @@ export default class GraphRegistry {
   private constructor() {
     // Hardcode seed MetaTask (observes on existing broker)
     this.registerTask = new Task(
-      "Registry Seed",
+      "Register task",
       (context: AnyObject) => {
         const { __task } = context;
         if (__task && !this.tasks.has(__task.id)) {
-          console.log("Registering task:", __task.name);
           this.tasks.set(__task.id, __task);
         }
         return true;
