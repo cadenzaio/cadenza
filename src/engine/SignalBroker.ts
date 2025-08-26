@@ -159,20 +159,32 @@ export default class SignalBroker {
   }
 
   execute(signal: string, context: AnyObject): boolean {
+    const isMeta = signal.startsWith("meta");
+    const emittedAt = Date.now();
+    const data = {
+      ...context,
+      __signalEmission: {
+        ...context.__signalEmission,
+        signalName: signal,
+        emittedAt,
+        isMeta,
+      },
+    };
+
     let executed;
-    executed = this.executeListener(signal, context); // Exact signal
+    executed = this.executeListener(signal, data); // Exact signal
 
     const parts = signal
       .slice(0, Math.max(signal.lastIndexOf(":"), signal.lastIndexOf(".")))
       .split(".");
     for (let i = parts.length; i > 0; i--) {
       const parent = parts.slice(0, i).join(".");
-      executed = executed || this.executeListener(parent + ".*", context); // Wildcard
+      executed = executed || this.executeListener(parent + ".*", data); // Wildcard
     }
 
     if (this.debug) {
       console.log(
-        `Emitted signal ${signal} with context ${JSON.stringify(context)}`,
+        `Emitted signal ${signal} with context ${JSON.stringify(data)}`,
         executed ? "✅" : "❌",
       );
       // TODO
@@ -183,7 +195,8 @@ export default class SignalBroker {
 
   private executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
-    const runner = signal.startsWith("meta") ? this.metaRunner : this.runner;
+    const isMeta = signal.startsWith("meta");
+    const runner = isMeta ? this.metaRunner : this.runner;
     if (obs && obs.tasks.size && runner) {
       obs.fn(runner, Array.from(obs.tasks), context);
       return true;
@@ -192,9 +205,10 @@ export default class SignalBroker {
   }
 
   private addSignal(signal: string): void {
-    if (!this.signalObservers.has(signal)) {
-      this.validateSignalName(signal);
-      this.signalObservers.set(signal, {
+    let _signal = signal;
+    if (!this.signalObservers.has(_signal)) {
+      this.validateSignalName(_signal);
+      this.signalObservers.set(_signal, {
         fn: (
           runner: GraphRunner,
           tasks: (Task | GraphRoutine)[],
@@ -203,7 +217,25 @@ export default class SignalBroker {
         tasks: new Set(),
       });
 
-      this.emit("meta.signal_broker.added", { __signalName: signal });
+      const sections = _signal.split(":");
+      if (sections.length === 2) {
+        _signal = sections[0];
+
+        if (!this.signalObservers.has(sections[0])) {
+          this.signalObservers.set(_signal, {
+            fn: (
+              runner: GraphRunner,
+              tasks: (Task | GraphRoutine)[],
+              context: AnyObject,
+            ) => runner.run(tasks, context),
+            tasks: new Set(),
+          });
+        } else {
+          return;
+        }
+      }
+
+      this.emit("meta.signal_broker.added", { __signalName: _signal });
     }
   }
 
