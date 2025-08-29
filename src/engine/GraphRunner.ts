@@ -9,6 +9,7 @@ import SignalEmitter from "../interfaces/SignalEmitter";
 import Cadenza from "../Cadenza";
 import GraphRegistry from "../registry/GraphRegistry";
 import GraphContext from "../graph/context/GraphContext";
+import { formatTimestamp } from "../utils/tools";
 
 export default class GraphRunner extends SignalEmitter {
   readonly id: string;
@@ -84,31 +85,18 @@ export default class GraphRunner extends SignalEmitter {
     const routineExecId = context.__routineExecId ?? uuid();
     context.__routineExecId = routineExecId;
 
-    const data = {
-      __routineExecId: routineExecId,
-      __routineName: routineName,
-      __isMeta: isMeta,
-      __routineId: routineId,
-      __context: ctx.export(),
-      __previousRoutineExecution: context.__metaData?.__routineExecId ?? null,
-      __contractId:
-        context.__metaData?.__contractId ?? context.__contractId ?? null,
-      __task: {
-        __name: routineName,
+    this.emit("meta.runner.added_tasks", {
+      data: {
+        uuid: routineExecId,
+        name: routineName,
+        isMeta: isMeta,
+        contractId:
+          context.__metaData?.__contractId ?? context.__contractId ?? null,
+        context: ctx.export(),
+        previousRoutineExecution: context.__metaData?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
+        created: formatTimestamp(Date.now()),
       },
-      __scheduled: Date.now(),
-    };
-
-    this.emit("meta.runner.added_tasks", data);
-
-    if (this.debug) {
-      console.log(
-        `${this.isMeta ? "Meta" : ""}Runner added tasks`,
-        allTasks.map((t) => t.name),
-        "with context",
-        ctx.getFullContext(),
-      );
-    }
+    });
 
     allTasks.forEach((task) =>
       this.currentRun.addNode(

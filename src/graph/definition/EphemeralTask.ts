@@ -2,6 +2,11 @@ import Task, { TaskFunction, ThrottleTagGetter } from "./Task";
 import { SchemaDefinition } from "../../types/schema";
 import { AnyObject } from "../../types/global";
 
+export type EphemeralTaskOptions = {
+  once?: boolean;
+  destroyCondition?: (context: any) => boolean;
+};
+
 export default class EphemeralTask extends Task {
   private readonly once: boolean;
   private readonly condition: (context: any) => boolean;
@@ -18,6 +23,8 @@ export default class EphemeralTask extends Task {
     register: boolean = false,
     isUnique: boolean = false,
     isMeta: boolean = false,
+    isSubMeta: boolean = false,
+    isHidden: boolean = false,
     getTagCallback: ThrottleTagGetter | undefined = undefined,
     inputSchema: SchemaDefinition | undefined = undefined,
     validateInputContext: boolean = false,
@@ -37,6 +44,8 @@ export default class EphemeralTask extends Task {
       register,
       isUnique,
       isMeta,
+      isSubMeta,
+      isHidden,
       getTagCallback,
       inputSchema,
       validateInputContext,
@@ -58,7 +67,7 @@ export default class EphemeralTask extends Task {
   ) {
     const result = super.execute(context, emit, progressCallback);
 
-    if (this.once || !this.condition(result)) {
+    if (this.once || this.condition(result)) {
       this.destroy();
       return result;
     }

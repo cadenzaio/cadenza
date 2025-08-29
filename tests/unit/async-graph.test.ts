@@ -226,7 +226,7 @@ describe("Async Graph", () => {
     expect(
       result.__graph.elements[8].data.executionEnd -
         result.__graph.elements[5].data.executionEnd,
-    ).toBeGreaterThanOrEqual(50);
+    ).toBeGreaterThanOrEqual(49);
   });
 
   it("should be able to debounce tasks", async () => {

@@ -22,12 +22,15 @@ export default class Task extends SignalParticipant implements Graph {
   concurrency: number;
   timeout: number;
   readonly isMeta: boolean = false;
+  readonly isSubMeta: boolean = false;
+  readonly isHidden: boolean = false;
   readonly isUnique: boolean = false;
   readonly throttled: boolean = false;
 
   readonly isSignal: boolean = false;
   readonly isDeputy: boolean = false;
   readonly isEphemeral: boolean = false;
+  readonly isDebounce: boolean = false;
 
   protected inputContextSchema: SchemaDefinition | undefined = undefined;
   protected validateInputContext: boolean = false;
@@ -58,6 +61,8 @@ export default class Task extends SignalParticipant implements Graph {
    * @param register Register via signal (default true).
    * @param isUnique
    * @param isMeta
+   * @param isSubMeta
+   * @param isHidden
    * @param getTagCallback
    * @param inputSchema
    * @param validateInputContext
@@ -78,6 +83,8 @@ export default class Task extends SignalParticipant implements Graph {
     register: boolean = true,
     isUnique: boolean = false,
     isMeta: boolean = false,
+    isSubMeta: boolean = false,
+    isHidden: boolean = false,
     getTagCallback: ThrottleTagGetter | undefined = undefined,
     inputSchema: SchemaDefinition | undefined = undefined,
     validateInputContext: boolean = false,
@@ -97,6 +104,8 @@ export default class Task extends SignalParticipant implements Graph {
     this.timeout = timeout;
     this.isUnique = isUnique;
     this.isMeta = isMeta;
+    this.isSubMeta = isSubMeta;
+    this.isHidden = isHidden;
     this.inputContextSchema = inputSchema;
     this.validateInputContext = validateInputContext;
     this.outputContextSchema = outputSchema;
@@ -111,8 +120,35 @@ export default class Task extends SignalParticipant implements Graph {
       this.throttled = true;
     }
 
-    if (register) {
-      this.emit("meta.task.created", { __task: this });
+    if (register && !this.isHidden && !this.isSubMeta) {
+      const { __functionString, __getTagCallback } = this.export();
+      this.emit("meta.task.created", {
+        __task: {
+          uuid: this.id,
+          name: this.name,
+          description: this.description,
+          functionString: __functionString,
+          tagIdGetter: __getTagCallback,
+          layerIndex: this.layerIndex,
+          concurrency: this.concurrency,
+          retryCount: this.retryCount,
+          retryDelay: this.retryDelay,
+          retryDelayMax: this.retryDelayMax,
+          retryDelayFactor: this.retryDelayFactor,
+          timeout: this.timeout,
+          isUnique: this.isUnique,
+          isSignal: this.isSignal,
+          isThrottled: this.throttled,
+          isDebounce: this.isDebounce,
+          isEphemeral: this.isEphemeral,
+          isMeta: this.isMeta,
+          validateInputContext: this.validateInputContext,
+          validateOutputContext: this.validateOutputContext,
+          inputContextSchemaId: this.inputContextSchema,
+          outputContextSchemaId: this.outputContextSchema,
+        },
+        __taskInstance: this,
+      });
     }
   }
 
@@ -383,6 +419,13 @@ export default class Task extends SignalParticipant implements Graph {
         this.decouple(pred);
         throw new Error(`Cycle adding pred ${pred.name} to ${this.name}`);
       }
+
+      this.emit("meta.task.relationship_added", {
+        data: {
+          taskId: this.id,
+          predecessorTaskId: pred.id,
+        },
+      });
     }
 
     this.updateProgressWeights();
@@ -401,6 +444,13 @@ export default class Task extends SignalParticipant implements Graph {
         this.decouple(next);
         throw new Error(`Cycle adding next ${next.name} to ${this.name}`);
       }
+
+      this.emit("meta.task.relationship_added", {
+        data: {
+          taskId: next.id,
+          predecessorTaskId: this.id,
+        },
+      });
     }
 
     this.updateProgressWeights();
@@ -418,6 +468,8 @@ export default class Task extends SignalParticipant implements Graph {
       this.predecessorTasks.delete(task);
     }
 
+    // TODO: Delete task map instances
+
     this.updateLayerFromPredecessors();
   }
 
@@ -433,6 +485,13 @@ export default class Task extends SignalParticipant implements Graph {
         this.decouple(task);
         throw new Error(`Cycle adding onFail ${task.name} to ${this.name}`);
       }
+
+      this.emit("meta.task.on_fail_relationship_added", {
+        data: {
+          taskId: this.id,
+          onFailTaskId: task.id,
+        },
+      });
     }
 
     return this;
@@ -474,11 +533,21 @@ export default class Task extends SignalParticipant implements Graph {
   }
 
   private updateLayerFromPredecessors(): void {
+    const prevLayerIndex = this.layerIndex;
     let maxPred = 0;
     this.predecessorTasks.forEach(
       (pred) => (maxPred = Math.max(maxPred, pred.layerIndex)),
     );
     this.layerIndex = maxPred + 1;
+
+    if (prevLayerIndex !== this.layerIndex) {
+      this.emit("meta.task.layer_index_changed", {
+        data: {
+          layerIndex: this.layerIndex,
+        },
+        filter: { uuid: this.id },
+      });
+    }
 
     const queue = Array.from(this.nextTasks);
     while (queue.length) {
@@ -537,7 +606,12 @@ export default class Task extends SignalParticipant implements Graph {
 
     this.destroyed = true;
 
-    this.emit("meta.task.destroyed", { __id: this.id });
+    this.emit("meta.task.destroyed", {
+      data: { deleted: true },
+      filter: { uuid: this.id },
+    });
+
+    // TODO: Delete task map instances
   }
 
   public export(): AnyObject {

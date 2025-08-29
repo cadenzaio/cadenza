@@ -36,10 +36,11 @@ export default class GraphRegistry {
     this.registerTask = new Task(
       "Register task",
       (context: AnyObject) => {
-        const { __task } = context;
-        if (__task && !this.tasks.has(__task.id)) {
-          this.tasks.set(__task.id, __task);
+        const { __taskInstance } = context;
+        if (__taskInstance && !this.tasks.has(__taskInstance.id)) {
+          this.tasks.set(__taskInstance.id, __taskInstance);
         }
+        delete context.__taskInstance;
         return true;
       },
       "Registers tasks. Seed for meta.taskCreated",
@@ -155,10 +156,11 @@ export default class GraphRegistry {
     this.registerRoutine = Cadenza.createMetaTask(
       "Register routine",
       (context) => {
-        const { __routine } = context;
-        if (__routine && !this.routines.has(__routine.id)) {
-          this.routines.set(__routine.id, __routine);
+        const { __routineInstance } = context;
+        if (__routineInstance && !this.routines.has(__routineInstance.id)) {
+          this.routines.set(__routineInstance.id, __routineInstance);
         }
+        delete context.__routineInstance;
         return true;
       },
       "Registers routine.",

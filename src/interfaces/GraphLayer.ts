@@ -41,6 +41,12 @@ export default abstract class GraphLayer
     return this.nodes.filter((node) => node.routineExecId === routineExecId);
   }
 
+  getIdenticalNodes(node: GraphNode) {
+    return this.nodes.filter(
+      (n) => node.routineExecId === n.routineExecId && node.sharesTaskWith(n),
+    );
+  }
+
   isProcessed() {
     for (const node of this.nodes) {
       if (!node.isProcessed()) {

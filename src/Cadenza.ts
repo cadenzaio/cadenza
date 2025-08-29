@@ -3,7 +3,9 @@ import GraphRunner from "./engine/GraphRunner";
 import GraphRegistry from "./registry/GraphRegistry";
 import Task, { TaskFunction, ThrottleTagGetter } from "./graph/definition/Task";
 import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
-import EphemeralTask from "./graph/definition/EphemeralTask";
+import EphemeralTask, {
+  EphemeralTaskOptions,
+} from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
 import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
 import GraphStandardRun from "./engine/strategy/GraphStandardRun";
@@ -15,6 +17,8 @@ export interface TaskOptions {
   register?: boolean;
   isUnique?: boolean;
   isMeta?: boolean;
+  isSubMeta?: boolean;
+  isHidden?: boolean;
   getTagCallback?: ThrottleTagGetter;
   inputSchema?: SchemaDefinition;
   validateInputContext?: boolean;
@@ -112,6 +116,8 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: false,
+      isSubMeta: false,
+      isHidden: false,
       getTagCallback: undefined,
       inputSchema: undefined,
       validateInputContext: false,
@@ -134,6 +140,8 @@ export default class Cadenza {
       options.register,
       options.isUnique,
       options.isMeta,
+      options.isSubMeta,
+      options.isHidden,
       options.getTagCallback,
       options.inputSchema,
       options.validateInputContext,
@@ -166,6 +174,8 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: true,
+      isSubMeta: false,
+      isHidden: false,
       getTagCallback: undefined,
       inputSchema: undefined,
       validateInputContext: false,
@@ -201,6 +211,8 @@ export default class Cadenza {
       register: true,
       isUnique: true,
       isMeta: false,
+      isSubMeta: false,
+      isHidden: false,
       getTagCallback: undefined,
       inputSchema: undefined,
       validateInputContext: false,
@@ -234,6 +246,8 @@ export default class Cadenza {
       register: true,
       isUnique: true,
       isMeta: true,
+      isSubMeta: false,
+      isHidden: false,
       getTagCallback: undefined,
       inputSchema: undefined,
       validateInputContext: false,
@@ -270,6 +284,8 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: false,
+      isSubMeta: false,
+      isHidden: false,
       inputSchema: undefined,
       validateInputContext: false,
       outputSchema: undefined,
@@ -304,6 +320,8 @@ export default class Cadenza {
       register: true,
       isUnique: false,
       isMeta: true,
+      isSubMeta: false,
+      isHidden: false,
       inputSchema: undefined,
       validateInputContext: false,
       outputSchema: undefined,
@@ -348,6 +366,8 @@ export default class Cadenza {
       maxWait: 0,
       isUnique: false,
       isMeta: false,
+      isSubMeta: false,
+      isHidden: false,
       inputSchema: undefined,
       validateInputContext: false,
       outputSchema: undefined,
@@ -369,6 +389,8 @@ export default class Cadenza {
       options.register,
       options.isUnique,
       options.isMeta,
+      options.isSubMeta,
+      options.isHidden,
       options.inputSchema,
       options.validateInputContext,
       options.outputSchema,
@@ -399,6 +421,8 @@ export default class Cadenza {
       maxWait: 0,
       isUnique: false,
       isMeta: false,
+      isSubMeta: false,
+      isHidden: false,
       inputSchema: undefined,
       validateInputContext: false,
       outputSchema: undefined,
@@ -421,9 +445,7 @@ export default class Cadenza {
    * @param name Identifier (may not be unique if not registered).
    * @param func Function.
    * @param description Optional.
-   * @param once Destroy after first exec (default true).
-   * @param destroyCondition Predicate for destruction (default always true).
-   * @param options Optional task options.
+   * @param options Optional task options plus optional "once" (true) and "destroyCondition" (ctx => boolean).
    * @returns The created EphemeralTask.
    * @edge Destruction triggered post-exec via Node/Builder; emits meta-signal for cleanup.
    */
@@ -431,14 +453,16 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    once: boolean = true,
-    destroyCondition: (context: any) => boolean = () => true,
-    options: TaskOptions = {
+    options: TaskOptions & EphemeralTaskOptions = {
       concurrency: 0,
       timeout: 0,
       register: true,
       isUnique: false,
       isMeta: false,
+      isSubMeta: false,
+      isHidden: false,
+      once: true,
+      destroyCondition: () => true,
       getTagCallback: undefined,
       inputSchema: undefined,
       validateInputContext: false,
@@ -456,13 +480,15 @@ export default class Cadenza {
       name,
       func,
       description,
-      once,
-      destroyCondition,
+      options.once,
+      options.destroyCondition,
       options.concurrency,
       options.timeout,
       options.register,
       options.isUnique,
       options.isMeta,
+      options.isSubMeta,
+      options.isHidden,
       options.getTagCallback,
       options.inputSchema,
       options.validateInputContext,
@@ -480,23 +506,23 @@ export default class Cadenza {
    * @param name Identifier.
    * @param func Function.
    * @param description Optional.
-   * @param once Destroy after first (default true).
-   * @param destroyCondition Destruction predicate.
-   * @param options Optional task options.
+   * @param options Optional task options plus optional "once" (true) and "destroyCondition" (ctx => boolean).
    * @returns The created EphemeralMetaTask.
    */
   static createEphemeralMetaTask(
     name: string,
     func: TaskFunction,
     description?: string,
-    once: boolean = true,
-    destroyCondition: (context: any) => boolean = () => true,
-    options: TaskOptions = {
+    options: TaskOptions & EphemeralTaskOptions = {
       concurrency: 0,
       timeout: 0,
       register: true,
       isUnique: false,
       isMeta: true,
+      isSubMeta: false,
+      isHidden: false,
+      once: true,
+      destroyCondition: () => true,
       getTagCallback: undefined,
       inputSchema: undefined,
       validateInputContext: false,
@@ -509,14 +535,7 @@ export default class Cadenza {
     },
   ): EphemeralTask {
     options.isMeta = true;
-    return this.createEphemeralTask(
-      name,
-      func,
-      description,
-      once,
-      destroyCondition,
-      options,
-    );
+    return this.createEphemeralTask(name, func, description, options);
   }
 
   /**

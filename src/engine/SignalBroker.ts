@@ -3,6 +3,7 @@ import { AnyObject } from "../types/global";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import Cadenza from "../Cadenza";
+import { formatTimestamp } from "../utils/tools";
 
 export default class SignalBroker {
   private static instance_: SignalBroker;
@@ -97,8 +98,13 @@ export default class SignalBroker {
       },
       "Executes queued signals and clears the stack",
       500,
-      { maxWait: 10000 },
-    ).doOn("meta.process_signal_queue_requested");
+      {
+        maxWait: 10000,
+        leading: true,
+      },
+    )
+      .doOn("meta.process_signal_queue_requested")
+      .emitsAfter("meta.signal_broker.queue_empty");
 
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       return {
@@ -144,8 +150,9 @@ export default class SignalBroker {
    */
   emit(signal: string, context: AnyObject = {}): void {
     const execId = context.__routineExecId || "global"; // Assume from metadata
-    if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
+    delete context.__routineExecId;
 
+    if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
     const stack = this.emitStacks.get(execId)!;
     stack.set(signal, context);
 
@@ -159,35 +166,43 @@ export default class SignalBroker {
   }
 
   execute(signal: string, context: AnyObject): boolean {
-    const isMeta = signal.startsWith("meta");
-    const emittedAt = Date.now();
-    const data = {
-      ...context,
-      __signalEmission: {
+    const isMeta = signal.startsWith("meta.");
+    const isSubMeta = signal.startsWith("sub_meta.");
+
+    if (!isSubMeta && (!isMeta || this.debug)) {
+      const emittedAt = Date.now();
+      context.__signalEmission = {
         ...context.__signalEmission,
         signalName: signal,
-        emittedAt,
+        emittedAt: formatTimestamp(emittedAt),
         isMeta,
-      },
-    };
-
-    let executed;
-    executed = this.executeListener(signal, data); // Exact signal
-
-    const parts = signal
-      .slice(0, Math.max(signal.lastIndexOf(":"), signal.lastIndexOf(".")))
-      .split(".");
-    for (let i = parts.length; i > 0; i--) {
-      const parent = parts.slice(0, i).join(".");
-      executed = executed || this.executeListener(parent + ".*", data); // Wildcard
+      };
+    } else if (isSubMeta) {
+      context.__isSubMeta = true;
+      delete context.__signalEmission;
+    } else {
+      delete context.__signalEmission;
     }
 
-    if (this.debug) {
-      console.log(
-        `Emitted signal ${signal} with context ${JSON.stringify(data)}`,
-        executed ? "✅" : "❌",
-      );
-      // TODO
+    let executed;
+    executed = this.executeListener(signal, context); // Exact signal
+
+    if (!isSubMeta) {
+      const parts = signal
+        .slice(0, Math.max(signal.lastIndexOf(":"), signal.lastIndexOf(".")))
+        .split(".");
+      for (let i = parts.length; i > 0; i--) {
+        const parent = parts.slice(0, i).join(".");
+        executed = executed || this.executeListener(parent + ".*", context); // Wildcard
+      }
+
+      if (this.debug) {
+        console.log(
+          `Emitted signal ${signal} with context ${JSON.stringify(context)}`,
+          executed ? "✅" : "❌",
+        );
+        // TODO
+      }
     }
 
     return executed;

@@ -20,8 +20,24 @@ export default class GraphRoutine extends SignalParticipant {
     this.name = name;
     this.description = description;
     this.isMeta = isMeta;
-    tasks.forEach((t) => this.tasks.add(t));
-    this.emit("meta.routine.created", { __routine: this });
+    this.emit("meta.routine.created", {
+      data: {
+        uuid: this.id,
+        name: this.name,
+        description: this.description,
+        isMeta: this.isMeta,
+      },
+      __routineInstance: this,
+    });
+    tasks.forEach((t) => {
+      this.tasks.add(t);
+      this.emit("meta.routine.task_added", {
+        data: {
+          taskId: t.id,
+          routineId: this.id,
+        },
+      });
+    });
   }
 
   /**
@@ -55,6 +71,9 @@ export default class GraphRoutine extends SignalParticipant {
    */
   public destroy(): void {
     this.tasks.clear();
-    this.emit("meta.routine.destroyed", { __id: this.id });
+    this.emit("meta.routine.destroyed", {
+      data: { deleted: true },
+      filter: { uuid: this.id },
+    });
   }
 }
