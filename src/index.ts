@@ -4,7 +4,9 @@ import GraphRunner from "./engine/GraphRunner";
 import SignalBroker from "./engine/SignalBroker";
 import GraphContext from "./graph/context/GraphContext";
 import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
-import EphemeralTask from "./graph/definition/EphemeralTask";
+import EphemeralTask, {
+  EphemeralTaskOptions,
+} from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
 import SignalTask from "./graph/definition/SignalTask";
 import Task, {
@@ -46,4 +48,5 @@ export {
   CadenzaMode,
   TaskFunction,
   DebounceOptions,
+  EphemeralTaskOptions,
 };
