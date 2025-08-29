@@ -197,7 +197,7 @@ export default class SignalBroker {
       const parts = signal
         .slice(0, Math.max(signal.lastIndexOf(":"), signal.lastIndexOf(".")))
         .split(".");
-      for (let i = parts.length; i > 0; i--) {
+      for (let i = parts.length; i > -1; i--) {
         const parent = parts.slice(0, i).join(".");
         executed = executed || this.executeListener(parent + ".*", context); // Wildcard
       }
