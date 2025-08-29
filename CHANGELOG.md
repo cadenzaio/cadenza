@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/cadenzaio/cadenza/compare/v1.10.1...v1.11.0) (2025-08-29)
+
+
+### Features
+
+* improved Cadenza reset ([73d1ae1](https://github.com/cadenzaio/cadenza/commit/73d1ae13a0e15198748a8c4d28ced744e86520d8))
+
 ## [1.10.1](https://github.com/cadenzaio/cadenza/compare/v1.10.0...v1.10.1) (2025-08-26)
 
 
