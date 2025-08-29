@@ -184,6 +184,12 @@ export default class SignalBroker {
       delete context.__signalEmission;
     }
 
+    if (this.debug) {
+      console.log(
+        `Emitting signal ${signal} with context ${JSON.stringify(context)}`,
+      );
+    }
+
     let executed;
     executed = this.executeListener(signal, context); // Exact signal
 
@@ -194,14 +200,6 @@ export default class SignalBroker {
       for (let i = parts.length; i > 0; i--) {
         const parent = parts.slice(0, i).join(".");
         executed = executed || this.executeListener(parent + ".*", context); // Wildcard
-      }
-
-      if (this.debug) {
-        console.log(
-          `Emitted signal ${signal} with context ${JSON.stringify(context)}`,
-          executed ? "✅" : "❌",
-        );
-        // TODO
       }
     }
 
