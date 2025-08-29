@@ -582,5 +582,6 @@ export default class Cadenza {
   static reset() {
     this.broker?.reset();
     this.registry?.reset();
+    this.isBootstrapped = false;
   }
 }
