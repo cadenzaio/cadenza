@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/cadenzaio/cadenza/compare/v1.11.1...v1.11.2) (2025-08-29)
+
+
+### Bug Fixes
+
+* Fixed signal broker not executing ".*" wild card. ([dbc0fdf](https://github.com/cadenzaio/cadenza/commit/dbc0fdfc01d78a6efdb778e6609d99700b58ac88))
+
 ## [1.11.1](https://github.com/cadenzaio/cadenza/compare/v1.11.0...v1.11.1) (2025-08-29)
 
 
