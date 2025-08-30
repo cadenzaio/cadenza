@@ -1,3 +1,10 @@
+## [1.11.3](https://github.com/cadenzaio/cadenza/compare/v1.11.2...v1.11.3) (2025-08-30)
+
+
+### Bug Fixes
+
+* fixed bug where runner would emit in a loop for sub meta flows. ([72cf7f2](https://github.com/cadenzaio/cadenza/commit/72cf7f28b8bc6190b8262ad79dd268944d35e410))
+
 ## [1.11.2](https://github.com/cadenzaio/cadenza/compare/v1.11.1...v1.11.2) (2025-08-29)
 
 
