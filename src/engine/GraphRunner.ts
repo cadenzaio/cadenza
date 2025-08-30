@@ -80,23 +80,30 @@ export default class GraphRunner extends SignalEmitter {
       return t;
     });
 
+    const isSubMeta =
+      allTasks.some((t) => t.isSubMeta) || !!context.__isSubMeta;
+    context.__isSubMeta = isSubMeta;
+
     const ctx = new GraphContext(context || {});
 
     const routineExecId = context.__routineExecId ?? uuid();
     context.__routineExecId = routineExecId;
 
-    this.emit("meta.runner.added_tasks", {
-      data: {
-        uuid: routineExecId,
-        name: routineName,
-        isMeta: isMeta,
-        contractId:
-          context.__metaData?.__contractId ?? context.__contractId ?? null,
-        context: ctx.export(),
-        previousRoutineExecution: context.__metaData?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
-        created: formatTimestamp(Date.now()),
-      },
-    });
+    if (!isSubMeta) {
+      this.emit("meta.runner.added_tasks", {
+        data: {
+          uuid: routineExecId,
+          name: routineName,
+          isMeta,
+          routineId,
+          contractId:
+            context.__metaData?.__contractId ?? context.__contractId ?? null,
+          context: ctx.export(),
+          previousRoutineExecution: context.__metaData?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
+          created: formatTimestamp(Date.now()),
+        },
+      });
+    }
 
     allTasks.forEach((task) =>
       this.currentRun.addNode(
