@@ -220,8 +220,6 @@ describe("Async Graph", () => {
 
     const result = graphRun.export();
 
-    console.log(result.__graph.elements);
-
     expect(result.__graph.numberOfNodes).toBe(6);
     expect(
       result.__graph.elements[8].data.executionEnd -

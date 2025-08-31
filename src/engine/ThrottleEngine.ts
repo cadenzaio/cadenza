@@ -24,7 +24,6 @@ export default class ThrottleEngine {
    * Set a custom concurrency limit for a specific tag
    */
   setConcurrencyLimit(tag: string, limit: number) {
-    console.log("setConcurrency", tag, limit);
     this.maxConcurrencyPerTag[tag] = limit;
   }
 
@@ -41,8 +40,6 @@ export default class ThrottleEngine {
 
     this.queues[tag] ??= [];
     this.queues[tag].push([fn, node]);
-
-    console.log(node.lightExport().__task.__name, tag, this.queues[tag]);
 
     // Default to 1 if not set
     this.maxConcurrencyPerTag[tag] ??= 1;
