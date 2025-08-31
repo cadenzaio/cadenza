@@ -1,3 +1,10 @@
+## [1.11.6](https://github.com/cadenzaio/cadenza/compare/v1.11.5...v1.11.6) (2025-08-31)
+
+
+### Bug Fixes
+
+* Improved debug logging ([e286ebb](https://github.com/cadenzaio/cadenza/commit/e286ebb2f47dbfc6647111db47ace8e43b59534b))
+
 ## [1.11.5](https://github.com/cadenzaio/cadenza/compare/v1.11.4...v1.11.5) (2025-08-31)
 
 
