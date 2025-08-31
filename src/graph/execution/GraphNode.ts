@@ -215,7 +215,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
     }
 
-    if (this.debug && !this.context.getMetaData().__isSubMeta) {
+    if (this.debug) {
       this.log();
     }
 
