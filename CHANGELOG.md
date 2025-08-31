@@ -1,3 +1,10 @@
+## [1.11.4](https://github.com/cadenzaio/cadenza/compare/v1.11.3...v1.11.4) (2025-08-31)
+
+
+### Bug Fixes
+
+* Fixed bug where the signal emission metadata would get deleted. ([033dd62](https://github.com/cadenzaio/cadenza/commit/033dd6293e8c8c0bcc4845deb2bad0f0e97f0889))
+
 ## [1.11.3](https://github.com/cadenzaio/cadenza/compare/v1.11.2...v1.11.3) (2025-08-30)
 
 
