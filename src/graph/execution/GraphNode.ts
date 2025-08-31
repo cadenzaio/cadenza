@@ -182,7 +182,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
 
       if (
-        context.__signalEmission?.signalName &&
+        context.__signalEmission?.consumed === false &&
         (!this.isMeta() || this.debug)
       ) {
         this.emitWithMetadata("meta.node.consumed_signal", {
@@ -194,7 +194,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
           },
         });
 
-        delete context.__signalEmission;
+        context.__signalEmission.consumed = true;
+        context.__signalEmission.consumedBy = this.id;
       }
     }
   }
@@ -214,7 +215,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
     }
 
-    if (this.debug) {
+    if (this.debug && !this.context.getMetaData().__isSubMeta) {
       this.log();
     }
 
@@ -720,7 +721,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     console.log(
       "Node execution:",
       this.task.name,
-      this.context.getFullContext(),
+      JSON.stringify(this.context.getFullContext()),
       this.routineExecId,
     );
   }

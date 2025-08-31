@@ -175,6 +175,8 @@ export default class SignalBroker {
         ...context.__signalEmission,
         signalName: signal,
         emittedAt: formatTimestamp(emittedAt),
+        consumed: false,
+        consumedBy: null,
         isMeta,
       };
     } else if (isSubMeta) {
