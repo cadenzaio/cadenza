@@ -1,3 +1,10 @@
+## [1.11.7](https://github.com/cadenzaio/cadenza/compare/v1.11.6...v1.11.7) (2025-09-01)
+
+
+### Bug Fixes
+
+* Fixed emission of signals in normal mode for meta tasks. Now Metrics requires normal or production mode but all other emissions will be processed. ([2242de8](https://github.com/cadenzaio/cadenza/commit/2242de81c376f6d287d20a321aa2799e9a74702a))
+
 ## [1.11.6](https://github.com/cadenzaio/cadenza/compare/v1.11.5...v1.11.6) (2025-08-31)
 
 
