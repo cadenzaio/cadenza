@@ -189,6 +189,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
           data: {
             signalName: context.__signalEmission.signalName,
             taskId: this.task.id,
+            taskName: this.task.name,
             taskExecutionId: this.id,
             consumedAt: formatTimestamp(scheduledAt),
           },
