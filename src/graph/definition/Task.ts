@@ -95,7 +95,7 @@ export default class Task extends SignalParticipant implements Graph {
     retryDelayMax: number = 0,
     retryDelayFactor: number = 1,
   ) {
-    super();
+    super(isSubMeta || isHidden);
     this.id = uuid();
     this.name = name;
     this.taskFunction = task.bind(this);
@@ -122,7 +122,7 @@ export default class Task extends SignalParticipant implements Graph {
 
     if (register && !this.isHidden && !this.isSubMeta) {
       const { __functionString, __getTagCallback } = this.export();
-      this.emit("meta.task.created", {
+      this.emitWithMetadata("meta.task.created", {
         __task: {
           uuid: this.id,
           name: this.name,
@@ -159,7 +159,10 @@ export default class Task extends SignalParticipant implements Graph {
   public setGlobalId(id: string): void {
     const oldId = this.id;
     this.id = id;
-    this.emit("meta.task.global_id_set", { __id: this.id, __oldId: oldId });
+    this.emitWithMetadata("meta.task.global_id_set", {
+      __id: this.id,
+      __oldId: oldId,
+    });
   }
 
   public setTimeout(timeout: number): void {
@@ -188,6 +191,31 @@ export default class Task extends SignalParticipant implements Graph {
 
   public setValidateOutputContext(value: boolean): void {
     this.validateOutputContext = value;
+  }
+
+  private emitWithMetadata(signal: string, ctx: AnyObject = {}) {
+    const data = { ...ctx };
+    if (!this.isHidden && !this.isSubMeta) {
+      data.__signalEmission = {
+        taskId: this.id,
+        taskName: this.name,
+      };
+    }
+
+    this.emit(signal, data);
+  }
+
+  private emitMetricsWithMetadata(signal: string, ctx: AnyObject = {}) {
+    const data = { ...ctx };
+    if (!this.isHidden && !this.isSubMeta) {
+      data.__signalEmission = {
+        taskId: this.id,
+        taskName: this.name,
+        isMetric: true,
+      };
+    }
+
+    this.emitMetrics(signal, data);
   }
 
   /**
@@ -348,7 +376,7 @@ export default class Task extends SignalParticipant implements Graph {
         this.inputContextSchema,
       );
       if (!validationResult.valid) {
-        this.emit("meta.task.input_validation_failed", {
+        this.emitWithMetadata("meta.task.input_validation_failed", {
           __taskId: this.id,
           __taskName: this.name,
           __context: context,
@@ -371,7 +399,7 @@ export default class Task extends SignalParticipant implements Graph {
         this.outputContextSchema,
       );
       if (!validationResult.valid) {
-        this.emit("meta.task.outputValidationFailed", {
+        this.emitWithMetadata("meta.task.outputValidationFailed", {
           __taskId: this.id,
           __result: context,
           __errors: validationResult.errors,
@@ -420,7 +448,7 @@ export default class Task extends SignalParticipant implements Graph {
         throw new Error(`Cycle adding pred ${pred.name} to ${this.name}`);
       }
 
-      this.emit("meta.task.relationship_added", {
+      this.emitMetricsWithMetadata("meta.task.relationship_added", {
         data: {
           taskId: this.id,
           predecessorTaskId: pred.id,
@@ -445,7 +473,7 @@ export default class Task extends SignalParticipant implements Graph {
         throw new Error(`Cycle adding next ${next.name} to ${this.name}`);
       }
 
-      this.emit("meta.task.relationship_added", {
+      this.emitMetricsWithMetadata("meta.task.relationship_added", {
         data: {
           taskId: next.id,
           predecessorTaskId: this.id,
@@ -486,7 +514,7 @@ export default class Task extends SignalParticipant implements Graph {
         throw new Error(`Cycle adding onFail ${task.name} to ${this.name}`);
       }
 
-      this.emit("meta.task.on_fail_relationship_added", {
+      this.emitMetricsWithMetadata("meta.task.on_fail_relationship_added", {
         data: {
           taskId: this.id,
           onFailTaskId: task.id,
@@ -541,7 +569,7 @@ export default class Task extends SignalParticipant implements Graph {
     this.layerIndex = maxPred + 1;
 
     if (prevLayerIndex !== this.layerIndex) {
-      this.emit("meta.task.layer_index_changed", {
+      this.emitMetricsWithMetadata("meta.task.layer_index_changed", {
         data: {
           layerIndex: this.layerIndex,
         },
@@ -606,7 +634,7 @@ export default class Task extends SignalParticipant implements Graph {
 
     this.destroyed = true;
 
-    this.emit("meta.task.destroyed", {
+    this.emitMetricsWithMetadata("meta.task.destroyed", {
       data: { deleted: true },
       filter: { uuid: this.id },
     });

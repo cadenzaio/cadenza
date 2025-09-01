@@ -360,6 +360,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     if (!this.task.isHidden) {
       data.__signalEmission = {
         taskId: this.task.id,
+        taskName: this.task.name,
         taskExecutionId: this.id,
       };
       data.__metadata = {
@@ -375,6 +376,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     if (!this.task.isHidden) {
       data.__signalEmission = {
         taskId: this.task.id,
+        taskName: this.task.name,
         taskExecutionId: this.id,
         isMetric: true,
       };
