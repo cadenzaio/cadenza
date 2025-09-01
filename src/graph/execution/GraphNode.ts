@@ -745,7 +745,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
   public log() {
     console.log(
-      "Node execution:",
+      "Node EXECUTION:",
       this.task.name,
       JSON.stringify(this.context.getFullContext()),
     );

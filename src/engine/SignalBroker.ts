@@ -194,7 +194,7 @@ export default class SignalBroker {
 
     if (this.debug && (!isMetric || this.verbose)) {
       console.log(
-        `Emitting signal ${signal} with context ${JSON.stringify(context)}`,
+        `EMITTING signal ${signal} to listeners ${this.signalObservers.get(signal)?.tasks.size ?? 0} with context ${JSON.stringify(context)}`,
       );
     }
 
