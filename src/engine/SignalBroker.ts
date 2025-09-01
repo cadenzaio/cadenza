@@ -20,9 +20,14 @@ export default class SignalBroker {
   }
 
   private debug: boolean = false;
+  private verbose: boolean = false;
 
   setDebug(value: boolean) {
     this.debug = value;
+  }
+
+  setVerbose(value: boolean) {
+    this.verbose = value;
   }
 
   protected validateSignalName(signalName: string) {
@@ -168,6 +173,7 @@ export default class SignalBroker {
   execute(signal: string, context: AnyObject): boolean {
     const isMeta = signal.startsWith("meta.");
     const isSubMeta = signal.startsWith("sub_meta.");
+    const isMetric = context.__signalEmission?.isMetric;
 
     if (!isSubMeta && (!isMeta || this.debug)) {
       const emittedAt = Date.now();
@@ -186,7 +192,7 @@ export default class SignalBroker {
       delete context.__signalEmission;
     }
 
-    if (this.debug) {
+    if (this.debug && (!isMetric || this.verbose)) {
       console.log(
         `Emitting signal ${signal} with context ${JSON.stringify(context)}`,
       );

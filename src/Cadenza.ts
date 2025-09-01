@@ -30,7 +30,7 @@ export interface TaskOptions {
   retryDelayFactor?: number;
 }
 
-export type CadenzaMode = "dev" | "debug" | "production";
+export type CadenzaMode = "dev" | "debug" | "verbose" | "production";
 
 export default class Cadenza {
   public static broker: SignalBroker;
@@ -81,6 +81,12 @@ export default class Cadenza {
 
     if (mode === "debug" || mode === "dev") {
       this.broker.setDebug(true);
+      this.runner.setDebug(true);
+    }
+
+    if (mode === "verbose") {
+      this.broker.setDebug(true);
+      this.broker.setVerbose(true);
       this.runner.setDebug(true);
     }
   }

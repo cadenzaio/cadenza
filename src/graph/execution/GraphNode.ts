@@ -376,6 +376,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       data.__signalEmission = {
         taskId: this.task.id,
         taskExecutionId: this.id,
+        isMetric: true,
       };
       data.__metadata = {
         __routineExecId: this.routineExecId,
