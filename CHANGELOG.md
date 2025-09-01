@@ -1,3 +1,10 @@
+## [1.11.9](https://github.com/cadenzaio/cadenza/compare/v1.11.8...v1.11.9) (2025-09-01)
+
+
+### Bug Fixes
+
+* Improved separation between normal emission and metrics emission. ([fcbc920](https://github.com/cadenzaio/cadenza/commit/fcbc920ef160d36cd6cb7272a0d0f65781003d02))
+
 ## [1.11.8](https://github.com/cadenzaio/cadenza/compare/v1.11.7...v1.11.8) (2025-09-01)
 
 
