@@ -1,3 +1,10 @@
+## [1.11.8](https://github.com/cadenzaio/cadenza/compare/v1.11.7...v1.11.8) (2025-09-01)
+
+
+### Bug Fixes
+
+* Improved Levels of logging by adding verbose mode. ([492cd1c](https://github.com/cadenzaio/cadenza/commit/492cd1c358395303efcce23e2960724a9b484612))
+
 ## [1.11.7](https://github.com/cadenzaio/cadenza/compare/v1.11.6...v1.11.7) (2025-09-01)
 
 
