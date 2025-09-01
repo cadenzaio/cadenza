@@ -33,6 +33,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
   private errored: boolean = false;
   destroyed: boolean = false;
   protected debug: boolean = false;
+  protected verbose: boolean = false;
 
   constructor(
     task: Task,
@@ -40,6 +41,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     routineExecId: string,
     prevNodes: GraphNode[] = [],
     debug: boolean = false,
+    verbose: boolean = false,
   ) {
     super(
       (task.isMeta && !debug) ||
@@ -55,6 +57,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.routineExecId = routineExecId;
     this.splitGroupId = routineExecId;
     this.debug = debug;
+    this.verbose = verbose;
   }
 
   setDebug(value: boolean) {
@@ -216,7 +219,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
     }
 
-    if (this.debug) {
+    if (
+      (this.debug &&
+        !this.task.isSubMeta &&
+        !this.context.getMetaData().__isSubMeta) ||
+      this.verbose
+    ) {
       this.log();
     }
 
@@ -623,6 +631,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.routineExecId,
       [this],
       this.debug,
+      this.verbose,
     );
   }
 

@@ -88,6 +88,7 @@ export default class Cadenza {
       this.broker.setDebug(true);
       this.broker.setVerbose(true);
       this.runner.setDebug(true);
+      this.runner.setVerbose(true);
     }
   }
 

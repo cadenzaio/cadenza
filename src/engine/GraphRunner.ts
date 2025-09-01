@@ -15,6 +15,7 @@ export default class GraphRunner extends SignalEmitter {
   readonly id: string;
   protected currentRun: GraphRun;
   private debug: boolean = false;
+  private verbose: boolean = false;
   protected isRunning: boolean = false;
   private readonly isMeta: boolean = false;
 
@@ -107,7 +108,7 @@ export default class GraphRunner extends SignalEmitter {
 
     allTasks.forEach((task) =>
       this.currentRun.addNode(
-        new GraphNode(task, ctx, routineExecId, [], this.debug),
+        new GraphNode(task, ctx, routineExecId, [], this.debug, this.verbose),
       ),
     );
   }
@@ -164,6 +165,10 @@ export default class GraphRunner extends SignalEmitter {
 
   public setDebug(value: boolean): void {
     this.debug = value;
+  }
+
+  public setVerbose(value: boolean): void {
+    this.verbose = value;
   }
 
   public destroy(): void {
