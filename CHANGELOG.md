@@ -1,3 +1,10 @@
+## [1.11.11](https://github.com/cadenzaio/cadenza/compare/v1.11.10...v1.11.11) (2025-09-01)
+
+
+### Bug Fixes
+
+* Added verbose distinction to Node execution logging. ([45f15e9](https://github.com/cadenzaio/cadenza/commit/45f15e95b02fac9fbb596978a7e71d506e27fdfb))
+
 ## [1.11.10](https://github.com/cadenzaio/cadenza/compare/v1.11.9...v1.11.10) (2025-09-01)
 
 
