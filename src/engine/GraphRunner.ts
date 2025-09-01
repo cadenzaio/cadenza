@@ -90,7 +90,7 @@ export default class GraphRunner extends SignalEmitter {
     context.__routineExecId = routineExecId;
 
     if (!isSubMeta) {
-      this.emit("meta.runner.added_tasks", {
+      this.emitMetrics("meta.runner.added_tasks", {
         data: {
           uuid: routineExecId,
           name: routineName,

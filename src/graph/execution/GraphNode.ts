@@ -140,7 +140,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       const context = this.context.getFullContext();
 
       const scheduledAt = Date.now();
-      this.emitWithMetadata("meta.node.scheduled", {
+      this.emitMetricsWithMetadata("meta.node.scheduled", {
         data: {
           uuid: this.id,
           routineExecutionId: this.routineExecId,
@@ -156,7 +156,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
 
       this.previousNodes.forEach((node) => {
-        this.emitWithMetadata("meta.node.mapped", {
+        this.emitMetricsWithMetadata("meta.node.mapped", {
           data: {
             taskExecutionId: this.id,
             previousTaskExecutionId: node.id,
@@ -169,7 +169,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         });
 
         if (node.failed || node.errored) {
-          this.emitWithMetadata("meta.node.failed_mapped", {
+          this.emitMetricsWithMetadata("meta.node.failed_mapped", {
             data: {
               executionCount: "increment",
             },
@@ -185,7 +185,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         context.__signalEmission?.consumed === false &&
         (!this.isMeta() || this.debug)
       ) {
-        this.emitWithMetadata("meta.node.consumed_signal", {
+        this.emitMetricsWithMetadata("meta.node.consumed_signal", {
           data: {
             signalName: context.__signalEmission.signalName,
             taskId: this.task.id,
@@ -206,7 +206,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     if (this.previousNodes.length === 0) {
-      this.emitWithMetadata("meta.node.started_routine_execution", {
+      this.emitMetricsWithMetadata("meta.node.started_routine_execution", {
         data: {
           isRunning: true,
           started: formatTimestamp(this.executionStart),
@@ -219,7 +219,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.log();
     }
 
-    this.emitWithMetadata("meta.node.started", {
+    this.emitMetricsWithMetadata("meta.node.started", {
       data: {
         isRunning: true,
         started: formatTimestamp(this.executionStart),
@@ -242,7 +242,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     const context = this.context.getFullContext();
 
     if (this.errored || this.failed) {
-      this.emitWithMetadata("meta.node.errored", {
+      this.emitMetricsWithMetadata("meta.node.errored", {
         data: {
           isRunning: false,
           errored: this.errored,
@@ -253,7 +253,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
     }
 
-    this.emitWithMetadata("meta.node.ended", {
+    this.emitMetricsWithMetadata("meta.node.ended", {
       data: {
         isRunning: false,
         isComplete: true,
@@ -269,7 +269,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
     if (this.graphDone()) {
       // TODO Reminder, Service registry should be listening to this event, (updateSelf)
-      this.emitWithMetadata(
+      this.emitMetricsWithMetadata(
         `meta.node.ended_routine_execution:${this.routineExecId}`,
         {
           data: {
@@ -356,8 +356,6 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   protected emitWithMetadata(signal: string, ctx: AnyObject) {
-    if (this.silent) return;
-
     const data = { ...ctx };
     if (!this.task.isHidden) {
       data.__signalEmission = {
@@ -372,10 +370,25 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.emit(signal, data);
   }
 
+  protected emitMetricsWithMetadata(signal: string, ctx: AnyObject) {
+    const data = { ...ctx };
+    if (!this.task.isHidden) {
+      data.__signalEmission = {
+        taskId: this.task.id,
+        taskExecutionId: this.id,
+      };
+      data.__metadata = {
+        __routineExecId: this.routineExecId,
+      };
+    }
+
+    this.emitMetrics(signal, data);
+  }
+
   private onProgress(progress: number) {
     progress = Math.min(Math.max(0, progress), 1);
 
-    this.emitWithMetadata("meta.node.progress", {
+    this.emitMetricsWithMetadata("meta.node.progress", {
       data: {
         progress,
       },
@@ -384,7 +397,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       },
     });
 
-    this.emitWithMetadata(
+    this.emitMetricsWithMetadata(
       `meta.node.routine_execution_progress:${this.routineExecId}`,
       {
         data: {
@@ -722,7 +735,6 @@ export default class GraphNode extends SignalEmitter implements Graph {
       "Node execution:",
       this.task.name,
       JSON.stringify(this.context.getFullContext()),
-      this.routineExecId,
     );
   }
 }
