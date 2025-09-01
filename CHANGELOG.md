@@ -1,3 +1,10 @@
+## [1.11.10](https://github.com/cadenzaio/cadenza/compare/v1.11.9...v1.11.10) (2025-09-01)
+
+
+### Bug Fixes
+
+* Added task name field to signal consumption. ([44955a7](https://github.com/cadenzaio/cadenza/commit/44955a78870193e4cb6659882317d2b547a921e1))
+
 ## [1.11.9](https://github.com/cadenzaio/cadenza/compare/v1.11.8...v1.11.9) (2025-09-01)
 
 
