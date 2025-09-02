@@ -1,3 +1,10 @@
+## [1.11.13](https://github.com/cadenzaio/cadenza/compare/v1.11.12...v1.11.13) (2025-09-02)
+
+
+### Bug Fixes
+
+* Removed protected and private declarations to be able to have nested libraries. ([85a4f93](https://github.com/cadenzaio/cadenza/commit/85a4f9358cbdc421c47f2746aaf44d13c6668e0a))
+
 ## [1.11.12](https://github.com/cadenzaio/cadenza/compare/v1.11.11...v1.11.12) (2025-09-01)
 
 
