@@ -9,20 +9,19 @@ export interface DebounceOptions {
 }
 
 export default class DebounceTask extends Task {
-  private readonly debounceTime: number;
-  private leading: boolean;
-  private trailing: boolean;
-  private maxWait: number;
-  private timer: NodeJS.Timeout | null = null;
-  private maxTimer: NodeJS.Timeout | null = null;
-  private hasLaterCall: boolean = false;
-  private lastResolve: ((value: unknown) => void) | null = null;
-  private lastReject: ((reason?: any) => void) | null = null;
-  private lastContext: GraphContext | null = null;
-  private lastTimeout: NodeJS.Timeout | null = null;
-  private lastProgressCallback: ((progress: number) => void) | null = null;
-  private lastEmitFunction: ((signal: string, context: any) => void) | null =
-    null;
+  readonly debounceTime: number;
+  leading: boolean;
+  trailing: boolean;
+  maxWait: number;
+  timer: NodeJS.Timeout | null = null;
+  maxTimer: NodeJS.Timeout | null = null;
+  hasLaterCall: boolean = false;
+  lastResolve: ((value: unknown) => void) | null = null;
+  lastReject: ((reason?: any) => void) | null = null;
+  lastContext: GraphContext | null = null;
+  lastTimeout: NodeJS.Timeout | null = null;
+  lastProgressCallback: ((progress: number) => void) | null = null;
+  lastEmitFunction: ((signal: string, context: any) => void) | null = null;
 
   constructor(
     name: string,
@@ -67,7 +66,7 @@ export default class DebounceTask extends Task {
     this.maxWait = maxWait;
   }
 
-  private executeFunction(): void {
+  executeFunction(): void {
     if (this.lastTimeout) {
       clearTimeout(this.lastTimeout);
     }
@@ -95,7 +94,7 @@ export default class DebounceTask extends Task {
     }
   }
 
-  private debouncedTrigger(
+  debouncedTrigger(
     resolve: (value: unknown) => void,
     reject: (reason?: any) => void,
     context: GraphContext,

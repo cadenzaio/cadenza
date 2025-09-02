@@ -32,10 +32,10 @@ export default class Task extends SignalParticipant implements Graph {
   readonly isEphemeral: boolean = false;
   readonly isDebounce: boolean = false;
 
-  protected inputContextSchema: SchemaDefinition | undefined = undefined;
-  protected validateInputContext: boolean = false;
-  protected outputContextSchema: SchemaDefinition | undefined = undefined;
-  protected validateOutputContext: boolean = false;
+  inputContextSchema: SchemaDefinition | undefined = undefined;
+  validateInputContext: boolean = false;
+  outputContextSchema: SchemaDefinition | undefined = undefined;
+  validateOutputContext: boolean = false;
 
   readonly retryCount: number = 0;
   readonly retryDelay: number = 0;
@@ -44,12 +44,12 @@ export default class Task extends SignalParticipant implements Graph {
 
   layerIndex: number = 0;
   progressWeight: number = 0;
-  private nextTasks: Set<Task> = new Set();
-  private onFailTasks: Set<Task> = new Set();
-  private predecessorTasks: Set<Task> = new Set();
+  nextTasks: Set<Task> = new Set();
+  onFailTasks: Set<Task> = new Set();
+  predecessorTasks: Set<Task> = new Set();
   destroyed: boolean = false;
 
-  protected readonly taskFunction: TaskFunction;
+  readonly taskFunction: TaskFunction;
 
   /**
    * Constructs a Task (static definition).
@@ -193,7 +193,7 @@ export default class Task extends SignalParticipant implements Graph {
     this.validateOutputContext = value;
   }
 
-  private emitWithMetadata(signal: string, ctx: AnyObject = {}) {
+  emitWithMetadata(signal: string, ctx: AnyObject = {}) {
     const data = { ...ctx };
     if (!this.isHidden && !this.isSubMeta) {
       data.__signalEmission = {
@@ -205,7 +205,7 @@ export default class Task extends SignalParticipant implements Graph {
     this.emit(signal, data);
   }
 
-  private emitMetricsWithMetadata(signal: string, ctx: AnyObject = {}) {
+  emitMetricsWithMetadata(signal: string, ctx: AnyObject = {}) {
     const data = { ...ctx };
     if (!this.isHidden && !this.isSubMeta) {
       data.__signalEmission = {
@@ -226,7 +226,7 @@ export default class Task extends SignalParticipant implements Graph {
    * @returns { { valid: boolean, errors: Record<string, string> } } - Validation result with detailed errors if invalid.
    * @description Recursively checks types, required fields, and constraints; allows extra properties not in schema.
    */
-  protected validateSchema(
+  validateSchema(
     data: any,
     schema: SchemaDefinition | undefined,
     path: string = "context",
@@ -525,7 +525,7 @@ export default class Task extends SignalParticipant implements Graph {
     return this;
   }
 
-  private updateProgressWeights(): void {
+  updateProgressWeights(): void {
     const layers = this.getSubgraphLayers();
     const numLayers = layers.size;
     if (numLayers === 0) return;
@@ -541,7 +541,7 @@ export default class Task extends SignalParticipant implements Graph {
     });
   }
 
-  private getSubgraphLayers(): Map<number, Set<Task>> {
+  getSubgraphLayers(): Map<number, Set<Task>> {
     const layers = new Map<number, Set<Task>>();
     const queue = [this as Task];
     const visited = new Set<Task>();
@@ -560,7 +560,7 @@ export default class Task extends SignalParticipant implements Graph {
     return layers;
   }
 
-  private updateLayerFromPredecessors(): void {
+  updateLayerFromPredecessors(): void {
     const prevLayerIndex = this.layerIndex;
     let maxPred = 0;
     this.predecessorTasks.forEach(
@@ -585,7 +585,7 @@ export default class Task extends SignalParticipant implements Graph {
     }
   }
 
-  private hasCycle(): boolean {
+  hasCycle(): boolean {
     const visited = new Set<Task>();
     const recStack = new Set<Task>();
 

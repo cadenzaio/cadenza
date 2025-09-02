@@ -13,13 +13,13 @@ import { formatTimestamp } from "../utils/tools";
 
 export default class GraphRunner extends SignalEmitter {
   readonly id: string;
-  protected currentRun: GraphRun;
-  private debug: boolean = false;
-  private verbose: boolean = false;
-  protected isRunning: boolean = false;
-  private readonly isMeta: boolean = false;
+  currentRun: GraphRun;
+  debug: boolean = false;
+  verbose: boolean = false;
+  isRunning: boolean = false;
+  readonly isMeta: boolean = false;
 
-  protected strategy: GraphRunStrategy;
+  strategy: GraphRunStrategy;
 
   /**
    * Constructs a runner.
@@ -55,7 +55,7 @@ export default class GraphRunner extends SignalEmitter {
    * @edge Emits 'meta.runner.added_tasks' with metadata.
    * @edge Empty tasks warns no-op.
    */
-  protected addTasks(
+  addTasks(
     tasks: Task | GraphRoutine | (Task | GraphRoutine)[],
     context: AnyObject = {},
   ): void {
@@ -144,12 +144,12 @@ export default class GraphRunner extends SignalEmitter {
     return this.reset();
   }
 
-  private async runAsync(run: Promise<void>): Promise<GraphRun> {
+  async runAsync(run: Promise<void>): Promise<GraphRun> {
     await run;
     return this.reset();
   }
 
-  protected reset(): GraphRun {
+  reset(): GraphRun {
     this.isRunning = false;
 
     const lastRun = this.currentRun;
@@ -182,7 +182,7 @@ export default class GraphRunner extends SignalEmitter {
     }
   }
 
-  private startRun(context: AnyObject): boolean {
+  startRun(context: AnyObject): boolean {
     if (context.__task || context.__routine) {
       const routine = context.__task ?? context.__routine;
       this.run(routine, context);

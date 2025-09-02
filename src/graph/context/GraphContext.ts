@@ -4,9 +4,9 @@ import { AnyObject } from "../../types/global";
 
 export default class GraphContext {
   readonly id: string;
-  private readonly fullContext: AnyObject; // Raw (for internal)
-  private readonly userData: AnyObject; // Filtered, frozen
-  private readonly metaData: AnyObject; // __keys, frozen
+  readonly fullContext: AnyObject; // Raw (for internal)
+  readonly userData: AnyObject; // Filtered, frozen
+  readonly metaData: AnyObject; // __keys, frozen
 
   constructor(context: AnyObject) {
     if (Array.isArray(context)) {

@@ -8,8 +8,8 @@ export type EphemeralTaskOptions = {
 };
 
 export default class EphemeralTask extends Task {
-  private readonly once: boolean;
-  private readonly condition: (context: any) => boolean;
+  readonly once: boolean;
+  readonly condition: (context: any) => boolean;
   readonly isEphemeral: boolean = true;
 
   constructor(

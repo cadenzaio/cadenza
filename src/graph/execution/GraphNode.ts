@@ -13,27 +13,27 @@ import { formatTimestamp } from "../../utils/tools";
 export default class GraphNode extends SignalEmitter implements Graph {
   id: string;
   routineExecId: string;
-  private task: Task;
-  private context: GraphContext;
-  private layer: GraphLayer | undefined;
-  private divided: boolean = false;
-  private splitGroupId: string = "";
-  private processing: boolean = false;
-  private subgraphComplete: boolean = false;
-  private graphComplete: boolean = false;
-  private result: TaskResult = false;
-  private retryCount: number = 0;
-  private retryDelay: number = 0;
-  private retries: number = 0;
-  private previousNodes: GraphNode[] = [];
-  private nextNodes: GraphNode[] = [];
-  private executionTime: number = 0;
-  private executionStart: number = 0;
-  private failed: boolean = false;
-  private errored: boolean = false;
+  task: Task;
+  context: GraphContext;
+  layer: GraphLayer | undefined;
+  divided: boolean = false;
+  splitGroupId: string = "";
+  processing: boolean = false;
+  subgraphComplete: boolean = false;
+  graphComplete: boolean = false;
+  result: TaskResult = false;
+  retryCount: number = 0;
+  retryDelay: number = 0;
+  retries: number = 0;
+  previousNodes: GraphNode[] = [];
+  nextNodes: GraphNode[] = [];
+  executionTime: number = 0;
+  executionStart: number = 0;
+  failed: boolean = false;
+  errored: boolean = false;
   destroyed: boolean = false;
-  protected debug: boolean = false;
-  protected verbose: boolean = false;
+  debug: boolean = false;
+  verbose: boolean = false;
 
   constructor(
     task: Task,
@@ -321,7 +321,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.nextNodes;
   }
 
-  private async workAsync() {
+  async workAsync() {
     try {
       this.result = await this.result;
     } catch (e: unknown) {
@@ -332,13 +332,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
-  private async executeAsync() {
+  async executeAsync() {
     await this.workAsync();
     this.postProcess();
     return this.nextNodes;
   }
 
-  private work(): TaskResult | Promise<TaskResult> {
+  work(): TaskResult | Promise<TaskResult> {
     try {
       const result = this.task.execute(
         this.context,
@@ -364,7 +364,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
-  protected emitWithMetadata(signal: string, ctx: AnyObject) {
+  emitWithMetadata(signal: string, ctx: AnyObject) {
     const data = { ...ctx };
     if (!this.task.isHidden) {
       data.__signalEmission = {
@@ -380,7 +380,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.emit(signal, data);
   }
 
-  protected emitMetricsWithMetadata(signal: string, ctx: AnyObject) {
+  emitMetricsWithMetadata(signal: string, ctx: AnyObject) {
     const data = { ...ctx };
     if (!this.task.isHidden) {
       data.__signalEmission = {
@@ -397,7 +397,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.emitMetrics(signal, data);
   }
 
-  private onProgress(progress: number) {
+  onProgress(progress: number) {
     progress = Math.min(Math.max(0, progress), 1);
 
     this.emitMetricsWithMetadata("meta.node.progress", {
@@ -424,7 +424,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     );
   }
 
-  private postProcess() {
+  postProcess() {
     if (typeof this.result === "string") {
       this.onError(
         `Returning strings is not allowed. Returned: ${this.result}`,
@@ -454,7 +454,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.end();
   }
 
-  private onError(error: unknown, errorData: AnyObject = {}) {
+  onError(error: unknown, errorData: AnyObject = {}) {
     this.result = {
       ...this.context.getFullContext(),
       __error: `Node error: ${error}`,
@@ -467,7 +467,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.errored = true;
   }
 
-  private async retry(prevResult?: any): Promise<TaskResult> {
+  async retry(prevResult?: any): Promise<TaskResult> {
     if (this.retryCount === 0) {
       return prevResult;
     }
@@ -476,7 +476,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.work();
   }
 
-  private async retryAsync(prevResult?: any): Promise<TaskResult> {
+  async retryAsync(prevResult?: any): Promise<TaskResult> {
     if (this.retryCount === 0) {
       return prevResult;
     }
@@ -486,7 +486,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.workAsync();
   }
 
-  private async delayRetry() {
+  async delayRetry() {
     this.retryCount--;
     this.retries++;
     await sleep(this.retryDelay);
@@ -496,7 +496,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
-  private divide(): GraphNode[] {
+  divide(): GraphNode[] {
     const newNodes: GraphNode[] = [];
 
     if (
@@ -559,7 +559,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return newNodes;
   }
 
-  private generateNewNodes(result: any) {
+  generateNewNodes(result: any) {
     const groupId = uuid();
     const newNodes = [];
     if (typeof result !== "boolean") {
@@ -609,17 +609,17 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return newNodes;
   }
 
-  private differentiate(task: Task): GraphNode {
+  differentiate(task: Task): GraphNode {
     this.task = task;
     return this;
   }
 
-  private migrate(ctx: any): GraphNode {
+  migrate(ctx: any): GraphNode {
     this.context = new GraphContext(ctx);
     return this;
   }
 
-  private split(id: string): GraphNode {
+  split(id: string): GraphNode {
     this.splitGroupId = id;
     return this;
   }
@@ -643,11 +643,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
     node.destroy();
   }
 
-  private changeIdentity(id: string) {
+  changeIdentity(id: string) {
     this.id = id;
   }
 
-  private completeSubgraph() {
+  completeSubgraph() {
     for (const node of this.nextNodes) {
       if (!node.subgraphDone()) {
         return;
@@ -664,7 +664,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.previousNodes.forEach((n) => n.completeSubgraph());
   }
 
-  private completeGraph() {
+  completeGraph() {
     this.graphComplete = true;
     this.nextNodes.forEach((n) => n.completeGraph());
   }

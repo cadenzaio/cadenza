@@ -6,7 +6,7 @@ import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
 
 export default class SignalBroker {
-  private static instance_: SignalBroker;
+  static instance_: SignalBroker;
 
   /**
    * Singleton instance for signal management.
@@ -19,8 +19,8 @@ export default class SignalBroker {
     return this.instance_;
   }
 
-  private debug: boolean = false;
-  private verbose: boolean = false;
+  debug: boolean = false;
+  verbose: boolean = false;
 
   setDebug(value: boolean) {
     this.debug = value;
@@ -30,7 +30,7 @@ export default class SignalBroker {
     this.verbose = value;
   }
 
-  protected validateSignalName(signalName: string) {
+  validateSignalName(signalName: string) {
     if (signalName.length > 100) {
       throw new Error(
         `Signal name must be less than 100 characters: ${signalName}`,
@@ -54,12 +54,12 @@ export default class SignalBroker {
     }
   }
 
-  protected runner: GraphRunner | undefined;
-  protected metaRunner: GraphRunner | undefined;
+  runner: GraphRunner | undefined;
+  metaRunner: GraphRunner | undefined;
 
   public getSignalsTask: Task | undefined;
 
-  protected signalObservers: Map<
+  signalObservers: Map<
     string,
     {
       fn: (
@@ -71,9 +71,9 @@ export default class SignalBroker {
     }
   > = new Map();
 
-  protected emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
+  emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
 
-  protected constructor() {
+  constructor() {
     this.addSignal("meta.signal_broker.added");
   }
 
@@ -214,7 +214,7 @@ export default class SignalBroker {
     return executed;
   }
 
-  private executeListener(signal: string, context: AnyObject): boolean {
+  executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
     const isMeta = signal.startsWith("meta");
     const runner = isMeta ? this.metaRunner : this.runner;
@@ -225,7 +225,7 @@ export default class SignalBroker {
     return false;
   }
 
-  private addSignal(signal: string): void {
+  addSignal(signal: string): void {
     let _signal = signal;
     if (!this.signalObservers.has(_signal)) {
       this.validateSignalName(_signal);

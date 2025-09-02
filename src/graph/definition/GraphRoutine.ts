@@ -7,7 +7,7 @@ export default class GraphRoutine extends SignalParticipant {
   readonly name: string;
   readonly description: string;
   readonly isMeta: boolean = false;
-  private tasks: Set<Task> = new Set();
+  tasks: Set<Task> = new Set();
 
   constructor(
     name: string,

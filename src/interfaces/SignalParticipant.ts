@@ -3,10 +3,10 @@ import GraphContext from "../graph/context/GraphContext";
 import Cadenza from "../Cadenza";
 
 export default class SignalParticipant extends SignalEmitter {
-  protected emitsSignals: Set<string> = new Set();
-  protected signalsToEmitAfter: Set<string> = new Set();
-  protected signalsToEmitOnFail: Set<string> = new Set();
-  protected observedSignals: Set<string> = new Set();
+  emitsSignals: Set<string> = new Set();
+  signalsToEmitAfter: Set<string> = new Set();
+  signalsToEmitOnFail: Set<string> = new Set();
+  observedSignals: Set<string> = new Set();
 
   /**
    * Subscribes to signals (chainable).

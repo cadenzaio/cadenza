@@ -4,14 +4,14 @@ import GraphRoutine from "../graph/definition/GraphRoutine";
 import { AnyObject } from "../types/global";
 
 export default class GraphRegistry {
-  private static _instance: GraphRegistry;
+  static _instance: GraphRegistry;
   public static get instance(): GraphRegistry {
     if (!this._instance) this._instance = new GraphRegistry();
     return this._instance;
   }
 
-  private tasks: Map<string, Task> = new Map();
-  private routines: Map<string, GraphRoutine> = new Map();
+  tasks: Map<string, Task> = new Map();
+  routines: Map<string, GraphRoutine> = new Map();
 
   registerTask: Task;
   updateTaskId: Task;
@@ -31,7 +31,7 @@ export default class GraphRegistry {
   doForEachRoutine: Task;
   deleteRoutine: Task;
 
-  private constructor() {
+  constructor() {
     // Hardcode seed MetaTask (observes on existing broker)
     this.registerTask = new Task(
       "Register task",

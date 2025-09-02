@@ -28,7 +28,7 @@ export default class GraphAsyncQueueBuilder extends GraphBuilder {
     }
   }
 
-  private processLayer(layer: AsyncGraphLayer) {
+  processLayer(layer: AsyncGraphLayer) {
     const nextNodes = layer.execute();
     for (const routineExecId of Object.keys(nextNodes)) {
       const group = nextNodes[routineExecId];
@@ -42,7 +42,7 @@ export default class GraphAsyncQueueBuilder extends GraphBuilder {
     }
   }
 
-  protected createLayer(index: number) {
+  createLayer(index: number) {
     const layer = new AsyncGraphLayer(index);
     layer.setDebug(this.debug);
     return layer;

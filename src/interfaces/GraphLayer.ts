@@ -9,11 +9,11 @@ export default abstract class GraphLayer
   extends ExecutionChain
   implements Graph
 {
-  protected readonly index: number;
-  protected nodes: GraphNode[] = [];
-  private executionTime: number = 0;
-  private executionStart: number = 0;
-  protected debug: boolean = false;
+  readonly index: number;
+  nodes: GraphNode[] = [];
+  executionTime: number = 0;
+  executionStart: number = 0;
+  debug: boolean = false;
 
   constructor(index: number) {
     super();

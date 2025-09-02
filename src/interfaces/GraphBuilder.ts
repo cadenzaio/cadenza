@@ -29,13 +29,13 @@ export default abstract class GraphBuilder {
     node.scheduleOn(layer);
   }
 
-  protected addNodes(nodes: GraphNode[]) {
+  addNodes(nodes: GraphNode[]) {
     for (const node of nodes) {
       this.addNode(node);
     }
   }
 
-  protected addLayer(index: number) {
+  addLayer(index: number) {
     if (!this.graph) {
       const layer = this.createLayer(index);
       this.graph = layer;
@@ -65,13 +65,13 @@ export default abstract class GraphBuilder {
     }
   }
 
-  protected createLayer(index: number): GraphLayer {
+  createLayer(index: number): GraphLayer {
     const layer = new SyncGraphLayer(index);
     layer.setDebug(this.debug);
     return layer;
   }
 
-  protected getLayer(layerIndex: number) {
+  getLayer(layerIndex: number) {
     return this.layers[layerIndex - this.topLayerIndex];
   }
 

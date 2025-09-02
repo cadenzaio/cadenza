@@ -2,10 +2,10 @@ import Iterator from "../../interfaces/Iterator";
 import Task from "../definition/Task";
 
 export default class TaskIterator implements Iterator {
-  private currentTask: Task | undefined;
-  private currentLayer: Set<Task> = new Set();
-  private nextLayer: Set<Task> = new Set();
-  private iterator: { next: () => { value: Task | undefined } } =
+  currentTask: Task | undefined;
+  currentLayer: Set<Task> = new Set();
+  nextLayer: Set<Task> = new Set();
+  iterator: { next: () => { value: Task | undefined } } =
     this.currentLayer[Symbol.iterator]();
 
   constructor(task: Task) {

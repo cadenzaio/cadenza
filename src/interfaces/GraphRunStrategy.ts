@@ -4,8 +4,8 @@ import GraphRun from "../engine/GraphRun";
 import GraphBreadthFirstBuilder from "../engine/builders/GraphBreadthFirstBuilder";
 
 export default abstract class GraphRunStrategy {
-  protected graphBuilder: GraphBuilder;
-  protected runInstance?: GraphRun;
+  graphBuilder: GraphBuilder;
+  runInstance?: GraphRun;
 
   constructor() {
     this.graphBuilder = new GraphBreadthFirstBuilder();
@@ -19,7 +19,7 @@ export default abstract class GraphRunStrategy {
     this.graphBuilder = builder;
   }
 
-  protected reset() {
+  reset() {
     this.graphBuilder.reset();
   }
 

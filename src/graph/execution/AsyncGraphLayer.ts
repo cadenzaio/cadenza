@@ -3,8 +3,8 @@ import GraphLayer from "../../interfaces/GraphLayer";
 import ThrottleEngine from "../../engine/ThrottleEngine";
 
 export default class AsyncGraphLayer extends GraphLayer {
-  protected waitingNodes: GraphNode[] = [];
-  protected processingNodes: Set<GraphNode> = new Set();
+  waitingNodes: GraphNode[] = [];
+  processingNodes: Set<GraphNode> = new Set();
 
   constructor(index: number) {
     super(index);
@@ -73,7 +73,7 @@ export default class AsyncGraphLayer extends GraphLayer {
     return nextNodes;
   }
 
-  private async processAsync(node: GraphNode, nextNodes: Promise<GraphNode[]>) {
+  async processAsync(node: GraphNode, nextNodes: Promise<GraphNode[]>) {
     const result = await nextNodes;
     this.processingNodes.delete(node);
     return result;

@@ -13,7 +13,7 @@ export default class GraphAsyncRun extends GraphRunStrategy {
     this.reset();
   }
 
-  protected reset() {
+  reset() {
     super.reset();
   }
 

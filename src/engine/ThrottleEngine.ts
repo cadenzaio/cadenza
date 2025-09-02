@@ -3,7 +3,7 @@ import GraphNode from "../graph/execution/GraphNode";
 type ProcessFunction = (node: GraphNode) => Promise<GraphNode[]> | GraphNode[];
 
 export default class ThrottleEngine {
-  private static instance_: ThrottleEngine;
+  static instance_: ThrottleEngine;
 
   static get instance() {
     if (!this.instance_) {
@@ -12,11 +12,11 @@ export default class ThrottleEngine {
     return this.instance_;
   }
 
-  private queues: { [tag: string]: [ProcessFunction, GraphNode][] } = {};
-  private runningCounts: { [tag: string]: number } = {};
-  private maxConcurrencyPerTag: { [tag: string]: number } = {};
+  queues: { [tag: string]: [ProcessFunction, GraphNode][] } = {};
+  runningCounts: { [tag: string]: number } = {};
+  maxConcurrencyPerTag: { [tag: string]: number } = {};
 
-  private functionIdToPromiseResolve: {
+  functionIdToPromiseResolve: {
     [functionInstanceId: string]: (value: GraphNode[]) => void;
   } = {};
 
@@ -49,7 +49,7 @@ export default class ThrottleEngine {
     return functionPromise;
   }
 
-  private processQueue(tag: string) {
+  processQueue(tag: string) {
     const maxAllowed = this.maxConcurrencyPerTag[tag];
 
     while (
@@ -74,7 +74,7 @@ export default class ThrottleEngine {
     }
   }
 
-  private async process(item: [ProcessFunction, GraphNode]) {
+  async process(item: [ProcessFunction, GraphNode]) {
     const fn = item[0];
     const node = item[1];
 

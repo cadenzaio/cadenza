@@ -37,8 +37,8 @@ export default class Cadenza {
   public static runner: GraphRunner;
   public static metaRunner: GraphRunner;
   public static registry: GraphRegistry;
-  protected static isBootstrapped = false;
-  protected static mode: CadenzaMode = "production";
+  static isBootstrapped = false;
+  static mode: CadenzaMode = "production";
 
   public static bootstrap(): void {
     if (this.isBootstrapped) return;

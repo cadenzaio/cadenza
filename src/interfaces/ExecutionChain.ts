@@ -1,6 +1,6 @@
 export default abstract class ExecutionChain {
-  protected next: ExecutionChain | undefined;
-  protected previous: ExecutionChain | undefined;
+  next: ExecutionChain | undefined;
+  previous: ExecutionChain | undefined;
 
   public setNext(next: ExecutionChain): void {
     if (this.hasNext) {

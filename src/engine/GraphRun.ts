@@ -16,10 +16,10 @@ export interface RunJson {
 // A unique execution of the graph
 export default class GraphRun {
   readonly id: string;
-  private graph: GraphLayer | undefined;
+  graph: GraphLayer | undefined;
   // @ts-ignore
-  private strategy: GraphRunStrategy;
-  private exporter: GraphExporter | undefined;
+  strategy: GraphRunStrategy;
+  exporter: GraphExporter | undefined;
 
   constructor(strategy: GraphRunStrategy) {
     this.id = uuid();

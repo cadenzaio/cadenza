@@ -2,9 +2,9 @@ import GraphRunStrategy from "../../interfaces/GraphRunStrategy";
 import GraphNode from "../../graph/execution/GraphNode";
 
 export default class GraphDebugRun extends GraphRunStrategy {
-  private executionTime: number = 0;
-  private shouldReset = true;
-  private startTime: number = 0;
+  executionTime: number = 0;
+  shouldReset = true;
+  startTime: number = 0;
 
   run() {
     const start = this.start();

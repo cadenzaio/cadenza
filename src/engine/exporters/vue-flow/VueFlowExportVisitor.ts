@@ -5,12 +5,12 @@ import Task from "../../../graph/definition/Task";
 import ColorRandomizer from "../../../utils/ColorRandomizer";
 
 export default class VueFlowExportVisitor implements GraphVisitor {
-  private nodeCount = 0;
-  private elements: any[] = [];
-  private index = 0;
-  private numberOfLayerNodes = 0;
-  private contextToColor: { [id: string]: string } = {};
-  private colorRandomizer = new ColorRandomizer();
+  nodeCount = 0;
+  elements: any[] = [];
+  index = 0;
+  numberOfLayerNodes = 0;
+  contextToColor: { [id: string]: string } = {};
+  colorRandomizer = new ColorRandomizer();
 
   visitLayer(layer: SyncGraphLayer): any {
     const snapshot = layer.export();
