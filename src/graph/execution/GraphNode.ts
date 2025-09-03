@@ -611,6 +611,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
   differentiate(task: Task): GraphNode {
     this.task = task;
+    this.retryCount = task.retryCount;
+    this.retryDelay = task.retryDelay;
+    this.silent =
+      (task.isMeta && !this.debug) ||
+      task.isSubMeta ||
+      this.context?.getMetadata()?.__isSubMeta;
     return this;
   }
 

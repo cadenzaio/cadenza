@@ -261,8 +261,12 @@ describe("Async Graph", () => {
 
   it("should retry a task", async () => {
     let retries = 0;
-    const task1 = Cadenza.createTask(
-      "task1",
+    const task1 = Cadenza.createTask("task1", (context) => {
+      return true;
+    });
+
+    const task2 = Cadenza.createTask(
+      "task2",
       async (context) => {
         if (retries < 2) {
           await sleep(10);
@@ -275,9 +279,6 @@ describe("Async Graph", () => {
       "",
       { retryCount: 2 },
     );
-    const task2 = Cadenza.createTask("task2", (context) => {
-      return true;
-    });
 
     task1.then(task2);
 
@@ -287,8 +288,8 @@ describe("Async Graph", () => {
     const result = run.export();
 
     expect(result.__graph.numberOfNodes).toBe(2);
-    expect(result.__graph.elements[0].data.context).not.toHaveProperty("error");
-    expect(result.__graph.elements[0].data.context.__retries).toBe(2);
+    expect(result.__graph.elements[2].data.context).not.toHaveProperty("error");
+    expect(result.__graph.elements[2].data.context.__retries).toBe(2);
   });
 
   it("should correctly handle progress callbacks", async () => {

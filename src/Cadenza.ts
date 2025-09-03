@@ -90,6 +90,13 @@ export default class Cadenza {
       this.runner.setDebug(true);
       this.runner.setVerbose(true);
     }
+
+    if (mode === "production") {
+      this.broker.setDebug(false);
+      this.broker.setVerbose(false);
+      this.runner.setDebug(false);
+      this.runner.setVerbose(false);
+    }
   }
 
   /**
