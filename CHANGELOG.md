@@ -1,3 +1,10 @@
+## [1.11.15](https://github.com/cadenzaio/cadenza/compare/v1.11.14...v1.11.15) (2025-09-03)
+
+
+### Bug Fixes
+
+* Fixed bug with retry not working when a task was child to another task. ([7b4fef5](https://github.com/cadenzaio/cadenza/commit/7b4fef571293ace9bf96e98748dbbdbed51d34a9))
+
 ## [1.11.14](https://github.com/cadenzaio/cadenza/compare/v1.11.13...v1.11.14) (2025-09-03)
 
 
