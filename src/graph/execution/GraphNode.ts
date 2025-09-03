@@ -46,7 +46,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     super(
       (task.isMeta && !debug) ||
         task.isSubMeta ||
-        context?.getMetaData()?.__isSubMeta,
+        context?.getMetadata()?.__isSubMeta,
     );
     this.id = uuid();
     this.task = task;
@@ -222,7 +222,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     if (
       (this.debug &&
         !this.task.isSubMeta &&
-        !this.context.getMetaData().__isSubMeta) ||
+        !this.context.getMetadata().__isSubMeta) ||
       this.verbose
     ) {
       this.log();
@@ -301,7 +301,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.processing = true;
 
       const inputValidation = this.task.validateInput(
-        this.isMeta() ? this.context.getMetaData() : this.context.getContext(),
+        this.isMeta() ? this.context.getMetadata() : this.context.getContext(),
       );
       if (inputValidation !== true) {
         this.onError(inputValidation.__validationErrors);
@@ -527,7 +527,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         this.divided = true;
         this.migrate({
           ...this.result,
-          ...this.context.getMetaData(),
+          ...this.context.getMetadata(),
           __nextNodes: newNodes.map((n) => n.id),
           __retries: this.retries,
         });
@@ -573,9 +573,9 @@ export default class GraphNode extends SignalEmitter implements Graph {
                 joinedContexts: [
                   { ...result, taskName: this.task.name, __nodeId: this.id },
                 ],
-                ...this.context.getMetaData(),
+                ...this.context.getMetadata(),
               }
-            : { ...result, ...this.context.getMetaData() };
+            : { ...result, ...this.context.getMetadata() };
           return this.clone().split(groupId).differentiate(t).migrate(context);
         }, failed) as GraphNode[]),
       );
@@ -596,7 +596,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
                     __nodeId: this.id,
                   },
                 ],
-                ...this.context.getMetaData(),
+                ...this.context.getMetadata(),
               });
             }
 

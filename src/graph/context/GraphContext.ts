@@ -6,7 +6,7 @@ export default class GraphContext {
   readonly id: string;
   readonly fullContext: AnyObject; // Raw (for internal)
   readonly userData: AnyObject; // Filtered, frozen
-  readonly metaData: AnyObject; // __keys, frozen
+  readonly metadata: AnyObject; // __keys, frozen
 
   constructor(context: AnyObject) {
     if (Array.isArray(context)) {
@@ -16,7 +16,7 @@ export default class GraphContext {
     this.userData = Object.fromEntries(
       Object.entries(this.fullContext).filter(([key]) => !key.startsWith("__")),
     );
-    this.metaData = Object.fromEntries(
+    this.metadata = Object.fromEntries(
       Object.entries(this.fullContext).filter(([key]) => key.startsWith("__")),
     );
     this.id = uuid();
@@ -50,8 +50,8 @@ export default class GraphContext {
    * Gets frozen metadata (read-only).
    * @returns Frozen metadata object.
    */
-  getMetaData(): AnyObject {
-    return this.metaData;
+  getMetadata(): AnyObject {
+    return this.metadata;
   }
 
   /**

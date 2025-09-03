@@ -98,9 +98,9 @@ export default class GraphRunner extends SignalEmitter {
           isMeta,
           routineId,
           contractId:
-            context.__metaData?.__contractId ?? context.__contractId ?? null,
+            context.__metadata?.__contractId ?? context.__contractId ?? null,
           context: ctx.export(),
-          previousRoutineExecution: context.__metaData?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
+          previousRoutineExecution: context.__metadata?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
           created: formatTimestamp(Date.now()),
         },
       });

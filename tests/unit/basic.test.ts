@@ -242,7 +242,7 @@
 //   it("separates metadata", () => {
 //     const ctx = new GraphContext({ foo: "bar", __meta: "data" });
 //     expect(ctx.getContext()).toEqual({ foo: "bar" });
-//     expect(ctx.getMetaData()).toEqual({ __meta: "data" });
+//     expect(ctx.getMetadata()).toEqual({ __meta: "data" });
 //   });
 //
 //   it("combines contexts", () => {
