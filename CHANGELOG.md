@@ -1,3 +1,10 @@
+## [1.11.14](https://github.com/cadenzaio/cadenza/compare/v1.11.13...v1.11.14) (2025-09-03)
+
+
+### Bug Fixes
+
+* Fixed bugs and confusion due to metaData typo. ([ea3bcf2](https://github.com/cadenzaio/cadenza/commit/ea3bcf2824d5314e63fff8f1a3d6253ad0da41f8))
+
 ## [1.11.13](https://github.com/cadenzaio/cadenza/compare/v1.11.12...v1.11.13) (2025-09-02)
 
 
