@@ -1,6 +1,6 @@
 {
   "name": "@cadenza.io/core",
-  "version": "1.11.15",
+  "version": "1.11.16",
   "description": "This is a framework for building asynchronous graphs and flows of tasks and signals.",
   "scripts": {
     "start": "node --loader ts-node/esm src/index.ts",
