@@ -124,7 +124,12 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    options: TaskOptions = {
+    options: TaskOptions = {},
+  ): Task {
+    this.bootstrap();
+    this.validateName(name);
+
+    options = {
       concurrency: 0,
       timeout: 0,
       register: true,
@@ -141,10 +146,9 @@ export default class Cadenza {
       retryDelay: 0,
       retryDelayMax: 0,
       retryDelayFactor: 1,
-    },
-  ): Task {
-    this.bootstrap();
-    this.validateName(name);
+      ...options,
+    };
+
     return new Task(
       name,
       func,
@@ -182,24 +186,7 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    options: TaskOptions = {
-      concurrency: 0,
-      timeout: 0,
-      register: true,
-      isUnique: false,
-      isMeta: true,
-      isSubMeta: false,
-      isHidden: false,
-      getTagCallback: undefined,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-      retryCount: 0,
-      retryDelay: 0,
-      retryDelayMax: 0,
-      retryDelayFactor: 1,
-    },
+    options: TaskOptions = {},
   ): Task {
     options.isMeta = true;
     return this.createTask(name, func, description, options);
@@ -219,24 +206,7 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    options: TaskOptions = {
-      concurrency: 0,
-      timeout: 0,
-      register: true,
-      isUnique: true,
-      isMeta: false,
-      isSubMeta: false,
-      isHidden: false,
-      getTagCallback: undefined,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-      retryCount: 0,
-      retryDelay: 0,
-      retryDelayMax: 0,
-      retryDelayFactor: 1,
-    },
+    options: TaskOptions = {},
   ): Task {
     options.isUnique = true;
     return this.createTask(name, func, description, options);
@@ -254,26 +224,10 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    options: TaskOptions = {
-      concurrency: 0,
-      timeout: 0,
-      register: true,
-      isUnique: true,
-      isMeta: true,
-      isSubMeta: false,
-      isHidden: false,
-      getTagCallback: undefined,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-      retryCount: 0,
-      retryDelay: 0,
-      retryDelayMax: 0,
-      retryDelayFactor: 1,
-    },
+    options: TaskOptions = {},
   ): Task {
     options.isMeta = true;
+    options.isUnique = true;
     return this.createUniqueTask(name, func, description, options);
   }
 
@@ -292,24 +246,9 @@ export default class Cadenza {
     func: TaskFunction,
     throttledIdGetter: ThrottleTagGetter = () => "default",
     description?: string,
-    options: TaskOptions = {
-      concurrency: 1,
-      timeout: 0,
-      register: true,
-      isUnique: false,
-      isMeta: false,
-      isSubMeta: false,
-      isHidden: false,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-      retryCount: 0,
-      retryDelay: 0,
-      retryDelayMax: 0,
-      retryDelayFactor: 1,
-    },
+    options: TaskOptions = {},
   ): Task {
+    options.concurrency = 1;
     options.getTagCallback = throttledIdGetter;
     return this.createTask(name, func, description, options);
   }
@@ -328,23 +267,7 @@ export default class Cadenza {
     func: TaskFunction,
     throttledIdGetter: ThrottleTagGetter,
     description?: string,
-    options: TaskOptions = {
-      concurrency: 0,
-      timeout: 0,
-      register: true,
-      isUnique: false,
-      isMeta: true,
-      isSubMeta: false,
-      isHidden: false,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-      retryCount: 0,
-      retryDelay: 0,
-      retryDelayMax: 0,
-      retryDelayFactor: 1,
-    },
+    options: TaskOptions = {},
   ): Task {
     options.isMeta = true;
     return this.createThrottledTask(
@@ -371,7 +294,12 @@ export default class Cadenza {
     func: TaskFunction,
     description?: string,
     debounceTime: number = 1000,
-    options: TaskOptions & DebounceOptions = {
+    options: TaskOptions & DebounceOptions = {},
+  ): DebounceTask {
+    this.bootstrap();
+    this.validateName(name);
+
+    options = {
       concurrency: 0,
       timeout: 0,
       register: true,
@@ -386,10 +314,9 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
-    },
-  ): DebounceTask {
-    this.bootstrap();
-    this.validateName(name);
+      ...options,
+    };
+
     return new DebounceTask(
       name,
       func,
@@ -426,22 +353,7 @@ export default class Cadenza {
     func: TaskFunction,
     description?: string,
     debounceTime: number = 1000,
-    options: TaskOptions & DebounceOptions = {
-      concurrency: 0,
-      timeout: 0,
-      register: true,
-      leading: false,
-      trailing: true,
-      maxWait: 0,
-      isUnique: false,
-      isMeta: false,
-      isSubMeta: false,
-      isHidden: false,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-    },
+    options: TaskOptions & DebounceOptions = {},
   ): DebounceTask {
     options.isMeta = true;
     return this.createDebounceTask(
@@ -467,7 +379,12 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    options: TaskOptions & EphemeralTaskOptions = {
+    options: TaskOptions & EphemeralTaskOptions = {},
+  ): EphemeralTask {
+    this.bootstrap();
+    this.validateName(name);
+
+    options = {
       concurrency: 0,
       timeout: 0,
       register: true,
@@ -486,10 +403,9 @@ export default class Cadenza {
       retryDelay: 0,
       retryDelayMax: 0,
       retryDelayFactor: 1,
-    },
-  ): EphemeralTask {
-    this.bootstrap();
-    this.validateName(name);
+      ...options,
+    };
+
     return new EphemeralTask(
       name,
       func,
@@ -527,26 +443,7 @@ export default class Cadenza {
     name: string,
     func: TaskFunction,
     description?: string,
-    options: TaskOptions & EphemeralTaskOptions = {
-      concurrency: 0,
-      timeout: 0,
-      register: true,
-      isUnique: false,
-      isMeta: true,
-      isSubMeta: false,
-      isHidden: false,
-      once: true,
-      destroyCondition: () => true,
-      getTagCallback: undefined,
-      inputSchema: undefined,
-      validateInputContext: false,
-      outputSchema: undefined,
-      validateOutputContext: false,
-      retryCount: 0,
-      retryDelay: 0,
-      retryDelayMax: 0,
-      retryDelayFactor: 1,
-    },
+    options: TaskOptions & EphemeralTaskOptions = {},
   ): EphemeralTask {
     options.isMeta = true;
     return this.createEphemeralTask(name, func, description, options);
