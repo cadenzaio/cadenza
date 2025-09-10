@@ -187,6 +187,28 @@ describe("Async Graph", () => {
     );
   });
 
+  it("should be able to split a branch into several sub-graphs", async () => {
+    const task1 = Cadenza.createTask("task1", (_) => true);
+    const task2 = Cadenza.createTask("task2", async function* (_) {
+      await sleep(100);
+      for (let i = 0; i < 5; i++) {
+        yield { foo: i };
+      }
+    });
+    const task3 = Cadenza.createTask("task3", (_) => true);
+    const task4 = Cadenza.createTask("task4", (_) => true);
+    const task5 = Cadenza.createTask("task5", (_) => true);
+
+    task1.then(task2.then(task4, task5), task3);
+
+    const runner = Cadenza.runner;
+    const run = await runner.run(task1, { foo: "bar" });
+
+    const result = run.export();
+
+    expect(result.__graph.numberOfNodes).toBe(13);
+  });
+
   it("should be able to throttle asynchronous tasks", async () => {
     const asyncFunction = async (_: any) => {
       await sleep(50);

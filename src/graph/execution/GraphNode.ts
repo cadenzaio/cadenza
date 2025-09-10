@@ -315,7 +315,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
         return this.executeAsync();
       }
 
-      this.postProcess();
+      const nextNodes = this.postProcess();
+      if (nextNodes instanceof Promise) {
+        return nextNodes;
+      }
+
+      this.nextNodes = nextNodes;
     }
 
     return this.nextNodes;
@@ -334,7 +339,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
   async executeAsync() {
     await this.workAsync();
-    this.postProcess();
+    const nextNodes = this.postProcess();
+    if (nextNodes instanceof Promise) {
+      return nextNodes;
+    }
+    this.nextNodes = nextNodes;
     return this.nextNodes;
   }
 
@@ -435,8 +444,24 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.onError(`Returning arrays is not allowed. Returned: ${this.result}`);
     }
 
-    this.nextNodes = this.divide();
+    const nextNodes = this.divide();
 
+    if (nextNodes instanceof Promise) {
+      return this.postProcessAsync(nextNodes);
+    }
+
+    this.nextNodes = nextNodes;
+    this.finalize();
+    return this.nextNodes;
+  }
+
+  async postProcessAsync(nextNodes: Promise<GraphNode[]>) {
+    this.nextNodes = await nextNodes;
+    this.finalize();
+    return this.nextNodes;
+  }
+
+  finalize() {
     if (this.nextNodes.length === 0) {
       this.completeSubgraph();
     }
@@ -496,7 +521,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
-  divide(): GraphNode[] {
+  divide(): GraphNode[] | Promise<GraphNode[]> {
     const newNodes: GraphNode[] = [];
 
     if (
@@ -505,6 +530,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     ) {
       const generator = this.result as Generator;
       let current = generator.next();
+      if (current instanceof Promise) {
+        return this.divideAsync(current);
+      }
+
       while (!current.done && current.value !== undefined) {
         const outputValidation = this.task.validateOutput(current.value as any);
         if (outputValidation !== true) {
@@ -557,6 +586,35 @@ export default class GraphNode extends SignalEmitter implements Graph {
     });
 
     return newNodes;
+  }
+
+  async divideAsync(
+    current: Promise<IteratorResult<any>>,
+  ): Promise<GraphNode[]> {
+    const nextNodes: GraphNode[] = [];
+    const _current = await current;
+
+    const outputValidation = this.task.validateOutput(_current.value as any);
+    if (outputValidation !== true) {
+      this.onError(outputValidation.__validationErrors);
+      return nextNodes;
+    } else {
+      nextNodes.push(...this.generateNewNodes(_current.value));
+    }
+
+    for await (const result of this.result as AsyncGenerator<any>) {
+      const outputValidation = this.task.validateOutput(result);
+      if (outputValidation !== true) {
+        this.onError(outputValidation.__validationErrors);
+        return [];
+      } else {
+        nextNodes.push(...this.generateNewNodes(result));
+      }
+    }
+
+    this.divided = true;
+
+    return nextNodes;
   }
 
   generateNewNodes(result: any) {
