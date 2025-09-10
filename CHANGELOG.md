@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/cadenzaio/cadenza/compare/v1.11.16...v1.12.0) (2025-09-10)
+
+
+### Features
+
+* Added support for AsyncGenerators as task functions. ([bd2dbf4](https://github.com/cadenzaio/cadenza/commit/bd2dbf4724f0d71c6f0d98a3ae544cce2ae198ea))
+
 ## [1.11.16](https://github.com/cadenzaio/cadenza/compare/v1.11.15...v1.11.16) (2025-09-04)
 
 
