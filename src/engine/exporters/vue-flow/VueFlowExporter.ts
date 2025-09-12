@@ -28,12 +28,12 @@ export default class VueFlowExporter implements GraphExporter {
       }
 
       const tasks = task.getIterator();
-      const exportedTaskIds: string[] = [];
+      const exportedTaskNames: string[] = [];
 
       while (tasks.hasNext()) {
         const task = tasks.next();
-        if (task && !exportedTaskIds.includes(task.id)) {
-          exportedTaskIds.push(task.id);
+        if (task && !exportedTaskNames.includes(task.name)) {
+          exportedTaskNames.push(task.name);
           task.accept(exporterVisitor);
         }
       }

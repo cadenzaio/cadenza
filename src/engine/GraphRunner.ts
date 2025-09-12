@@ -12,7 +12,6 @@ import GraphContext from "../graph/context/GraphContext";
 import { formatTimestamp } from "../utils/tools";
 
 export default class GraphRunner extends SignalEmitter {
-  readonly id: string;
   currentRun: GraphRun;
   debug: boolean = false;
   verbose: boolean = false;
@@ -28,7 +27,6 @@ export default class GraphRunner extends SignalEmitter {
    */
   constructor(isMeta: boolean = false) {
     super(isMeta);
-    this.id = uuid();
     this.isMeta = isMeta;
     this.strategy = Cadenza.runStrategy.PARALLEL;
     this.currentRun = new GraphRun(this.strategy);
@@ -66,14 +64,14 @@ export default class GraphRunner extends SignalEmitter {
     }
 
     let routineName = _tasks.map((t) => t.name).join(" | ");
+    let routineVersion = null;
     let isMeta = _tasks.every((t) => t.isMeta);
-    let routineId = null;
 
     const allTasks = _tasks.flatMap((t) => {
       if (t instanceof GraphRoutine) {
         routineName = t.name;
+        routineVersion = t.version;
         isMeta = t.isMeta;
-        routineId = t.id;
         const routineTasks: Task[] = [];
         t.forEachTask((task: Task) => routineTasks.push(task));
         return routineTasks;
@@ -95,8 +93,8 @@ export default class GraphRunner extends SignalEmitter {
         data: {
           uuid: routineExecId,
           name: routineName,
+          routineVersion,
           isMeta,
-          routineId,
           contractId:
             context.__metadata?.__contractId ?? context.__contractId ?? null,
           context: ctx.export(),

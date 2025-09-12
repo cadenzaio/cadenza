@@ -3,8 +3,8 @@ import Task from "./Task";
 import SignalParticipant from "../../interfaces/SignalParticipant";
 
 export default class GraphRoutine extends SignalParticipant {
-  id: string;
   readonly name: string;
+  version: number = 1;
   readonly description: string;
   readonly isMeta: boolean = false;
   tasks: Set<Task> = new Set();
@@ -16,13 +16,11 @@ export default class GraphRoutine extends SignalParticipant {
     isMeta: boolean = false,
   ) {
     super();
-    this.id = uuid();
     this.name = name;
     this.description = description;
     this.isMeta = isMeta;
     this.emit("meta.routine.created", {
       data: {
-        uuid: this.id,
         name: this.name,
         description: this.description,
         isMeta: this.isMeta,
@@ -33,8 +31,10 @@ export default class GraphRoutine extends SignalParticipant {
       this.tasks.add(t);
       this.emit("meta.routine.task_added", {
         data: {
-          taskId: t.id,
-          routineId: this.id,
+          taskName: t.name,
+          taskVersion: t.version,
+          routineName: this.name,
+          routineVersion: this.version,
         },
       });
     });
@@ -55,13 +55,12 @@ export default class GraphRoutine extends SignalParticipant {
   }
 
   /**
-   * Sets global ID.
-   * @param id The ID.
+   * Sets global Version.
+   * @param version The Version.
    */
-  public setGlobalId(id: string): void {
-    const oldId = this.id;
-    this.id = id;
-    this.emit("meta.routine.global_id_set", { __id: this.id, __oldId: oldId });
+  public setVersion(version: number): void {
+    this.version = version;
+    this.emit("meta.routine.global_version_set", { version: this.version });
   }
 
   // Removed emitsSignals per clarification (routines as listeners only)
@@ -73,7 +72,7 @@ export default class GraphRoutine extends SignalParticipant {
     this.tasks.clear();
     this.emit("meta.routine.destroyed", {
       data: { deleted: true },
-      filter: { uuid: this.id },
+      filter: { name: this.name, version: this.version },
     });
   }
 }

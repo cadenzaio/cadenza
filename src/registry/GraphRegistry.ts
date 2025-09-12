@@ -14,18 +14,14 @@ export default class GraphRegistry {
   routines: Map<string, GraphRoutine> = new Map();
 
   registerTask: Task;
-  updateTaskId: Task;
   updateTaskInputSchema: Task;
   updateTaskOutputSchema: Task;
-  getTaskById: Task;
   getTaskByName: Task;
   getTasksByLayer: Task;
   getAllTasks: Task;
   doForEachTask: Task;
   deleteTask: Task;
   registerRoutine: Task;
-  updateRoutineId: Task;
-  getRoutineById: Task;
   getRoutineByName: Task;
   getAllRoutines: Task;
   doForEachRoutine: Task;
@@ -37,8 +33,8 @@ export default class GraphRegistry {
       "Register task",
       (context: AnyObject) => {
         const { __taskInstance } = context;
-        if (__taskInstance && !this.tasks.has(__taskInstance.id)) {
-          this.tasks.set(__taskInstance.id, __taskInstance);
+        if (__taskInstance && !this.tasks.has(__taskInstance.name)) {
+          this.tasks.set(__taskInstance.name, __taskInstance);
         }
         delete context.__taskInstance;
         return true;
@@ -52,20 +48,7 @@ export default class GraphRegistry {
     ).doOn("meta.task.created");
 
     // Manual seed register
-    this.tasks.set(this.registerTask.id, this.registerTask);
-
-    this.updateTaskId = Cadenza.createMetaTask(
-      "Update task id",
-      (context) => {
-        const { __id, __oldId } = context;
-        const task = this.tasks.get(__oldId);
-        if (!task) return context;
-        this.tasks.set(__id, task);
-        this.tasks.delete(__oldId);
-        return context;
-      },
-      "Updates task id.",
-    ).doOn("meta.task.global_id_set");
+    this.tasks.set(this.registerTask.name, this.registerTask);
 
     this.updateTaskInputSchema = Cadenza.createMetaTask(
       "Update task input schema",
@@ -90,15 +73,6 @@ export default class GraphRegistry {
       },
       "Updates task input schema.",
     ).doOn("meta.task.output_schema_updated");
-
-    this.getTaskById = Cadenza.createMetaTask(
-      "Get task by id",
-      (context) => {
-        const { __id } = context;
-        return { ...context, __task: this.tasks.get(__id) };
-      },
-      "Gets task by id.",
-    );
 
     this.getTaskByName = Cadenza.createMetaTask(
       "Get task by name",
@@ -146,8 +120,8 @@ export default class GraphRegistry {
     this.deleteTask = Cadenza.createMetaTask(
       "Delete task",
       (context) => {
-        const { __id } = context;
-        this.tasks.delete(__id);
+        const { __name } = context;
+        this.tasks.delete(__name);
         return context;
       },
       "Deletes task.",
@@ -157,36 +131,14 @@ export default class GraphRegistry {
       "Register routine",
       (context) => {
         const { __routineInstance } = context;
-        if (__routineInstance && !this.routines.has(__routineInstance.id)) {
-          this.routines.set(__routineInstance.id, __routineInstance);
+        if (__routineInstance && !this.routines.has(__routineInstance.name)) {
+          this.routines.set(__routineInstance.name, __routineInstance);
         }
         delete context.__routineInstance;
         return true;
       },
       "Registers routine.",
     ).doOn("meta.routine.created");
-
-    this.updateRoutineId = Cadenza.createMetaTask(
-      "Update routine id",
-      (context) => {
-        const { __id, __oldId } = context;
-        const routine = this.routines.get(__oldId);
-        if (!routine) return context;
-        this.routines.set(__id, routine);
-        this.routines.delete(__oldId);
-        return context;
-      },
-      "Updates routine id.",
-    ).doOn("meta.routine.global_id_set");
-
-    this.getRoutineById = Cadenza.createMetaTask(
-      "Get routine by id",
-      (context) => {
-        const { __id } = context;
-        return { ...context, routine: this.routines.get(__id) };
-      },
-      "Gets routine by id.",
-    );
 
     this.getRoutineByName = Cadenza.createMetaTask(
       "Get routine by name",
@@ -225,8 +177,8 @@ export default class GraphRegistry {
     this.deleteRoutine = Cadenza.createMetaTask(
       "Delete routine",
       (context) => {
-        const { __id } = context;
-        this.routines.delete(__id);
+        const { __name } = context;
+        this.routines.delete(__name);
         return context;
       },
       "Deletes routine.",
@@ -236,6 +188,5 @@ export default class GraphRegistry {
   reset() {
     this.tasks.clear();
     this.routines.clear();
-    this.tasks.set(this.registerTask.id, this.registerTask);
   }
 }

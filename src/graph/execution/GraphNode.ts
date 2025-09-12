@@ -101,7 +101,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   public sharesTaskWith(node: GraphNode) {
-    return this.task.id === node.task.id;
+    return this.task.name === node.task.name;
   }
 
   public sharesContextWith(node: GraphNode) {
@@ -149,8 +149,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
           routineExecutionId: this.routineExecId,
           contractId: context.__contractId,
           context: this.context.export(),
-          taskId: this.task.id,
           taskName: this.task.name,
+          taskVersion: this.task.version,
           isMeta: this.isMeta(),
           isScheduled: true,
           splitGroupId: this.splitGroupId,
@@ -166,22 +166,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
             executionCount: "increment",
           },
           filter: {
-            taskId: this.task.id,
-            previousTaskId: node.task.id,
+            taskName: this.task.name,
+            taskVersion: this.task.version,
+            previousTaskName: node.task.name,
+            previousTaskVersion: node.task.version,
           },
         });
-
-        if (node.failed || node.errored) {
-          this.emitMetricsWithMetadata("meta.node.failed_mapped", {
-            data: {
-              executionCount: "increment",
-            },
-            filter: {
-              taskId: this.task.id,
-              failTaskId: node.task.id,
-            },
-          });
-        }
       });
 
       if (
@@ -191,8 +181,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
         this.emitMetricsWithMetadata("meta.node.consumed_signal", {
           data: {
             signalName: context.__signalEmission.signalName,
-            taskId: this.task.id,
             taskName: this.task.name,
+            taskVersion: this.task.version,
             taskExecutionId: this.id,
             consumedAt: formatTimestamp(scheduledAt),
           },
@@ -377,8 +367,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
     const data = { ...ctx };
     if (!this.task.isHidden) {
       data.__signalEmission = {
-        taskId: this.task.id,
         taskName: this.task.name,
+        taskVersion: this.task.version,
         taskExecutionId: this.id,
       };
       data.__metadata = {
@@ -393,8 +383,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
     const data = { ...ctx };
     if (!this.task.isHidden) {
       data.__signalEmission = {
-        taskId: this.task.id,
         taskName: this.task.name,
+        taskVersion: this.task.version,
         taskExecutionId: this.id,
         isMetric: true,
       };
@@ -787,8 +777,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return {
       __id: this.id,
       __task: {
-        __id: this.task.id,
         __name: this.task.name,
+        __version: this.task.version,
       },
       __context: this.context.export(),
       __executionTime: this.executionTime,

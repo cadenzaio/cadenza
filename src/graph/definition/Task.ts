@@ -16,9 +16,9 @@ export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
 export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
 
 export default class Task extends SignalParticipant implements Graph {
-  id: string;
   readonly name: string;
   readonly description: string;
+  version: number = 1;
   concurrency: number;
   timeout: number;
   readonly isMeta: boolean = false;
@@ -96,7 +96,6 @@ export default class Task extends SignalParticipant implements Graph {
     retryDelayFactor: number = 1,
   ) {
     super(isSubMeta || isHidden);
-    this.id = uuid();
     this.name = name;
     this.taskFunction = task.bind(this);
     this.description = description;
@@ -124,7 +123,6 @@ export default class Task extends SignalParticipant implements Graph {
       const { __functionString, __getTagCallback } = this.export();
       this.emitWithMetadata("meta.task.created", {
         __task: {
-          uuid: this.id,
           name: this.name,
           description: this.description,
           functionString: __functionString,
@@ -153,15 +151,13 @@ export default class Task extends SignalParticipant implements Graph {
   }
 
   public getTag(context?: AnyObject): string {
-    return this.id;
+    return this.name;
   }
 
-  public setGlobalId(id: string): void {
-    const oldId = this.id;
-    this.id = id;
-    this.emitWithMetadata("meta.task.global_id_set", {
-      __id: this.id,
-      __oldId: oldId,
+  public setVersion(version: number): void {
+    this.version = version;
+    this.emitWithMetadata("meta.task.version_set", {
+      __version: this.version,
     });
   }
 
@@ -197,8 +193,8 @@ export default class Task extends SignalParticipant implements Graph {
     const data = { ...ctx };
     if (!this.isHidden && !this.isSubMeta) {
       data.__signalEmission = {
-        taskId: this.id,
         taskName: this.name,
+        taskVersion: this.version,
       };
     }
 
@@ -209,8 +205,8 @@ export default class Task extends SignalParticipant implements Graph {
     const data = { ...ctx };
     if (!this.isHidden && !this.isSubMeta) {
       data.__signalEmission = {
-        taskId: this.id,
         taskName: this.name,
+        taskVersion: this.version,
         isMetric: true,
       };
     }
@@ -377,8 +373,8 @@ export default class Task extends SignalParticipant implements Graph {
       );
       if (!validationResult.valid) {
         this.emitWithMetadata("meta.task.input_validation_failed", {
-          __taskId: this.id,
           __taskName: this.name,
+          __taskVersion: this.version,
           __context: context,
           __errors: validationResult.errors,
         });
@@ -400,7 +396,8 @@ export default class Task extends SignalParticipant implements Graph {
       );
       if (!validationResult.valid) {
         this.emitWithMetadata("meta.task.outputValidationFailed", {
-          __taskId: this.id,
+          __taskName: this.name,
+          __taskVersion: this.version,
           __result: context,
           __errors: validationResult.errors,
         });
@@ -450,8 +447,10 @@ export default class Task extends SignalParticipant implements Graph {
 
       this.emitMetricsWithMetadata("meta.task.relationship_added", {
         data: {
-          taskId: this.id,
-          predecessorTaskId: pred.id,
+          taskName: this.name,
+          taskVersion: this.version,
+          predecessorTaskName: pred.name,
+          predecessorTaskVersion: pred.version,
         },
       });
     }
@@ -475,8 +474,10 @@ export default class Task extends SignalParticipant implements Graph {
 
       this.emitMetricsWithMetadata("meta.task.relationship_added", {
         data: {
-          taskId: next.id,
-          predecessorTaskId: this.id,
+          taskName: next.name,
+          taskVersion: next.version,
+          predecessorTaskName: this.name,
+          predecessorTaskVersion: this.version,
         },
       });
     }
@@ -499,30 +500,6 @@ export default class Task extends SignalParticipant implements Graph {
     // TODO: Delete task map instances
 
     this.updateLayerFromPredecessors();
-  }
-
-  public doOnFail(...tasks: Task[]): this {
-    for (const task of tasks) {
-      if (this.onFailTasks.has(task)) continue;
-
-      this.onFailTasks.add(task);
-      task.predecessorTasks.add(this);
-      task.updateLayerFromPredecessors();
-
-      if (task.hasCycle()) {
-        this.decouple(task);
-        throw new Error(`Cycle adding onFail ${task.name} to ${this.name}`);
-      }
-
-      this.emitMetricsWithMetadata("meta.task.on_fail_relationship_added", {
-        data: {
-          taskId: this.id,
-          onFailTaskId: task.id,
-        },
-      });
-    }
-
-    return this;
   }
 
   updateProgressWeights(): void {
@@ -573,7 +550,7 @@ export default class Task extends SignalParticipant implements Graph {
         data: {
           layerIndex: this.layerIndex,
         },
-        filter: { uuid: this.id },
+        filter: { name: this.name, version: this.version },
       });
     }
 
@@ -636,7 +613,7 @@ export default class Task extends SignalParticipant implements Graph {
 
     this.emitMetricsWithMetadata("meta.task.destroyed", {
       data: { deleted: true },
-      filter: { uuid: this.id },
+      filter: { name: this.name, version: this.version },
     });
 
     // TODO: Delete task map instances
@@ -644,7 +621,6 @@ export default class Task extends SignalParticipant implements Graph {
 
   public export(): AnyObject {
     return {
-      __id: this.id,
       __name: this.name,
       __description: this.description,
       __layerIndex: this.layerIndex,
@@ -664,9 +640,9 @@ export default class Task extends SignalParticipant implements Graph {
       __validateInputContext: this.validateInputContext,
       __outputSchema: this.outputContextSchema,
       __validateOutputContext: this.validateOutputContext,
-      __nextTasks: Array.from(this.nextTasks).map((t) => t.id),
-      __onFailTasks: Array.from(this.onFailTasks).map((t) => t.id),
-      __previousTasks: Array.from(this.predecessorTasks).map((t) => t.id),
+      __nextTasks: Array.from(this.nextTasks).map((t) => t.name),
+      __onFailTasks: Array.from(this.onFailTasks).map((t) => t.name),
+      __previousTasks: Array.from(this.predecessorTasks).map((t) => t.name),
     };
   }
 

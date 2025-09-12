@@ -88,7 +88,7 @@ export default class SignalBroker {
   }
 
   init() {
-    Cadenza.createDebounceMetaTask(
+    Cadenza.createMetaTask(
       "Execute and clear queued signals",
       () => {
         for (const [id, signals] of this.emitStacks.entries()) {
@@ -102,11 +102,6 @@ export default class SignalBroker {
         return true;
       },
       "Executes queued signals and clears the stack",
-      500,
-      {
-        maxWait: 10000,
-        leading: true,
-      },
     )
       .doOn("meta.process_signal_queue_requested")
       .emitsAfter("meta.signal_broker.queue_empty");
