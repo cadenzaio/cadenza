@@ -1,3 +1,13 @@
+# [2.0.0](https://github.com/cadenzaio/cadenza/compare/v1.12.0...v2.0.0) (2025-09-12)
+
+
+* BREAKING CHANGE: Tasks and Routines now does not have id's. They are now identified by their name and version. ([51be291](https://github.com/cadenzaio/cadenza/commit/51be291c1426ec8917818bc53c65b456b59189bd))
+
+
+### BREAKING CHANGES
+
+* Removed doOnFail on tasks. This is now replaced by signals emitOnFail(...).
+
 # [1.12.0](https://github.com/cadenzaio/cadenza/compare/v1.11.16...v1.12.0) (2025-09-10)
 
 
