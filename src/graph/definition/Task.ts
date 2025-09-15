@@ -1,11 +1,11 @@
-import { v4 as uuid } from "uuid";
 import GraphContext from "../context/GraphContext";
 import GraphVisitor from "../../interfaces/GraphVisitor";
 import TaskIterator from "../iterators/TaskIterator";
 import Graph from "../../interfaces/Graph";
 import { AnyObject } from "../../types/global";
-import SignalParticipant from "../../interfaces/SignalParticipant";
 import { SchemaDefinition } from "../../types/schema";
+import SignalEmitter from "../../interfaces/SignalEmitter";
+import Cadenza from "../../Cadenza";
 
 export type TaskFunction = (
   context: AnyObject,
@@ -15,7 +15,7 @@ export type TaskFunction = (
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
 export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
 
-export default class Task extends SignalParticipant implements Graph {
+export default class Task extends SignalEmitter implements Graph {
   readonly name: string;
   readonly description: string;
   version: number = 1;
@@ -48,6 +48,11 @@ export default class Task extends SignalParticipant implements Graph {
   onFailTasks: Set<Task> = new Set();
   predecessorTasks: Set<Task> = new Set();
   destroyed: boolean = false;
+
+  emitsSignals: Set<string> = new Set();
+  signalsToEmitAfter: Set<string> = new Set();
+  signalsToEmitOnFail: Set<string> = new Set();
+  observedSignals: Set<string> = new Set();
 
   readonly taskFunction: TaskFunction;
 
@@ -122,8 +127,9 @@ export default class Task extends SignalParticipant implements Graph {
     if (register && !this.isHidden && !this.isSubMeta) {
       const { __functionString, __getTagCallback } = this.export();
       this.emitWithMetadata("meta.task.created", {
-        __task: {
+        data: {
           name: this.name,
+          version: this.version,
           description: this.description,
           functionString: __functionString,
           tagIdGetter: __getTagCallback,
@@ -142,8 +148,8 @@ export default class Task extends SignalParticipant implements Graph {
           isMeta: this.isMeta,
           validateInputContext: this.validateInputContext,
           validateOutputContext: this.validateOutputContext,
-          inputContextSchemaId: this.inputContextSchema,
-          outputContextSchemaId: this.outputContextSchema,
+          inputContextSchema: this.inputContextSchema,
+          outputContextSchema: this.outputContextSchema,
         },
         __taskInstance: this,
       });
@@ -598,8 +604,176 @@ export default class Task extends SignalParticipant implements Graph {
     return Array.from(this.predecessorTasks).map(callback);
   }
 
+  /**
+   * Subscribes to signals (chainable).
+   * @param signals The signal names.
+   * @returns This for chaining.
+   * @edge Duplicates ignored; assumes broker.observe binds this as handler.
+   */
+  doOn(...signals: string[]): this {
+    signals.forEach((signal) => {
+      if (this.observedSignals.has(signal)) return;
+      Cadenza.broker.observe(signal, this as any);
+      this.observedSignals.add(signal);
+      this.emitWithMetadata("meta.task.observed_signal", {
+        data: {
+          signalName: signal,
+          taskName: this.name,
+          taskVersion: this.version,
+        },
+      });
+    });
+    return this;
+  }
+
+  /**
+   * Sets signals to emit post-execution (chainable).
+   * @param signals The signal names.
+   * @returns This for chaining.
+   */
+  emits(...signals: string[]): this {
+    signals.forEach((signal) => {
+      this.signalsToEmitAfter.add(signal);
+      this.emitsSignals.add(signal);
+      this.emitWithMetadata("meta.task.attached_signal", {
+        data: {
+          signalName: signal,
+          taskName: this.name,
+          taskVersion: this.version,
+        },
+      });
+    });
+    return this;
+  }
+
+  emitsOnFail(...signals: string[]): this {
+    signals.forEach((signal) => {
+      this.signalsToEmitOnFail.add(signal);
+      this.emitsSignals.add(signal);
+      this.emitWithMetadata("meta.task.attached_signal", {
+        data: {
+          signalName: signal,
+          taskName: this.name,
+          taskVersion: this.version,
+          isOnFail: true,
+        },
+      });
+    });
+    return this;
+  }
+
+  /**
+   * Unsubscribes from all observed signals.
+   * @returns This for chaining.
+   */
+  unsubscribeAll(): this {
+    this.observedSignals.forEach((signal) => {
+      Cadenza.broker.unsubscribe(signal, this as any);
+      this.emitWithMetadata("meta.task.unsubscribed_signal", {
+        filter: {
+          signalName: signal,
+          taskName: this.name,
+          taskVersion: this.version,
+        },
+      });
+    });
+    this.observedSignals.clear();
+    return this;
+  }
+
+  /**
+   * Unsubscribes from specific signals.
+   * @param signals The signals.
+   * @returns This for chaining.
+   * @edge No-op if not subscribed.
+   */
+  unsubscribe(...signals: string[]): this {
+    signals.forEach((signal) => {
+      if (this.observedSignals.has(signal)) {
+        Cadenza.broker.unsubscribe(signal, this as any);
+        this.observedSignals.delete(signal);
+        this.emitWithMetadata("meta.task.unsubscribed_signal", {
+          filter: {
+            signalName: signal,
+            taskName: this.name,
+            taskVersion: this.version,
+          },
+        });
+      }
+    });
+    return this;
+  }
+
+  /**
+   * Detaches specific emitted signals.
+   * @param signals The signals.
+   * @returns This for chaining.
+   */
+  detachSignals(...signals: string[]): this {
+    signals.forEach((signal) => {
+      this.signalsToEmitAfter.delete(signal);
+      this.emitWithMetadata("meta.task.detached_signal", {
+        filter: {
+          signalName: signal,
+          taskName: this.name,
+          taskVersion: this.version,
+        },
+      });
+    });
+    return this;
+  }
+
+  /**
+   * Detaches all emitted signals.
+   * @returns This for chaining.
+   */
+  detachAllSignals(): this {
+    this.signalsToEmitAfter.forEach((signal) => {
+      this.emitWithMetadata("meta.task.detached_signal", {
+        filter: {
+          signalName: signal,
+          taskName: this.name,
+          taskVersion: this.version,
+        },
+      });
+    });
+    this.signalsToEmitAfter.clear();
+    return this;
+  }
+
+  mapSignals(callback: (signal: string) => void) {
+    return Array.from(this.signalsToEmitAfter).map(callback);
+  }
+
+  mapOnFailSignals(callback: (signal: string) => void) {
+    return Array.from(this.signalsToEmitOnFail).map(callback);
+  }
+
+  /**
+   * Emits attached signals.
+   * @param context The context for emission.
+   * @edge If isMeta (from Task), suppresses further "meta.*" to prevent loops.
+   */
+  emitSignals(context: GraphContext): void {
+    this.signalsToEmitAfter.forEach((signal) => {
+      this.emit(signal, context.getFullContext());
+    });
+  }
+
+  /**
+   * Emits attached fail signals.
+   * @param context The context for emission.
+   * @edge If isMeta (from Task), suppresses further "meta.*" to prevent loops.
+   */
+  emitOnFailSignals(context: GraphContext): void {
+    this.signalsToEmitOnFail.forEach((signal) => {
+      this.emit(signal, context.getFullContext());
+    });
+  }
+
   public destroy(): void {
-    super.destroy();
+    this.unsubscribeAll();
+    this.detachAllSignals();
 
     this.predecessorTasks.forEach((pred) => pred.nextTasks.delete(this));
     this.nextTasks.forEach((next) => next.predecessorTasks.delete(this));

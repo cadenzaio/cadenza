@@ -1,13 +1,15 @@
-import { v4 as uuid } from "uuid";
 import Task from "./Task";
-import SignalParticipant from "../../interfaces/SignalParticipant";
+import Cadenza from "../../Cadenza";
+import SignalEmitter from "../../interfaces/SignalEmitter";
 
-export default class GraphRoutine extends SignalParticipant {
+export default class GraphRoutine extends SignalEmitter {
   readonly name: string;
   version: number = 1;
   readonly description: string;
   readonly isMeta: boolean = false;
   tasks: Set<Task> = new Set();
+
+  observedSignals: Set<string> = new Set();
 
   constructor(
     name: string,
@@ -22,6 +24,7 @@ export default class GraphRoutine extends SignalParticipant {
     this.emit("meta.routine.created", {
       data: {
         name: this.name,
+        version: this.version,
         description: this.description,
         isMeta: this.isMeta,
       },
@@ -63,12 +66,54 @@ export default class GraphRoutine extends SignalParticipant {
     this.emit("meta.routine.global_version_set", { version: this.version });
   }
 
-  // Removed emitsSignals per clarification (routines as listeners only)
+  /**
+   * Subscribes to signals (chainable).
+   * @param signals The signal names.
+   * @returns This for chaining.
+   * @edge Duplicates ignored; assumes broker.observe binds this as handler.
+   */
+  doOn(...signals: string[]): this {
+    signals.forEach((signal) => {
+      if (this.observedSignals.has(signal)) return;
+      Cadenza.broker.observe(signal, this as any);
+      this.observedSignals.add(signal);
+    });
+    return this;
+  }
+
+  /**
+   * Unsubscribes from all observed signals.
+   * @returns This for chaining.
+   */
+  unsubscribeAll(): this {
+    this.observedSignals.forEach((signal) =>
+      Cadenza.broker.unsubscribe(signal, this as any),
+    );
+    this.observedSignals.clear();
+    return this;
+  }
+
+  /**
+   * Unsubscribes from specific signals.
+   * @param signals The signals.
+   * @returns This for chaining.
+   * @edge No-op if not subscribed.
+   */
+  unsubscribe(...signals: string[]): this {
+    signals.forEach((signal) => {
+      if (this.observedSignals.has(signal)) {
+        Cadenza.broker.unsubscribe(signal, this as any);
+        this.observedSignals.delete(signal);
+      }
+    });
+    return this;
+  }
 
   /**
    * Destroys the routine.
    */
   public destroy(): void {
+    this.unsubscribeAll();
     this.tasks.clear();
     this.emit("meta.routine.destroyed", {
       data: { deleted: true },

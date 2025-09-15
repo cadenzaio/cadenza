@@ -102,10 +102,10 @@ export default class GraphContext {
    * Exports the context.
    * @returns Exported object.
    */
-  export(): { __id: string; __context: AnyObject } {
+  export(): { id: string; context: AnyObject } {
     return {
-      __id: this.id,
-      __context: this.getFullContext(),
+      id: this.id,
+      context: this.getFullContext(),
     };
   }
 }

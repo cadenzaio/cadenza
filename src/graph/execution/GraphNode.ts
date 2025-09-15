@@ -147,7 +147,9 @@ export default class GraphNode extends SignalEmitter implements Graph {
         data: {
           uuid: this.id,
           routineExecutionId: this.routineExecId,
-          contractId: context.__contractId,
+          executionTraceId:
+            context.__executionTraceId ??
+            context.__metadata?.__executionTraceId,
           context: this.context.export(),
           taskName: this.task.name,
           taskVersion: this.task.version,

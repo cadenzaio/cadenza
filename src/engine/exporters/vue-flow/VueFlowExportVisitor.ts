@@ -22,12 +22,12 @@ export default class VueFlowExportVisitor implements GraphVisitor {
   visitNode(node: GraphNode): any {
     const snapshot = node.export();
 
-    if (!this.contextToColor[snapshot.__context.__id]) {
-      this.contextToColor[snapshot.__context.__id] =
+    if (!this.contextToColor[snapshot.__context.id]) {
+      this.contextToColor[snapshot.__context.id] =
         this.colorRandomizer.getRandomColor();
     }
 
-    const color = this.contextToColor[snapshot.__context.__id];
+    const color = this.contextToColor[snapshot.__context.id];
 
     this.elements.push({
       id: snapshot.__id.slice(0, 8),
@@ -45,7 +45,7 @@ export default class VueFlowExportVisitor implements GraphVisitor {
         executionEnd: snapshot.__executionEnd,
         description: snapshot.__task.__description,
         functionString: snapshot.__task.__functionString,
-        context: snapshot.__context.__context,
+        context: snapshot.__context.context,
         layerIndex: snapshot.__task.__layerIndex,
       },
     });

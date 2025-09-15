@@ -15,7 +15,6 @@ import Task, {
   ThrottleTagGetter,
 } from "./graph/definition/Task";
 import SignalEmitter from "./interfaces/SignalEmitter";
-import SignalParticipant from "./interfaces/SignalParticipant";
 import GraphRegistry from "./registry/GraphRegistry";
 import { AnyObject } from "./types/global";
 import {
@@ -32,7 +31,6 @@ export {
   EphemeralTask,
   SignalTask,
   SignalEmitter,
-  SignalParticipant,
   GraphContext,
   GraphRegistry,
   GraphRun,

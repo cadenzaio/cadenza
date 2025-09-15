@@ -85,19 +85,39 @@ export default class GraphRunner extends SignalEmitter {
 
     const ctx = new GraphContext(context || {});
 
+    const isNewTrace = !!context.__routineExecId;
     const routineExecId = context.__routineExecId ?? uuid();
     context.__routineExecId = routineExecId;
 
     if (!isSubMeta) {
+      const executionTraceId =
+        context.__metadata?.__executionTraceId ??
+        context.__executionTraceId ??
+        uuid();
+      const contextData = ctx.export();
+      if (isNewTrace) {
+        this.emitMetrics("meta.runner.new_trace", {
+          data: {
+            uuid: executionTraceId,
+            issuer_type: "service", // TODO: Add issuer type
+            issuer_id:
+              context.__metadata?.__issuerId ?? context.__issuerId ?? null,
+            issued_at: formatTimestamp(Date.now()),
+            intent: context.__metadata?.__intent ?? context.__intent ?? null,
+            context: contextData,
+            is_meta: isMeta,
+          },
+        });
+      }
+
       this.emitMetrics("meta.runner.added_tasks", {
         data: {
           uuid: routineExecId,
           name: routineName,
           routineVersion,
           isMeta,
-          contractId:
-            context.__metadata?.__contractId ?? context.__contractId ?? null,
-          context: ctx.export(),
+          executionTraceId,
+          context: isNewTrace ? contextData.id : contextData,
           previousRoutineExecution: context.__metadata?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
           created: formatTimestamp(Date.now()),
         },

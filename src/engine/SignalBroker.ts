@@ -104,7 +104,7 @@ export default class SignalBroker {
       "Executes queued signals and clears the stack",
     )
       .doOn("meta.process_signal_queue_requested")
-      .emitsAfter("meta.signal_broker.queue_empty");
+      .emits("meta.signal_broker.queue_empty");
 
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       return {

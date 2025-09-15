@@ -45,7 +45,9 @@ export default class GraphRegistry {
       true,
       false,
       true,
-    ).doOn("meta.task.created");
+    )
+      .doOn("meta.task.created")
+      .emits("meta.graph_registry.task_registered");
 
     // Manual seed register
     this.tasks.set(this.registerTask.name, this.registerTask);
