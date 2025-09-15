@@ -1,3 +1,13 @@
+# [3.0.0](https://github.com/cadenzaio/cadenza/compare/v2.0.0...v3.0.0) (2025-09-15)
+
+
+* BREAKING CHANGE: contractId is now changed to executionTraceId. ([f5b4567](https://github.com/cadenzaio/cadenza/commit/f5b45677e5bbb7db84cc061fe735943f8f8f8ff9))
+
+
+### BREAKING CHANGES
+
+* task.emitsAfter(...) is now called task.emits(...).
+
 # [2.0.0](https://github.com/cadenzaio/cadenza/compare/v1.12.0...v2.0.0) (2025-09-12)
 
 
