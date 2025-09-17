@@ -27,7 +27,7 @@ export default class AsyncGraphLayer extends GraphLayer {
     } = {};
 
     while (this.waitingNodes.length > 0) {
-      const node = this.waitingNodes.pop();
+      const node = this.waitingNodes.shift();
       if (!node) {
         break;
       }
