@@ -167,7 +167,7 @@ export default class SignalBroker {
 
   execute(signal: string, context: AnyObject): boolean {
     const isMeta = signal.startsWith("meta.");
-    const isSubMeta = signal.startsWith("sub_meta.");
+    const isSubMeta = signal.startsWith("sub_meta.") || context.__isSubMeta;
     const isMetric = context.__signalEmission?.isMetric;
 
     if (!isSubMeta && (!isMeta || this.debug)) {
@@ -187,9 +187,9 @@ export default class SignalBroker {
       delete context.__signalEmission;
     }
 
-    if (this.debug && (!isMetric || this.verbose)) {
+    if (this.debug && ((!isMetric && !isSubMeta) || this.verbose)) {
       console.log(
-        `EMITTING signal ${signal} to listeners ${this.signalObservers.get(signal)?.tasks.size ?? 0} with context ${JSON.stringify(context)}`,
+        `EMITTING ${signal} to listeners ${this.signalObservers.get(signal)?.tasks.size ?? 0} with context ${this.verbose ? JSON.stringify(context) : JSON.stringify(context).slice(0, 100)}`,
       );
     }
 
