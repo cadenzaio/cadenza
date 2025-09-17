@@ -1,3 +1,10 @@
+## [3.0.2](https://github.com/cadenzaio/cadenza/compare/v3.0.1...v3.0.2) (2025-09-17)
+
+
+### Bug Fixes
+
+* Fixed nodes being executed in reverse order on every layer. ([737a62f](https://github.com/cadenzaio/cadenza/commit/737a62f94eaad08f94626702888dccc923083c11))
+
 ## [3.0.1](https://github.com/cadenzaio/cadenza/compare/v3.0.0...v3.0.1) (2025-09-17)
 
 
