@@ -1,3 +1,10 @@
+## [3.0.4](https://github.com/cadenzaio/cadenza/compare/v3.0.3...v3.0.4) (2025-09-18)
+
+
+### Bug Fixes
+
+* Fixed signals being emitted event if task returns false or undefined. ([db691b7](https://github.com/cadenzaio/cadenza/commit/db691b70d387553a2f7a4e39483342a1dcce1256))
+
 ## [3.0.3](https://github.com/cadenzaio/cadenza/compare/v3.0.2...v3.0.3) (2025-09-18)
 
 
