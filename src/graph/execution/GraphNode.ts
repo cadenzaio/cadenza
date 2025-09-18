@@ -378,7 +378,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       };
     }
 
-    this.emit(signal, data);
+    this.emitMetrics(signal, data);
   }
 
   emitMetricsWithMetadata(signal: string, ctx: AnyObject) {
