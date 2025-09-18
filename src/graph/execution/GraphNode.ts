@@ -378,7 +378,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       };
     }
 
-    this.emitMetrics(signal, data);
+    this.emit(signal, data);
   }
 
   emitMetricsWithMetadata(signal: string, ctx: AnyObject) {
@@ -462,7 +462,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.task.mapOnFailSignals((signal: string) =>
         this.emitWithMetadata(signal, this.context.getFullContext()),
       );
-    } else {
+    } else if (this.result !== undefined && this.result !== false) {
       this.task.mapSignals((signal: string) =>
         this.emitWithMetadata(signal, this.context.getFullContext()),
       );
