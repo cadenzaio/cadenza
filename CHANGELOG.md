@@ -1,3 +1,10 @@
+## [3.0.3](https://github.com/cadenzaio/cadenza/compare/v3.0.2...v3.0.3) (2025-09-18)
+
+
+### Bug Fixes
+
+* Fixed signals being emitted in meta tasks. ([d4992a7](https://github.com/cadenzaio/cadenza/commit/d4992a7761d114df0d5ce17a7e2bd872545b31b2))
+
 ## [3.0.2](https://github.com/cadenzaio/cadenza/compare/v3.0.1...v3.0.2) (2025-09-17)
 
 
