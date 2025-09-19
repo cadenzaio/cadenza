@@ -1,3 +1,10 @@
+## [3.0.10](https://github.com/cadenzaio/cadenza/compare/v3.0.9...v3.0.10) (2025-09-19)
+
+
+### Bug Fixes
+
+* Fixed bug getting tasks and routines. ([e43842b](https://github.com/cadenzaio/cadenza/commit/e43842b3cf40a975abf0af2da3375bdb33be12c8))
+
 ## [3.0.9](https://github.com/cadenzaio/cadenza/compare/v3.0.8...v3.0.9) (2025-09-19)
 
 
