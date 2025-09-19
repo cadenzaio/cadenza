@@ -1,3 +1,10 @@
+## [3.0.8](https://github.com/cadenzaio/cadenza/compare/v3.0.7...v3.0.8) (2025-09-19)
+
+
+### Bug Fixes
+
+* Fixed bug with async retry. ([992a291](https://github.com/cadenzaio/cadenza/commit/992a291e2d16b83449388d4b5ab2d20519195525))
+
 ## [3.0.7](https://github.com/cadenzaio/cadenza/compare/v3.0.6...v3.0.7) (2025-09-19)
 
 
