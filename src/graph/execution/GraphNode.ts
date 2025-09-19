@@ -321,6 +321,19 @@ export default class GraphNode extends SignalEmitter implements Graph {
   async workAsync() {
     try {
       this.result = await this.result;
+      if (
+        typeof this.result === "object" &&
+        (this.result.hasOwnProperty("errored") ||
+          this.result.hasOwnProperty("failed"))
+      ) {
+        const result = await this.retryAsync(this.result);
+        if (
+          typeof result === "object" &&
+          (result.hasOwnProperty("errored") || result.hasOwnProperty("failed"))
+        ) {
+          this.onError(result.error);
+        }
+      }
     } catch (e: unknown) {
       const result = await this.retryAsync(e);
       if (result === e) {
