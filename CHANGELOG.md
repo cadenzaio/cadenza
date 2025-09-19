@@ -1,3 +1,10 @@
+## [3.0.7](https://github.com/cadenzaio/cadenza/compare/v3.0.6...v3.0.7) (2025-09-19)
+
+
+### Bug Fixes
+
+* Improved execution trace handling. ([02c4265](https://github.com/cadenzaio/cadenza/commit/02c4265b29bbc5aecdce4ff8eea17f1e2e4a75c4))
+
 ## [3.0.6](https://github.com/cadenzaio/cadenza/compare/v3.0.5...v3.0.6) (2025-09-19)
 
 
