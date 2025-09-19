@@ -148,8 +148,8 @@ export default class Task extends SignalEmitter implements Graph {
           isMeta: this.isMeta,
           validateInputContext: this.validateInputContext,
           validateOutputContext: this.validateOutputContext,
-          inputContextSchema: this.inputContextSchema,
-          outputContextSchema: this.outputContextSchema,
+          // inputContextSchemaId: this.inputContextSchema,
+          // outputContextSchemaId: this.outputContextSchema,
         },
         __taskInstance: this,
       });
