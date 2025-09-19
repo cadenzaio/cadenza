@@ -373,8 +373,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
         taskVersion: this.task.version,
         taskExecutionId: this.id,
       };
+      const context = this.context.getMetadata();
       data.__metadata = {
         __routineExecId: this.routineExecId,
+        __executionTraceId:
+          context.__metadata?.__executionTraceId ?? context.__executionTraceId,
       };
     }
 
@@ -390,8 +393,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
         taskExecutionId: this.id,
         isMetric: true,
       };
+      const context = this.context.getMetadata();
       data.__metadata = {
         __routineExecId: this.routineExecId,
+        __executionTraceId:
+          context.__metadata?.__executionTraceId ?? context.__executionTraceId,
       };
     }
 

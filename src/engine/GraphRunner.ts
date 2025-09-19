@@ -107,6 +107,9 @@ export default class GraphRunner extends SignalEmitter {
             context: contextData,
             is_meta: isMeta,
           },
+          __metadata: {
+            __executionTraceId: executionTraceId,
+          },
         });
       }
 
@@ -120,6 +123,9 @@ export default class GraphRunner extends SignalEmitter {
           context: isNewTrace ? contextData.id : contextData,
           previousRoutineExecution: context.__metadata?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
           created: formatTimestamp(Date.now()),
+        },
+        __metadata: {
+          __executionTraceId: executionTraceId,
         },
       });
     }
