@@ -83,7 +83,7 @@ export default class GraphRegistry {
             return { ...context, __task: task };
           }
         }
-        return context;
+        return false;
       },
       "Gets task by name (first match).",
     );
@@ -149,7 +149,7 @@ export default class GraphRegistry {
             return { ...context, __routine: routine };
           }
         }
-        return context;
+        return false;
       },
       "Gets routine by name.",
     );
