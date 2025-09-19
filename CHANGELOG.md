@@ -1,3 +1,10 @@
+## [3.0.6](https://github.com/cadenzaio/cadenza/compare/v3.0.5...v3.0.6) (2025-09-19)
+
+
+### Bug Fixes
+
+* Added executionTraceId to emissions. ([31e9a01](https://github.com/cadenzaio/cadenza/commit/31e9a013f781b472f7e95b21da0f05d488a011d8))
+
 ## [3.0.5](https://github.com/cadenzaio/cadenza/compare/v3.0.4...v3.0.5) (2025-09-19)
 
 
