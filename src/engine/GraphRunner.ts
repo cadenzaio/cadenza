@@ -83,17 +83,24 @@ export default class GraphRunner extends SignalEmitter {
       allTasks.some((t) => t.isSubMeta) || !!context.__isSubMeta;
     context.__isSubMeta = isSubMeta;
 
-    const ctx = new GraphContext(context || {});
+    const isNewTrace =
+      !context.__routineExecId &&
+      !context.__metadata?.__executionTraceId &&
+      !context.__executionTraceId;
 
-    const isNewTrace = !!context.__routineExecId;
+    const executionTraceId =
+      context.__metadata?.__executionTraceId ??
+      context.__executionTraceId ??
+      uuid();
+
+    context.__executionTraceId = executionTraceId;
+
     const routineExecId = context.__routineExecId ?? uuid();
     context.__routineExecId = routineExecId;
 
+    const ctx = new GraphContext(context || {});
+
     if (!isSubMeta) {
-      const executionTraceId =
-        context.__metadata?.__executionTraceId ??
-        context.__executionTraceId ??
-        uuid();
       const contextData = ctx.export();
       if (isNewTrace) {
         this.emitMetrics("meta.runner.new_trace", {
