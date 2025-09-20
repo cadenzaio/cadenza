@@ -1,3 +1,10 @@
+## [3.0.13](https://github.com/cadenzaio/cadenza/compare/v3.0.12...v3.0.13) (2025-09-20)
+
+
+### Bug Fixes
+
+* Fixed issue with passing real instances in a context object. ([d48d7a5](https://github.com/cadenzaio/cadenza/commit/d48d7a5f13e2c47d51d37568154f1f4bc7c58072))
+
 ## [3.0.12](https://github.com/cadenzaio/cadenza/compare/v3.0.11...v3.0.12) (2025-09-20)
 
 
