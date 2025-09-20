@@ -1,3 +1,10 @@
+## [3.0.12](https://github.com/cadenzaio/cadenza/compare/v3.0.11...v3.0.12) (2025-09-20)
+
+
+### Bug Fixes
+
+* More debugging ([49a478b](https://github.com/cadenzaio/cadenza/commit/49a478b21de5fcb4caee10648511fd2fddb346d7))
+
 ## [3.0.11](https://github.com/cadenzaio/cadenza/compare/v3.0.10...v3.0.11) (2025-09-20)
 
 
