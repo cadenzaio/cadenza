@@ -617,7 +617,7 @@ export default class Task extends SignalEmitter implements Graph {
       this.observedSignals.add(signal);
       this.emitWithMetadata("meta.task.observed_signal", {
         data: {
-          signalName: signal,
+          signalName: signal.split(":")[0],
           taskName: this.name,
           taskVersion: this.version,
         },
@@ -637,7 +637,7 @@ export default class Task extends SignalEmitter implements Graph {
       this.emitsSignals.add(signal);
       this.emitWithMetadata("meta.task.attached_signal", {
         data: {
-          signalName: signal,
+          signalName: signal.split(":")[0],
           taskName: this.name,
           taskVersion: this.version,
         },

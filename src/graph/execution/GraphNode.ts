@@ -273,6 +273,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
     });
 
     if (this.graphDone()) {
+      this.emitWithMetadata(
+        `meta.node.graph_completed:${this.routineExecId}`,
+        context,
+      );
+
       // TODO Reminder, Service registry should be listening to this event, (updateSelf)
       this.emitMetricsWithMetadata(
         `meta.node.ended_routine_execution:${this.routineExecId}`,
