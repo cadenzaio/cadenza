@@ -58,6 +58,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.splitGroupId = routineExecId;
     this.debug = debug;
     this.verbose = verbose;
+
+    if (!this.task || !this.task.validateInput) {
+      console.log("task not found", this.task, this.context);
+    }
   }
 
   setDebug(value: boolean) {
