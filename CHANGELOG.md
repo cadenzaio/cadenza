@@ -1,3 +1,10 @@
+## [3.0.14](https://github.com/cadenzaio/cadenza/compare/v3.0.13...v3.0.14) (2025-09-20)
+
+
+### Bug Fixes
+
+* Added graph completed signal for delegation resolution. ([045ec55](https://github.com/cadenzaio/cadenza/commit/045ec55b3e3bc7bcf7337b1a6ec08ae7a48ea3d7))
+
 ## [3.0.13](https://github.com/cadenzaio/cadenza/compare/v3.0.12...v3.0.13) (2025-09-20)
 
 
