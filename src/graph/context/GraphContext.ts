@@ -12,7 +12,7 @@ export default class GraphContext {
     if (Array.isArray(context)) {
       throw new Error("Array contexts not supported"); // Per clarification
     }
-    this.fullContext = context; // Clone once
+    this.fullContext = context;
     this.userData = Object.fromEntries(
       Object.entries(this.fullContext).filter(([key]) => !key.startsWith("__")),
     );

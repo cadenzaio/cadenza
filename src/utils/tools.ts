@@ -26,6 +26,16 @@ export function deepCloneFilter<T>(
     const { source, target, key } = stack.pop()!;
     const currentTarget = key !== undefined ? target[key] : target;
 
+    if (
+      key === "__taskInstance" ||
+      key === "__routineInstance" ||
+      key === "__task" ||
+      key === "__routine"
+    ) {
+      target[key] = source;
+      continue;
+    }
+
     for (const [k, value] of Object.entries(source)) {
       if (filterOut(k)) continue;
 
