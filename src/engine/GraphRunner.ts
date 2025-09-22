@@ -216,6 +216,10 @@ export default class GraphRunner extends SignalEmitter {
   startRun(context: AnyObject): boolean {
     if (context.__task || context.__routine) {
       const routine = context.__task ?? context.__routine;
+      delete context.__task;
+      delete context.__routine;
+      context.__routineExecId = context.__metadata?.__deputyExecId ?? null;
+      context.__isDeputy = true;
       this.run(routine, context);
       return true;
     } else {
