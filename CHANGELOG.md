@@ -1,3 +1,10 @@
+## [3.0.20](https://github.com/cadenzaio/cadenza/compare/v3.0.19...v3.0.20) (2025-09-22)
+
+
+### Bug Fixes
+
+* Logging for delegation debug. ([d03c518](https://github.com/cadenzaio/cadenza/commit/d03c5182ee4b98c45b4eb495b50e2be269cfe046))
+
 ## [3.0.19](https://github.com/cadenzaio/cadenza/compare/v3.0.18...v3.0.19) (2025-09-22)
 
 
