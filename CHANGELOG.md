@@ -1,3 +1,10 @@
+## [3.0.21](https://github.com/cadenzaio/cadenza/compare/v3.0.20...v3.0.21) (2025-09-22)
+
+
+### Bug Fixes
+
+* Sub meta tasks not being registered. ([516c760](https://github.com/cadenzaio/cadenza/commit/516c760306392ed215d44b6a1a43ce94702fff4e))
+
 ## [3.0.20](https://github.com/cadenzaio/cadenza/compare/v3.0.19...v3.0.20) (2025-09-22)
 
 
