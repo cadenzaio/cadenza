@@ -124,7 +124,7 @@ export default class Task extends SignalEmitter implements Graph {
       this.throttled = true;
     }
 
-    if (register && !this.isHidden && !this.isSubMeta) {
+    if (register && !this.isHidden) {
       const { __functionString, __getTagCallback } = this.export();
       this.emitWithMetadata("meta.task.created", {
         data: {
@@ -152,6 +152,7 @@ export default class Task extends SignalEmitter implements Graph {
           // outputContextSchemaId: this.outputContextSchema,
         },
         __taskInstance: this,
+        __isSubMeta: this.isSubMeta,
       });
     }
   }
