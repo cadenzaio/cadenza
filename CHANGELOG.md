@@ -1,3 +1,10 @@
+## [3.0.16](https://github.com/cadenzaio/cadenza/compare/v3.0.15...v3.0.16) (2025-09-22)
+
+
+### Bug Fixes
+
+* Fixed graph done emission. ([1102c81](https://github.com/cadenzaio/cadenza/commit/1102c819ceb73e4e797d91c588fac21c3c5b5ad2))
+
 ## [3.0.15](https://github.com/cadenzaio/cadenza/compare/v3.0.14...v3.0.15) (2025-09-22)
 
 
