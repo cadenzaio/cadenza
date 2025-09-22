@@ -154,7 +154,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
           executionTraceId:
             context.__executionTraceId ??
             context.__metadata?.__executionTraceId,
-          context: this.context.export(),
+          context:
+            this.previousNodes.length === 0
+              ? this.context.id
+              : this.context.export(),
           taskName: this.task.name,
           taskVersion: this.task.version,
           isMeta: this.isMeta(),
@@ -262,7 +265,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       data: {
         isRunning: false,
         isComplete: true,
-        resultContext: this.context.export(),
+        resultContext: this.context.export(), //TODO: this needs processing
         errored: this.errored,
         failed: this.failed,
         errorMessage: context.__error,
