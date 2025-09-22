@@ -1,3 +1,10 @@
+## [3.0.17](https://github.com/cadenzaio/cadenza/compare/v3.0.16...v3.0.17) (2025-09-22)
+
+
+### Bug Fixes
+
+* Minor bug fix. ([a480659](https://github.com/cadenzaio/cadenza/commit/a480659c477dc8bbb96ea8a3fd8e48b0bd9ebc6c))
+
 ## [3.0.16](https://github.com/cadenzaio/cadenza/compare/v3.0.15...v3.0.16) (2025-09-22)
 
 
