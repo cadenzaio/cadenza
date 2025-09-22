@@ -172,7 +172,6 @@ export default class GraphNode extends SignalEmitter implements Graph {
           data: {
             taskExecutionId: this.id,
             previousTaskExecutionId: node.id,
-            executionCount: "increment",
           },
           filter: {
             taskName: this.task.name,
