@@ -264,7 +264,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       data: {
         isRunning: false,
         isComplete: true,
-        resultContext: this.context.export(), //TODO: this needs processing
+        resultContext: this.context.export(),
         errored: this.errored,
         failed: this.failed,
         errorMessage: context.__error,
@@ -287,7 +287,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         data: {
           isRunning: false,
           isComplete: true,
-          resultContext: context,
+          resultContext: this.context.id,
           progress: 1.0,
           ended: formatTimestamp(end),
         },
