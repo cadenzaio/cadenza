@@ -1,3 +1,10 @@
+## [3.0.15](https://github.com/cadenzaio/cadenza/compare/v3.0.14...v3.0.15) (2025-09-22)
+
+
+### Bug Fixes
+
+* Fixed issues with some node metrics emissions. ([38eb553](https://github.com/cadenzaio/cadenza/commit/38eb553ab329cba5eb5dd698e2857615f915863f))
+
 ## [3.0.14](https://github.com/cadenzaio/cadenza/compare/v3.0.13...v3.0.14) (2025-09-20)
 
 
