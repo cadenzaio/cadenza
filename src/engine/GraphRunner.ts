@@ -213,7 +213,11 @@ export default class GraphRunner extends SignalEmitter {
     }
   }
 
-  startRun(context: AnyObject): boolean {
+  startRun(
+    context: AnyObject,
+    emit: (signal: string, ctx: AnyObject) => void,
+  ): boolean {
+    console.log("START RUN", context);
     if (context.__task || context.__routine) {
       const routine = context.__task ?? context.__routine;
       delete context.__task;
@@ -225,6 +229,7 @@ export default class GraphRunner extends SignalEmitter {
     } else {
       context.errored = true;
       context.__error = "No routine or task defined.";
+      emit("meta.runner.failed", context);
       return false;
     }
   }
