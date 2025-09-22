@@ -176,8 +176,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
           filter: {
             taskName: this.task.name,
             taskVersion: this.task.version,
-            previousTaskName: node.task.name,
-            previousTaskVersion: node.task.version,
+            predecessorTaskName: node.task.name,
+            predecessorTaskVersion: node.task.version,
           },
         });
       });
@@ -401,6 +401,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       };
       const context = this.context.getMetadata();
       data.__metadata = {
+        ...data.__metadata,
         __routineExecId: this.routineExecId,
         __executionTraceId:
           context.__metadata?.__executionTraceId ?? context.__executionTraceId,
@@ -421,6 +422,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       };
       const context = this.context.getMetadata();
       data.__metadata = {
+        ...data.__metadata,
         __routineExecId: this.routineExecId,
         __executionTraceId:
           context.__metadata?.__executionTraceId ?? context.__executionTraceId,
