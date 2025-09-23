@@ -27,10 +27,14 @@ export function deepCloneFilter<T>(
     const currentTarget = key !== undefined ? target[key] : target;
 
     if (
+      // TODO Should probably not be done like this...
       key === "__taskInstance" ||
       key === "__routineInstance" ||
       key === "__task" ||
-      key === "__routine"
+      key === "__routine" ||
+      key === "__httpServer" ||
+      key === "__httpsServer" ||
+      key === "__socketServer"
     ) {
       target[key] = source;
       continue;
