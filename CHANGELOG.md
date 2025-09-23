@@ -1,3 +1,10 @@
+## [3.0.23](https://github.com/cadenzaio/cadenza/compare/v3.0.22...v3.0.23) (2025-09-23)
+
+
+### Bug Fixes
+
+* disabling cloning of important objects. ([08d8bf1](https://github.com/cadenzaio/cadenza/commit/08d8bf14c94ff8dcc2191e32061a3aecfdb96e7f))
+
 ## [3.0.22](https://github.com/cadenzaio/cadenza/compare/v3.0.21...v3.0.22) (2025-09-22)
 
 
