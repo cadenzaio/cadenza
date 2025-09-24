@@ -1,3 +1,10 @@
+## [3.0.24](https://github.com/cadenzaio/cadenza/compare/v3.0.23...v3.0.24) (2025-09-24)
+
+
+### Bug Fixes
+
+* log issue for circular contexts. ([b15c293](https://github.com/cadenzaio/cadenza/commit/b15c2932c9b09ec58a189018cad8c8089db5e602))
+
 ## [3.0.23](https://github.com/cadenzaio/cadenza/compare/v3.0.22...v3.0.23) (2025-09-23)
 
 
