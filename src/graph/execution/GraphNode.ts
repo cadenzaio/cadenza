@@ -831,10 +831,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   public log() {
-    console.log(
-      "Node EXECUTION:",
-      this.task.name,
-      JSON.stringify(this.context.getFullContext()),
-    );
+    try {
+      console.log(
+        "Node EXECUTION:",
+        this.task.name,
+        JSON.stringify(this.context.getFullContext()),
+      );
+    } catch (e) {
+      console.log("Node EXECUTION:", this.task.name, "[circular context]");
+    }
   }
 }
