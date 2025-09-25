@@ -80,7 +80,6 @@ export default class GraphRegistry {
         const { __name } = context;
         for (const task of this.tasks.values()) {
           if (task.name === __name) {
-            console.log("TASK FOUND", task.name);
             return { ...context, __task: task };
           }
         }

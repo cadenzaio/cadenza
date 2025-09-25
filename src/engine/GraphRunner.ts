@@ -217,7 +217,6 @@ export default class GraphRunner extends SignalEmitter {
     context: AnyObject,
     emit: (signal: string, ctx: AnyObject) => void,
   ): boolean {
-    console.log("START RUN", context);
     if (context.__task || context.__routine) {
       const routine = context.__task ?? context.__routine;
       delete context.__task;
