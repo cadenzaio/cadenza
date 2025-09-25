@@ -1,3 +1,10 @@
+## [3.0.26](https://github.com/cadenzaio/cadenza/compare/v3.0.25...v3.0.26) (2025-09-25)
+
+
+### Bug Fixes
+
+* signal and task maps data. ([51b11f4](https://github.com/cadenzaio/cadenza/commit/51b11f4f5bba951cf802cef39030391d809b28ac))
+
 ## [3.0.25](https://github.com/cadenzaio/cadenza/compare/v3.0.24...v3.0.25) (2025-09-25)
 
 
