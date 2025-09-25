@@ -664,25 +664,6 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Unsubscribes from all observed signals.
-   * @returns This for chaining.
-   */
-  unsubscribeAll(): this {
-    this.observedSignals.forEach((signal) => {
-      Cadenza.broker.unsubscribe(signal, this as any);
-      this.emitWithMetadata("meta.task.unsubscribed_signal", {
-        filter: {
-          signalName: signal,
-          taskName: this.name,
-          taskVersion: this.version,
-        },
-      });
-    });
-    this.observedSignals.clear();
-    return this;
-  }
-
-  /**
    * Unsubscribes from specific signals.
    * @param signals The signals.
    * @returns This for chaining.
@@ -693,6 +674,8 @@ export default class Task extends SignalEmitter implements Graph {
       if (this.observedSignals.has(signal)) {
         Cadenza.broker.unsubscribe(signal, this as any);
         this.observedSignals.delete(signal);
+
+        signal = signal.split(":")[0];
         this.emitWithMetadata("meta.task.unsubscribed_signal", {
           filter: {
             signalName: signal,
@@ -706,6 +689,16 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
+   * Unsubscribes from all observed signals.
+   * @returns This for chaining.
+   */
+  unsubscribeAll(): this {
+    this.unsubscribe(...this.observedSignals);
+    this.observedSignals.clear();
+    return this;
+  }
+
+  /**
    * Detaches specific emitted signals.
    * @param signals The signals.
    * @returns This for chaining.
@@ -713,6 +706,7 @@ export default class Task extends SignalEmitter implements Graph {
   detachSignals(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitAfter.delete(signal);
+      signal = signal.split(":")[0];
       this.emitWithMetadata("meta.task.detached_signal", {
         filter: {
           signalName: signal,
@@ -729,15 +723,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @returns This for chaining.
    */
   detachAllSignals(): this {
-    this.signalsToEmitAfter.forEach((signal) => {
-      this.emitWithMetadata("meta.task.detached_signal", {
-        filter: {
-          signalName: signal,
-          taskName: this.name,
-          taskVersion: this.version,
-        },
-      });
-    });
+    this.detachSignals(...this.signalsToEmitAfter);
     this.signalsToEmitAfter.clear();
     return this;
   }
