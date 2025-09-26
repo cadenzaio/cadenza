@@ -1,3 +1,10 @@
+# [3.1.0](https://github.com/cadenzaio/cadenza/compare/v3.0.26...v3.1.0) (2025-09-26)
+
+
+### Features
+
+* If register is false on task, ignore all registration signals. ([219f950](https://github.com/cadenzaio/cadenza/commit/219f950231ab0eb596c511b0e83bd90269a630c7))
+
 ## [3.0.26](https://github.com/cadenzaio/cadenza/compare/v3.0.25...v3.0.26) (2025-09-25)
 
 
