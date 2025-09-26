@@ -1,3 +1,10 @@
+## [3.1.1](https://github.com/cadenzaio/cadenza/compare/v3.1.0...v3.1.1) (2025-09-26)
+
+
+### Bug Fixes
+
+* signal name error. ([50310f3](https://github.com/cadenzaio/cadenza/commit/50310f305a90c7295b810ca1a60be859ac2d0d12))
+
 # [3.1.0](https://github.com/cadenzaio/cadenza/compare/v3.0.26...v3.1.0) (2025-09-26)
 
 
