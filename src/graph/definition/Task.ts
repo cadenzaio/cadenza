@@ -404,7 +404,7 @@ export default class Task extends SignalEmitter implements Graph {
         this.outputContextSchema,
       );
       if (!validationResult.valid) {
-        this.emitWithMetadata("meta.task.outputValidationFailed", {
+        this.emitWithMetadata("meta.task.output_validation_failed", {
           __taskName: this.name,
           __taskVersion: this.version,
           __result: context,
