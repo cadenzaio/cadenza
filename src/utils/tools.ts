@@ -32,6 +32,8 @@ export function deepCloneFilter<T>(
       key === "__routineInstance" ||
       key === "__task" ||
       key === "__routine" ||
+      key === "__tasks" ||
+      key === "__routines" ||
       key === "__httpServer" ||
       key === "__httpsServer" ||
       key === "__socketServer"

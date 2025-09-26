@@ -57,6 +57,7 @@ export default class SignalBroker {
   runner: GraphRunner | undefined;
   metaRunner: GraphRunner | undefined;
 
+  public clearSignalsTask: Task | undefined;
   public getSignalsTask: Task | undefined;
 
   signalObservers: Map<
@@ -88,7 +89,7 @@ export default class SignalBroker {
   }
 
   init() {
-    Cadenza.createMetaTask(
+    this.clearSignalsTask = Cadenza.createDebounceMetaTask(
       "Execute and clear queued signals",
       () => {
         for (const [id, signals] of this.emitStacks.entries()) {

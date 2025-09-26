@@ -148,6 +148,7 @@ export default class Task extends SignalEmitter implements Graph {
           isDebounce: this.isDebounce,
           isEphemeral: this.isEphemeral,
           isMeta: this.isMeta,
+          isSubMeta: this.isSubMeta,
           validateInputContext: this.validateInputContext,
           validateOutputContext: this.validateOutputContext,
           // inputContextSchemaId: this.inputContextSchema,
@@ -746,6 +747,10 @@ export default class Task extends SignalEmitter implements Graph {
 
   mapOnFailSignals(callback: (signal: string) => void) {
     return Array.from(this.signalsToEmitOnFail).map(callback);
+  }
+
+  mapObservedSignals(callback: (signal: string) => void) {
+    return Array.from(this.observedSignals).map(callback);
   }
 
   /**

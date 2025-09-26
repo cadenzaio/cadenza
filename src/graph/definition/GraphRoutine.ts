@@ -32,14 +32,21 @@ export default class GraphRoutine extends SignalEmitter {
     });
     tasks.forEach((t) => {
       this.tasks.add(t);
-      this.emit("meta.routine.task_added", {
-        data: {
-          taskName: t.name,
-          taskVersion: t.version,
-          routineName: this.name,
-          routineVersion: this.version,
-        },
-      });
+
+      const tasks = t.getIterator();
+
+      while (tasks.hasNext()) {
+        const task = tasks.next();
+        if (!task) break;
+        this.emit("meta.routine.task_added", {
+          data: {
+            taskName: task.name,
+            taskVersion: task.version,
+            routineName: this.name,
+            routineVersion: this.version,
+          },
+        });
+      }
     });
   }
 
