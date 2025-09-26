@@ -48,6 +48,7 @@ export default class Task extends SignalEmitter implements Graph {
   onFailTasks: Set<Task> = new Set();
   predecessorTasks: Set<Task> = new Set();
   destroyed: boolean = false;
+  register: boolean = true;
 
   emitsSignals: Set<string> = new Set();
   signalsToEmitAfter: Set<string> = new Set();
@@ -118,6 +119,7 @@ export default class Task extends SignalEmitter implements Graph {
     this.retryDelay = retryDelay;
     this.retryDelayMax = retryDelayMax;
     this.retryDelayFactor = retryDelayFactor;
+    this.register = register;
 
     if (getTagCallback) {
       this.getTag = (context?: AnyObject) => getTagCallback(context, this);
@@ -616,13 +618,15 @@ export default class Task extends SignalEmitter implements Graph {
       if (this.observedSignals.has(signal)) return;
       Cadenza.broker.observe(signal, this as any);
       this.observedSignals.add(signal);
-      this.emitWithMetadata("meta.task.observed_signal", {
-        data: {
-          signalName: signal.split(":")[0],
-          taskName: this.name,
-          taskVersion: this.version,
-        },
-      });
+      if (this.register) {
+        this.emitWithMetadata("meta.task.observed_signal", {
+          data: {
+            signalName: signal.split(":")[0],
+            taskName: this.name,
+            taskVersion: this.version,
+          },
+        });
+      }
     });
     return this;
   }
@@ -636,13 +640,15 @@ export default class Task extends SignalEmitter implements Graph {
     signals.forEach((signal) => {
       this.signalsToEmitAfter.add(signal);
       this.emitsSignals.add(signal);
-      this.emitWithMetadata("meta.task.attached_signal", {
-        data: {
-          signalName: signal.split(":")[0],
-          taskName: this.name,
-          taskVersion: this.version,
-        },
-      });
+      if (this.register) {
+        this.emitWithMetadata("meta.task.attached_signal", {
+          data: {
+            signalName: signal.split(":")[0],
+            taskName: this.name,
+            taskVersion: this.version,
+          },
+        });
+      }
     });
     return this;
   }
@@ -651,14 +657,16 @@ export default class Task extends SignalEmitter implements Graph {
     signals.forEach((signal) => {
       this.signalsToEmitOnFail.add(signal);
       this.emitsSignals.add(signal);
-      this.emitWithMetadata("meta.task.attached_signal", {
-        data: {
-          signalName: signal,
-          taskName: this.name,
-          taskVersion: this.version,
-          isOnFail: true,
-        },
-      });
+      if (this.register) {
+        this.emitWithMetadata("meta.task.attached_signal", {
+          data: {
+            signalName: signal,
+            taskName: this.name,
+            taskVersion: this.version,
+            isOnFail: true,
+          },
+        });
+      }
     });
     return this;
   }
@@ -675,14 +683,16 @@ export default class Task extends SignalEmitter implements Graph {
         Cadenza.broker.unsubscribe(signal, this as any);
         this.observedSignals.delete(signal);
 
-        signal = signal.split(":")[0];
-        this.emitWithMetadata("meta.task.unsubscribed_signal", {
-          filter: {
-            signalName: signal,
-            taskName: this.name,
-            taskVersion: this.version,
-          },
-        });
+        if (this.register) {
+          signal = signal.split(":")[0];
+          this.emitWithMetadata("meta.task.unsubscribed_signal", {
+            filter: {
+              signalName: signal,
+              taskName: this.name,
+              taskVersion: this.version,
+            },
+          });
+        }
       }
     });
     return this;
@@ -706,14 +716,16 @@ export default class Task extends SignalEmitter implements Graph {
   detachSignals(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitAfter.delete(signal);
-      signal = signal.split(":")[0];
-      this.emitWithMetadata("meta.task.detached_signal", {
-        filter: {
-          signalName: signal,
-          taskName: this.name,
-          taskVersion: this.version,
-        },
-      });
+      if (this.register) {
+        signal = signal.split(":")[0];
+        this.emitWithMetadata("meta.task.detached_signal", {
+          filter: {
+            signalName: signal,
+            taskName: this.name,
+            taskVersion: this.version,
+          },
+        });
+      }
     });
     return this;
   }
@@ -772,10 +784,12 @@ export default class Task extends SignalEmitter implements Graph {
 
     this.destroyed = true;
 
-    this.emitMetricsWithMetadata("meta.task.destroyed", {
-      data: { deleted: true },
-      filter: { name: this.name, version: this.version },
-    });
+    if (this.register) {
+      this.emitMetricsWithMetadata("meta.task.destroyed", {
+        data: { deleted: true },
+        filter: { name: this.name, version: this.version },
+      });
+    }
 
     // TODO: Delete task map instances
   }
