@@ -1,3 +1,10 @@
+## [3.1.3](https://github.com/cadenzaio/cadenza/compare/v3.1.2...v3.1.3) (2025-09-28)
+
+
+### Bug Fixes
+
+* improved meta detection. ([6095608](https://github.com/cadenzaio/cadenza/commit/609560876593fd1f3fec7cbb792d87c9197a33d3))
+
 ## [3.1.2](https://github.com/cadenzaio/cadenza/compare/v3.1.1...v3.1.2) (2025-09-26)
 
 
