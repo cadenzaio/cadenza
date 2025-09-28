@@ -167,14 +167,14 @@ export default class SignalBroker {
   }
 
   execute(signal: string, context: AnyObject): boolean {
-    const isMeta = signal.startsWith("meta.");
-    const isSubMeta = signal.startsWith("sub_meta.") || context.__isSubMeta;
+    const isMeta = signal.includes("meta.");
+    const isSubMeta = signal.includes("sub_meta.") || context.__isSubMeta;
     const isMetric = context.__signalEmission?.isMetric;
 
     if (!isSubMeta && (!isMeta || this.debug)) {
       const emittedAt = Date.now();
       context.__signalEmission = {
-        ...context.__signalEmission,
+        ...(context.__signalEmission ?? {}),
         signalName: signal,
         emittedAt: formatTimestamp(emittedAt),
         consumed: false,
