@@ -1,3 +1,10 @@
+## [3.1.4](https://github.com/cadenzaio/cadenza/compare/v3.1.3...v3.1.4) (2025-09-30)
+
+
+### Bug Fixes
+
+* error on error node error handling. ([e6147e5](https://github.com/cadenzaio/cadenza/commit/e6147e5cde105b98f85e0d7b3655d4262d376053))
+
 ## [3.1.3](https://github.com/cadenzaio/cadenza/compare/v3.1.2...v3.1.3) (2025-09-28)
 
 
