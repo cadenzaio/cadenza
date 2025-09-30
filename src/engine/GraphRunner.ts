@@ -128,7 +128,10 @@ export default class GraphRunner extends SignalEmitter {
           isMeta,
           executionTraceId,
           context: isNewTrace ? contextData.id : contextData,
-          previousRoutineExecution: context.__metadata?.__routineExecId ?? null, // TODO: There is a chance this is not added to the database yet...
+          previousRoutineExecution:
+            context.__localRoutineExecId ??
+            context.__metadata?.__routineExecId ??
+            null, // TODO: There is a chance this is not added to the database yet...
           created: formatTimestamp(Date.now()),
         },
         __metadata: {
@@ -213,6 +216,7 @@ export default class GraphRunner extends SignalEmitter {
     }
   }
 
+  // TODO This should not live here. This is deputy related.
   startRun(
     context: AnyObject,
     emit: (signal: string, ctx: AnyObject) => void,
