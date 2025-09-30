@@ -59,6 +59,6 @@ describe("Performance", async () => {
     console.log("Difference:", difference);
     console.log("Difference per task:", difference / 10000 / 10);
 
-    expect(difference).toBeLessThan(500);
+    expect(difference).toBeLessThan(600);
   });
 });

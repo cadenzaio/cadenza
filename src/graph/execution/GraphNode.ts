@@ -370,7 +370,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         this.onProgress.bind(this),
       );
 
-      if ((result as any).errored || (result as any).failed) {
+      if ((result as any)?.errored || (result as any)?.failed) {
         return this.retry(result);
       }
 
@@ -508,6 +508,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       __error: `Node error: ${error}`,
       __retries: this.retries,
       error: `Node error: ${error}`,
+      errored: true,
       returnedValue: this.result,
       ...errorData,
     };
