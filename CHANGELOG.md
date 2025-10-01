@@ -1,3 +1,10 @@
+## [3.1.5](https://github.com/cadenzaio/cadenza/compare/v3.1.4...v3.1.5) (2025-09-30)
+
+
+### Bug Fixes
+
+* error with previousRoutineExecution. ([9e0d638](https://github.com/cadenzaio/cadenza/commit/9e0d6381b727abe32c976d95251b197ebd17c945))
+
 ## [3.1.4](https://github.com/cadenzaio/cadenza/compare/v3.1.3...v3.1.4) (2025-09-30)
 
 
