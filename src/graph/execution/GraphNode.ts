@@ -758,8 +758,6 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   public destroy() {
-    console.log("Destroyed node", this.task.name, this.context);
-
     // @ts-ignore
     this.context = null;
     // @ts-ignore

@@ -796,8 +796,6 @@ export default class Task extends SignalEmitter implements Graph {
       });
     }
 
-    console.log("Task destroyed", this.name);
-
     // TODO: Delete task map instances
   }
 
