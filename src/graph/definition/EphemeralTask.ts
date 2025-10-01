@@ -69,7 +69,8 @@ export default class EphemeralTask extends Task {
 
     if (this.once || this.condition(result)) {
       this.destroy();
-      return result;
     }
+
+    return result;
   }
 }

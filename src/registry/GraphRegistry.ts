@@ -120,8 +120,8 @@ export default class GraphRegistry {
     this.deleteTask = Cadenza.createMetaTask(
       "Delete task",
       (context) => {
-        const { __name } = context;
-        this.tasks.delete(__name);
+        const { filter } = context;
+        this.tasks.delete(filter.name);
         return context;
       },
       "Deletes task.",
