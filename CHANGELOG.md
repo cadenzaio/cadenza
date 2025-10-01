@@ -1,3 +1,10 @@
+## [3.1.6](https://github.com/cadenzaio/cadenza/compare/v3.1.5...v3.1.6) (2025-10-01)
+
+
+### Bug Fixes
+
+* debugging ephemeral tasks ([305a63e](https://github.com/cadenzaio/cadenza/commit/305a63ee2e1bfbef4a72a08e87f9e854987c996a))
+
 ## [3.1.5](https://github.com/cadenzaio/cadenza/compare/v3.1.4...v3.1.5) (2025-09-30)
 
 
