@@ -1,3 +1,10 @@
+## [3.1.8](https://github.com/cadenzaio/cadenza/compare/v3.1.7...v3.1.8) (2025-10-01)
+
+
+### Bug Fixes
+
+* removed logs. ([b3fea40](https://github.com/cadenzaio/cadenza/commit/b3fea40ad27ebc1ef6ce3201e4745985bc4904c7))
+
 ## [3.1.7](https://github.com/cadenzaio/cadenza/compare/v3.1.6...v3.1.7) (2025-10-01)
 
 
