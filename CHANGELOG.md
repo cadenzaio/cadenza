@@ -1,3 +1,10 @@
+## [3.1.7](https://github.com/cadenzaio/cadenza/compare/v3.1.6...v3.1.7) (2025-10-01)
+
+
+### Bug Fixes
+
+* debugging node destruction. ([b8413a7](https://github.com/cadenzaio/cadenza/commit/b8413a7dbe826961db524a25b1b4f30fdf22df97))
+
 ## [3.1.6](https://github.com/cadenzaio/cadenza/compare/v3.1.5...v3.1.6) (2025-10-01)
 
 
