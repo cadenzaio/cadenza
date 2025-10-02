@@ -203,7 +203,7 @@ export default class SignalBroker {
         .split(".");
       for (let i = parts.length; i > -1; i--) {
         const parent = parts.slice(0, i).join(".");
-        executed = executed || this.executeListener(parent + ".*", context); // Wildcard
+        executed = this.executeListener(parent + ".*", context) || executed; // Wildcard
       }
     }
 
