@@ -1,3 +1,10 @@
+## [3.1.9](https://github.com/cadenzaio/cadenza/compare/v3.1.8...v3.1.9) (2025-10-02)
+
+
+### Bug Fixes
+
+* small signal bug ([880e0f6](https://github.com/cadenzaio/cadenza/commit/880e0f6b762707dbbfdea01da9eae51dfdd60d00))
+
 ## [3.1.8](https://github.com/cadenzaio/cadenza/compare/v3.1.7...v3.1.8) (2025-10-01)
 
 
