@@ -1,3 +1,10 @@
+# [3.3.0](https://github.com/cadenzaio/cadenza/compare/v3.2.0...v3.3.0) (2025-10-03)
+
+
+### Features
+
+* Seperated Type and Value exports ([6b428d3](https://github.com/cadenzaio/cadenza/commit/6b428d3ca66b707501ca1288e596241be0d7ee12))
+
 # [3.2.0](https://github.com/cadenzaio/cadenza/compare/v3.1.9...v3.2.0) (2025-10-03)
 
 
