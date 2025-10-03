@@ -1,3 +1,10 @@
+# [3.2.0](https://github.com/cadenzaio/cadenza/compare/v3.1.9...v3.2.0) (2025-10-03)
+
+
+### Features
+
+* build update ([41246d5](https://github.com/cadenzaio/cadenza/commit/41246d543816efaeeb0a6c49299700698f62184a))
+
 ## [3.1.9](https://github.com/cadenzaio/cadenza/compare/v3.1.8...v3.1.9) (2025-10-02)
 
 
