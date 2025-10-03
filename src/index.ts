@@ -24,6 +24,19 @@ import {
 } from "./types/schema";
 
 export default Cadenza;
+export type {
+  TaskResult,
+  TaskOptions,
+  AnyObject,
+  SchemaDefinition,
+  SchemaConstraints,
+  SchemaType,
+  ThrottleTagGetter,
+  CadenzaMode,
+  TaskFunction,
+  DebounceOptions,
+  EphemeralTaskOptions,
+};
 export {
   Task,
   GraphRoutine,
@@ -34,17 +47,6 @@ export {
   GraphContext,
   GraphRegistry,
   GraphRun,
-  TaskResult,
-  TaskOptions,
-  AnyObject,
-  SchemaDefinition,
-  SchemaConstraints,
-  SchemaType,
-  ThrottleTagGetter,
   SignalBroker,
   GraphRunner,
-  CadenzaMode,
-  TaskFunction,
-  DebounceOptions,
-  EphemeralTaskOptions,
 };
