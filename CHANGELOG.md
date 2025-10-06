@@ -1,3 +1,10 @@
+## [3.3.1](https://github.com/cadenzaio/cadenza/compare/v3.3.0...v3.3.1) (2025-10-06)
+
+
+### Bug Fixes
+
+* retry delay. ([2b83f16](https://github.com/cadenzaio/cadenza/commit/2b83f16ddfec55ce3a921fad30c015a0794b6302))
+
 # [3.3.0](https://github.com/cadenzaio/cadenza/compare/v3.2.0...v3.3.0) (2025-10-03)
 
 
