@@ -540,7 +540,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.retries++;
     await sleep(this.retryDelay);
     this.retryDelay *= this.task.retryDelayFactor;
-    if (this.retryDelay > this.task.retryDelayMax) {
+    if (
+      this.task.retryDelayMax > 0 &&
+      this.retryDelay > this.task.retryDelayMax
+    ) {
       this.retryDelay = this.task.retryDelayMax;
     }
   }

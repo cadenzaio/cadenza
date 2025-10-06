@@ -10,6 +10,7 @@ import GraphRoutine from "./graph/definition/GraphRoutine";
 import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
 import GraphStandardRun from "./engine/strategy/GraphStandardRun";
 import { SchemaDefinition } from "./types/schema";
+import { AnyObject } from "./types/global";
 
 export interface TaskOptions {
   concurrency?: number;
@@ -109,6 +110,14 @@ export default class Cadenza {
       throw new Error("Task or Routine name must be a non-empty string.");
     }
     // Further uniqueness check delegated to GraphRegistry.register*
+  }
+
+  public static runTask(task: Task, context: AnyObject) {
+    this.runner.run(task, context);
+  }
+
+  public static runRoutine(routine: GraphRoutine, context: AnyObject) {
+    this.runner.run(routine, context);
   }
 
   /**
