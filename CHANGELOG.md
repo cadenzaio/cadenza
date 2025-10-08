@@ -1,3 +1,10 @@
+# [3.5.0](https://github.com/cadenzaio/cadenza/compare/v3.4.1...v3.5.0) (2025-10-08)
+
+
+### Features
+
+* Now signals are added upon emission as well. ([25bd517](https://github.com/cadenzaio/cadenza/commit/25bd517920fb81934d8fa9798c5687b15d2407e4))
+
 ## [3.4.1](https://github.com/cadenzaio/cadenza/compare/v3.4.0...v3.4.1) (2025-10-08)
 
 
