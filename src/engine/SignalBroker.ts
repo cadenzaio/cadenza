@@ -69,6 +69,7 @@ export default class SignalBroker {
         context: AnyObject,
       ) => void;
       tasks: Set<Task | GraphRoutine>;
+      registered: boolean;
     }
   > = new Map();
 
@@ -109,7 +110,9 @@ export default class SignalBroker {
 
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       return {
-        __signals: Array.from(this.signalObservers.keys()),
+        __signals: Array.from(this.signalObservers.entries()).map(
+          ([signal, data]) => ({ signal, data }),
+        ),
         ...ctx,
       };
     });
@@ -232,6 +235,7 @@ export default class SignalBroker {
           context: AnyObject,
         ) => runner.run(tasks, context),
         tasks: new Set(),
+        registered: false,
       });
 
       const sections = _signal.split(":");
@@ -246,6 +250,7 @@ export default class SignalBroker {
               context: AnyObject,
             ) => runner.run(tasks, context),
             tasks: new Set(),
+            registered: false,
           });
         } else {
           return;
