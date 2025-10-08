@@ -1,3 +1,10 @@
+# [3.4.0](https://github.com/cadenzaio/cadenza/compare/v3.3.1...v3.4.0) (2025-10-08)
+
+
+### Features
+
+* added registered field. ([cdce086](https://github.com/cadenzaio/cadenza/commit/cdce086b3e6cde611cc0bb19939760f2bc8441f6))
+
 ## [3.3.1](https://github.com/cadenzaio/cadenza/compare/v3.3.0...v3.3.1) (2025-10-06)
 
 
