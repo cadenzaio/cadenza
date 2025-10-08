@@ -59,7 +59,9 @@ export default class SignalBroker {
 
   public clearSignalsTask: Task | undefined;
   public getSignalsTask: Task | undefined;
+  public registerSignalTask: Task | undefined;
 
+  // TODO: Signals should be a class with a the observers, registered flag and other data.
   signalObservers: Map<
     string,
     {
@@ -111,11 +113,22 @@ export default class SignalBroker {
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       return {
         __signals: Array.from(this.signalObservers.entries()).map(
-          ([signal, data]) => ({ signal, data }),
+          ([signal, data]) => ({
+            signal,
+            data: { registered: data.registered },
+          }),
         ),
         ...ctx,
       };
     });
+
+    this.registerSignalTask = Cadenza.createMetaTask(
+      "Register signal",
+      (ctx) => {
+        const { __signalName } = ctx;
+        this.signalObservers.get(__signalName)!.registered = true;
+      },
+    ).doOn("meta.signal.registered");
   }
 
   /**
@@ -159,6 +172,8 @@ export default class SignalBroker {
     if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
     const stack = this.emitStacks.get(execId)!;
     stack.set(signal, context);
+
+    this.addSignal(signal);
 
     let executed = false;
     try {

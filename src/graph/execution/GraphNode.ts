@@ -388,8 +388,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
-  emitWithMetadata(signal: string, ctx: AnyObject) {
-    const data = { ...ctx };
+  emitWithMetadata(signal: string, data: AnyObject) {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
         taskName: this.task.name,
@@ -408,8 +407,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.emit(signal, data);
   }
 
-  emitMetricsWithMetadata(signal: string, ctx: AnyObject) {
-    const data = { ...ctx };
+  emitMetricsWithMetadata(signal: string, data: AnyObject) {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
         taskName: this.task.name,
