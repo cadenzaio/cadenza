@@ -1,3 +1,10 @@
+## [3.5.1](https://github.com/cadenzaio/cadenza/compare/v3.5.0...v3.5.1) (2025-10-08)
+
+
+### Bug Fixes
+
+* filtered exported signals to not include ids. ([d8d240e](https://github.com/cadenzaio/cadenza/commit/d8d240e30593e43642c17a074d88c92e4af5afe1))
+
 # [3.5.0](https://github.com/cadenzaio/cadenza/compare/v3.4.1...v3.5.0) (2025-10-08)
 
 
