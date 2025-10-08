@@ -111,13 +111,19 @@ export default class SignalBroker {
       .emits("meta.signal_broker.queue_empty");
 
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
+      const uniqueSignals = Array.from(this.signalObservers.keys()).filter(
+        (s) => !s.includes(":"),
+      );
+
+      const processedSignals = uniqueSignals.map((signal) => ({
+        signal,
+        data: {
+          registered: this.signalObservers.get(signal)?.registered ?? false,
+        },
+      }));
+
       return {
-        __signals: Array.from(this.signalObservers.entries()).map(
-          ([signal, data]) => ({
-            signal,
-            data: { registered: data.registered },
-          }),
-        ),
+        __signals: processedSignals,
         ...ctx,
       };
     });
