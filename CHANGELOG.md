@@ -1,3 +1,10 @@
+## [3.4.1](https://github.com/cadenzaio/cadenza/compare/v3.4.0...v3.4.1) (2025-10-08)
+
+
+### Bug Fixes
+
+* improved signals export. ([04041e3](https://github.com/cadenzaio/cadenza/commit/04041e35fa8e9882a4decfad9421a2fa84b1e38c))
+
 # [3.4.0](https://github.com/cadenzaio/cadenza/compare/v3.3.1...v3.4.0) (2025-10-08)
 
 
