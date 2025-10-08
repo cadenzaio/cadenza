@@ -49,6 +49,7 @@ export default class Task extends SignalEmitter implements Graph {
   predecessorTasks: Set<Task> = new Set();
   destroyed: boolean = false;
   register: boolean = true;
+  registered: boolean = false;
 
   emitsSignals: Set<string> = new Set();
   signalsToEmitAfter: Set<string> = new Set();
