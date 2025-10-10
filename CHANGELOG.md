@@ -1,3 +1,10 @@
+# [3.6.0](https://github.com/cadenzaio/cadenza/compare/v3.5.1...v3.6.0) (2025-10-10)
+
+
+### Features
+
+* added registered flag on routines as well. ([2aa724a](https://github.com/cadenzaio/cadenza/commit/2aa724a3b672da7a248c017ff5910c2605962f89))
+
 ## [3.5.1](https://github.com/cadenzaio/cadenza/compare/v3.5.0...v3.5.1) (2025-10-08)
 
 
