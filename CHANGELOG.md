@@ -1,3 +1,10 @@
+# [3.8.0](https://github.com/cadenzaio/cadenza/compare/v3.7.0...v3.8.0) (2025-10-10)
+
+
+### Features
+
+* dynamically emitted signals will now be attached to the task as well. ([c4cb50a](https://github.com/cadenzaio/cadenza/commit/c4cb50a5c079c34868e9b29e5f330d1995e811f9))
+
 # [3.7.0](https://github.com/cadenzaio/cadenza/compare/v3.6.0...v3.7.0) (2025-10-10)
 
 
