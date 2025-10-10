@@ -405,6 +405,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     this.emit(signal, data);
+
+    if (!this.task.emitsSignals.has(signal)) {
+      this.task.attachSignal(signal);
+    }
   }
 
   emitMetricsWithMetadata(signal: string, data: AnyObject) {
@@ -425,6 +429,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     this.emitMetrics(signal, data);
+
+    if (!this.task.emitsSignals.has(signal)) {
+      this.task.attachSignal(signal);
+    }
   }
 
   onProgress(progress: number) {

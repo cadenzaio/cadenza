@@ -641,16 +641,7 @@ export default class Task extends SignalEmitter implements Graph {
   emits(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitAfter.add(signal);
-      this.emitsSignals.add(signal);
-      if (this.register) {
-        this.emitWithMetadata("meta.task.attached_signal", {
-          data: {
-            signalName: signal.split(":")[0],
-            taskName: this.name,
-            taskVersion: this.version,
-          },
-        });
-      }
+      this.attachSignal(signal);
     });
     return this;
   }
@@ -658,19 +649,23 @@ export default class Task extends SignalEmitter implements Graph {
   emitsOnFail(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitOnFail.add(signal);
-      this.emitsSignals.add(signal);
-      if (this.register) {
-        this.emitWithMetadata("meta.task.attached_signal", {
-          data: {
-            signalName: signal,
-            taskName: this.name,
-            taskVersion: this.version,
-            isOnFail: true,
-          },
-        });
-      }
+      this.attachSignal(signal, true);
     });
     return this;
+  }
+
+  attachSignal(signal: string, isOnFail: boolean = false) {
+    this.emitsSignals.add(signal);
+    if (this.register) {
+      this.emitWithMetadata("meta.task.attached_signal", {
+        data: {
+          signalName: signal.split(":")[0],
+          taskName: this.name,
+          taskVersion: this.version,
+          isOnFail,
+        },
+      });
+    }
   }
 
   /**
