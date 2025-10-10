@@ -8,6 +8,7 @@ export default class GraphRoutine extends SignalEmitter {
   readonly description: string;
   readonly isMeta: boolean = false;
   tasks: Set<Task> = new Set();
+  registered: boolean = false;
 
   observedSignals: Set<string> = new Set();
 
