@@ -236,12 +236,35 @@ export default class SignalBroker {
 
   executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
+    if (!obs || obs.tasks.size === 0) {
+      return false;
+    }
+
     const isMeta = signal.startsWith("meta");
-    const runner = isMeta ? this.metaRunner : this.runner;
-    if (obs && obs.tasks.size && runner) {
-      obs.fn(runner, Array.from(obs.tasks), context);
+    if (!isMeta) {
+      const tasks: Task[] = [];
+      const metaTasks: Task[] = [];
+
+      obs.tasks.forEach(
+        (
+          task, // @ts-ignore
+        ) => (task.isMeta ? metaTasks.push(task) : tasks.push(task)),
+      );
+
+      if (tasks.length && this.runner) {
+        obs.fn(this.runner, tasks, context);
+      }
+
+      if (metaTasks.length && this.metaRunner) {
+        obs.fn(this.metaRunner, metaTasks, context);
+      }
+
+      return true;
+    } else if (this.metaRunner) {
+      obs.fn(this.metaRunner, Array.from(obs.tasks), context);
       return true;
     }
+
     return false;
   }
 

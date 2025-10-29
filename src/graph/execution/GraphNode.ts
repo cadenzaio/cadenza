@@ -182,6 +182,24 @@ export default class GraphNode extends SignalEmitter implements Graph {
         });
       });
 
+      if (context.__previousTaskExecutionId) {
+        this.emitMetricsWithMetadata(
+          "meta.node.detected_previous_task_execution",
+          {
+            data: {
+              taskExecutionId: this.id,
+              previousTaskExecutionId: context.__previousTaskExecutionId,
+            },
+            filter: {
+              taskName: this.task.name,
+              taskVersion: this.task.version,
+            },
+            ...context,
+          },
+        );
+        context.__previousTaskExecutionId = null;
+      }
+
       if (
         context.__signalEmission?.consumed === false &&
         (!this.isMeta() || this.debug)
@@ -368,6 +386,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         this.context,
         this.emitWithMetadata.bind(this),
         this.onProgress.bind(this),
+        { nodeId: this.id, routineExecId: this.routineExecId },
       );
 
       if ((result as any)?.errored || (result as any)?.failed) {

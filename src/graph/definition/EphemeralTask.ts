@@ -64,8 +64,9 @@ export default class EphemeralTask extends Task {
     context: any,
     emit: (signal: string, context: AnyObject) => void,
     progressCallback: (progress: number) => void,
+    nodeData: { nodeId: string; routineExecId: string },
   ) {
-    const result = super.execute(context, emit, progressCallback);
+    const result = super.execute(context, emit, progressCallback, nodeData);
 
     if (this.once || this.condition(result)) {
       this.destroy();

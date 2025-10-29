@@ -427,6 +427,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @param context - The GraphContext to validate and execute.
    * @param emit
    * @param progressCallback - Callback for progress updates.
+   * @param nodeData
    * @returns TaskResult from the taskFunction or error object on validation failure.
    * @edge If validateInputContext is true, validates context; on failure, emits 'meta.task.validationFailed' with detailed errors.
    * @edge If validateOutputContext is true, validates output; on failure, emits 'meta.task.outputValidationFailed' with detailed errors.
@@ -435,6 +436,7 @@ export default class Task extends SignalEmitter implements Graph {
     context: GraphContext,
     emit: (signal: string, context: AnyObject) => void,
     progressCallback: (progress: number) => void,
+    nodeData: { nodeId: string; routineExecId: string },
   ): TaskResult {
     return this.taskFunction(
       this.isMeta ? context.getClonedFullContext() : context.getClonedContext(),
