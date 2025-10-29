@@ -1,3 +1,10 @@
+# [3.9.0](https://github.com/cadenzaio/cadenza/compare/v3.8.0...v3.9.0) (2025-10-29)
+
+
+### Features
+
+* Pass node info to task execution. ([8a81579](https://github.com/cadenzaio/cadenza/commit/8a81579245c5fcdb9ea945f645fd5ace40d9423b))
+
 # [3.8.0](https://github.com/cadenzaio/cadenza/compare/v3.7.0...v3.8.0) (2025-10-10)
 
 
