@@ -112,12 +112,12 @@ export default class Cadenza {
     // Further uniqueness check delegated to GraphRegistry.register*
   }
 
-  public static runTask(task: Task, context: AnyObject) {
-    this.runner.run(task, context);
+  public static run(task: Task | GraphRoutine, context: AnyObject) {
+    this.runner?.run(task, context);
   }
 
-  public static runRoutine(routine: GraphRoutine, context: AnyObject) {
-    this.runner.run(routine, context);
+  public static emit(event: string, data: AnyObject = {}) {
+    this.broker?.emit(event, data);
   }
 
   /**
