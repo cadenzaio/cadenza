@@ -1,3 +1,10 @@
+## [3.9.2](https://github.com/cadenzaio/cadenza/compare/v3.9.1...v3.9.2) (2025-11-10)
+
+
+### Bug Fixes
+
+* Fixed previous tasks execution id logic. ([0307995](https://github.com/cadenzaio/cadenza/commit/0307995a263cf487e12c55cf94cfcb710f508ddb))
+
 ## [3.9.1](https://github.com/cadenzaio/cadenza/compare/v3.9.0...v3.9.1) (2025-11-10)
 
 
