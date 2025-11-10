@@ -182,7 +182,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         });
       });
 
-      if (context.__previousTaskExecutionId) {
+      if (!this.silent && context.__previousTaskExecutionId) {
         this.emitMetricsWithMetadata(
           "meta.node.detected_previous_task_execution",
           {
