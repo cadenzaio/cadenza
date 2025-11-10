@@ -1,3 +1,10 @@
+## [3.9.1](https://github.com/cadenzaio/cadenza/compare/v3.9.0...v3.9.1) (2025-11-10)
+
+
+### Bug Fixes
+
+* updated README.md ([504adc1](https://github.com/cadenzaio/cadenza/commit/504adc11ec90af3bce8e9e99094e49c5fc3d0bf3))
+
 # [3.9.0](https://github.com/cadenzaio/cadenza/compare/v3.8.0...v3.9.0) (2025-10-29)
 
 
