@@ -1,5 +1,5 @@
 import GraphRunner from "./GraphRunner";
-import { AnyObject } from "../types/global";
+import { AnyObject, ThrottleHandle } from "../types/global";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import Cadenza from "../Cadenza";
@@ -162,6 +162,99 @@ export default class SignalBroker {
         this.signalObservers.delete(signal);
       }
     }
+  }
+
+  schedule(
+    signal: string,
+    context: AnyObject,
+    timeoutMs: number = 60_000,
+    exactDateTime?: Date,
+  ): AbortController {
+    // 1. Compute the final delay
+    let delay = timeoutMs;
+    if (exactDateTime != null) {
+      delay = exactDateTime.getTime() - Date.now();
+    }
+    delay = Math.max(0, timeoutMs);
+
+    // 2. Create an AbortController so the caller can cancel
+    const controller = new AbortController();
+    const { signal: signalController } = controller;
+
+    const tick = () => this.emit(signal, context);
+
+    const timerId = setTimeout(() => {
+      if (!signalController.aborted) tick();
+    }, delay);
+
+    // 3. Cleanup on abort
+    signalController.addEventListener("abort", () => clearTimeout(timerId));
+
+    return controller; // caller can do `const ac = obj.schedule(...); ac.abort();`
+  }
+
+  /**
+   * Emits `signal` repeatedly with a fixed interval.
+   *
+   * @param signal
+   * @param context
+   * @param intervalMs
+   * @param leading  If true, emits immediately (unless a startDateTime is given and we are before it).
+   * @param startDateTime  Optional absolute Date when the *first* emission after `leading` should occur.
+   * @returns a handle with `clear()` to stop the loop.
+   */
+  throttle(
+    signal: string,
+    context: AnyObject,
+    intervalMs: number = 60_000,
+    leading = false,
+    startDateTime?: Date,
+  ): ThrottleHandle {
+    if (intervalMs <= 0) {
+      throw new Error("intervalMs must be a positive number");
+    }
+
+    const emit = () => this.emit(signal, context);
+
+    if (leading) {
+      const now = Date.now();
+      const start = startDateTime?.getTime();
+
+      // If we have a startDateTime and we are already past it → fire now
+      if (!start || start <= now) {
+        emit();
+      }
+    }
+
+    let firstDelay = intervalMs;
+    if (startDateTime) {
+      // Find the *next* slot that is >= now
+      let slot = startDateTime.getTime();
+      const now = Date.now();
+
+      while (slot < now) {
+        slot += intervalMs;
+      }
+      firstDelay = slot - now;
+    }
+
+    let timer: NodeJS.Timeout | null = null;
+    let stopped = false;
+
+    const scheduleNext = () => {
+      if (stopped) return;
+      emit();
+      timer = setTimeout(scheduleNext, intervalMs);
+    };
+
+    timer = setTimeout(scheduleNext, firstDelay);
+
+    return {
+      clear() {
+        stopped = true;
+        if (timer !== null) clearTimeout(timer);
+      },
+    };
   }
 
   /**
