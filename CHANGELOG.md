@@ -1,3 +1,10 @@
+# [3.10.0](https://github.com/cadenzaio/cadenza/compare/v3.9.2...v3.10.0) (2025-11-11)
+
+
+### Features
+
+* schedule and throttle of signals. ([81df49e](https://github.com/cadenzaio/cadenza/commit/81df49e6bd0e7a1ff58c44de36553ac6a8963fec))
+
 ## [3.9.2](https://github.com/cadenzaio/cadenza/compare/v3.9.1...v3.9.2) (2025-11-10)
 
 
