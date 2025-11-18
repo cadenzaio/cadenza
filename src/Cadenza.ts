@@ -148,6 +148,19 @@ export default class Cadenza {
    * @param {Task | GraphRoutine} task - The task or GraphRoutine to be executed.
    * @param {AnyObject} context - The context in which the task or GraphRoutine should be executed.
    * @return {void}
+   *
+   * @example
+   * ```ts
+   * const task = Cadenza.createTask('My task', (ctx) => {
+   *   console.log('My task executed with context:', ctx);
+   * });
+   *
+   * Cadenza.run(task, { foo: 'bar' });
+   *
+   * const routine = Cadenza.createRoutine('My routine', [task], 'My routine description');
+   *
+   * Cadenza.run(routine, { foo: 'bar' });
+   * ```
    */
   public static run(task: Task | GraphRoutine, context: AnyObject) {
     this.runner?.run(task, context);
@@ -159,6 +172,13 @@ export default class Cadenza {
    * @param {string} event - The name of the event to emit.
    * @param {AnyObject} [data={}] - The data payload associated with the event.
    * @return {void} - No return value.
+   *
+   * @example
+   * This is meant to be used as a global event emitter.
+   * If you want to emit an event from within a task, you can use the `emit` method provided to the task function. See {@link TaskFunction}.
+   * ```ts
+   * Cadenza.emit('main.my_event', { foo: 'bar' });
+   * ```
    */
   public static emit(event: string, data: AnyObject = {}) {
     this.broker?.emit(event, data);
@@ -174,6 +194,67 @@ export default class Cadenza {
    * @param {string} [description] - An optional description for the task.
    * @param {TaskOptions} [options={}] - Configuration options for the task, such as concurrency, timeout, and retry settings.
    * @return {Task} The created task instance.
+   *
+   * @example
+   * You can use arrow functions to create tasks.
+   * ```ts
+   * const task = Cadenza.createTask('My task', (ctx) => {
+   *   console.log('My task executed with context:', ctx);
+   * }, 'My task description');
+   * ```
+   *
+   * You can also use named functions to create tasks.
+   * This is the preferred way to create tasks since it allows for code inspection in the CadenzaUI.
+   * ```ts
+   * function myTask(ctx) {
+   *   console.log('My task executed with context:', ctx);
+   * }
+   *
+   * const task = Cadenza.createTask('My task', myTask);
+   * ```
+   *
+   * ** Use the TaskOptions object to configure the task. **
+   *
+   * With concurrency limit, timeout limit and retry settings.
+   * ```ts
+   * Cadenza.createTask('My task', (ctx) => {
+   *   console.log('My task executed with context:', ctx);
+   * }, 'My task description', {
+   *   concurrency: 10,
+   *   timeout: 10000,
+   *   retryCount: 3,
+   *   retryDelay: 1000,
+   *   retryDelayFactor: 1.5,
+   * });
+   * ```
+   *
+   * You can specify the input and output context schemas for the task.
+   * ```ts
+   * Cadenza.createTask('My task', (ctx) => {
+   *   return { bar: 'foo' + ctx.foo };
+   * }, 'My task description', {
+   *   inputContextSchema: {
+   *     type: 'object',
+   *     properties: {
+   *       foo: {
+   *         type: 'string',
+   *       },
+   *     },
+   *   required: ['foo'],
+   *   },
+   *   validateInputContext: true, // default is false
+   *   outputContextSchema: {
+   *     type: 'object',
+   *     properties: {
+   *       bar: {
+   *         type: 'string',
+   *       },
+   *     },
+   *     required: ['bar'],
+   *   },
+   *   validateOutputContext: true, // default is false
+   * });
+   * ```
    */
   static createTask(
     name: string,
@@ -229,6 +310,8 @@ export default class Cadenza {
 
   /**
    * Creates a meta task with the specified name, functionality, description, and options.
+   * This is used for creating tasks that lives on the meta layer.
+   * The meta layer is a special layer that is executed separately from the business logic layer and is used for extending Cadenzas core functionality.
    * See {@link Task} or {@link createTask} for more information.
    *
    * @param {string} name - The name of the meta task.
@@ -258,6 +341,42 @@ export default class Cadenza {
    * @param {string} [description] - An optional description of the task.
    * @param {TaskOptions} [options={}] - Optional configuration for the task, such as additional metadata or task options.
    * @return {Task} The task instance that was created with a uniqueness constraint.
+   *
+   * @example
+   * ```ts
+   * const splitTask = Cadenza.createTask('Split foos', function* (ctx) {
+   *   for (const foo of ctx.foos) {
+   *     yield { foo };
+   *   }
+   * }, 'Splits a list of foos into multiple sub-branches');
+   *
+   * const processTask = Cadenza.createTask('Process foo', (ctx) => {
+   *  return { bar: 'foo' + ctx.foo };
+   * }, 'Process a foo');
+   *
+   * const uniqueTask = Cadenza.createUniqueTask('Gather processed foos', (ctx) => {
+   *   // A unique task will always be provided with a list of contexts (ctx.joinedContexts) from its predecessors.
+   *   const processedFoos = ctx.joinedContexts.map((c) => c.bar);
+   *   return { foos: processedFoos };
+   * }, 'Gathers together the processed foos.');
+   *
+   * splitTask.then(
+   *   processTask.then(
+   *     uniqueTask,
+   *   ),
+   * );
+   *
+   * // Give the flow a name using a routine
+   * Cadenza.createRoutine(
+   *   'Process foos',
+   *   [splitTask],
+   *   'Processes a list of foos'
+   * ).doOn('main.received_foos'); // Subscribe to a signal
+   *
+   * // Trigger the flow from anywhere
+   * Cadenza.emit('main.received_foos', { foos: ['foo1', 'foo2', 'foo3'] });
+   * ```
+   *
    */
   static createUniqueTask(
     name: string,
@@ -271,7 +390,7 @@ export default class Cadenza {
 
   /**
    * Creates a unique meta task with the specified name, function, description, and options.
-   * See {@link createUniqueTask} for more information.
+   * See {@link createUniqueTask} and {@link createMetaTask} for more information.
    *
    * @param {string} name - The name of the task to create.
    * @param {TaskFunction} func - The function to execute when the task is run.
@@ -301,6 +420,23 @@ export default class Cadenza {
    * @param {string} [description] - An optional description of the task.
    * @param {TaskOptions} [options={}] - Additional options to customize the task behavior.
    * @return {Task} The created throttled task.
+   *
+   * @example
+   * ```ts
+   * const task = Cadenza.createThrottledTask(
+   *   'My task',
+   *   async (ctx) => {
+   *      await new Promise((resolve) => setTimeout(resolve, 1000));
+   *      console.log('My task executed with context:', ctx);
+   *   },
+   *   // Will throttle by the value of ctx.foo to make sure tasks with the same value are executed sequentially
+   *   (ctx) => ctx.foo,
+   * );
+   *
+   * Cadenza.run(task, { foo: 'bar' }); // (First execution)
+   * Cadenza.run(task, { foo: 'bar' }); // This will be executed after the first execution is finished
+   * Cadenza.run(task, { foo: 'baz' }); // This will be executed in parallel with the first execution
+   * ```
    */
   static createThrottledTask(
     name: string,
@@ -316,7 +452,7 @@ export default class Cadenza {
 
   /**
    * Creates a throttled meta task with the specified configuration.
-   * See {@link createThrottledTask} for more information.
+   * See {@link createThrottledTask} and {@link createMetaTask} for more information.
    *
    * @param {string} name - The name of the throttled meta task.
    * @param {TaskFunction} func - The task function to be executed.
@@ -353,6 +489,27 @@ export default class Cadenza {
    * @param {number} [debounceTime=1000] - The debounce time in milliseconds to delay the execution of the task.
    * @param {TaskOptions & DebounceOptions} [options={}] - Additional configuration options for the task, including debounce behavior and other task properties.
    * @return {DebounceTask} A new instance of the DebounceTask with the specified configuration.
+   *
+   * @example
+   * ```ts
+   * const task = Cadenza.createDebounceTask(
+   *   'My debounced task',
+   *   (ctx) => {
+   *      console.log('My task executed with context:', ctx);
+   *   },
+   *   'My debounced task description',
+   *   100, // Debounce time in milliseconds. Default is 1000
+   *   {
+   *     leading: false, // Should the first execution of a burst be executed immediately? Default is false
+   *     trailing: true, // Should the last execution of a burst be executed? Default is true
+   *     maxWait: 1000, // Maximum time in milliseconds to wait for the next execution. Default is 0
+   *   },
+   * );
+   *
+   * Cadenza.run(task, { foo: 'bar' }); // This will not be executed
+   * Cadenza.run(task, { foo: 'bar' }); // This will not be executed
+   * Cadenza.run(task, { foo: 'baz' }); // This execution will be delayed by 100ms
+   * ```
    */
   static createDebounceTask(
     name: string,
@@ -406,7 +563,7 @@ export default class Cadenza {
 
   /**
    * Creates a debounced meta task with the specified parameters.
-   * See {@link createDebounceTask} for more information.
+   * See {@link createDebounceTask} and {@link createMetaTask} for more information.
    *
    * @param {string} name - The name of the task.
    * @param {TaskFunction} func - The function to be executed by the task.
@@ -444,6 +601,53 @@ export default class Cadenza {
    * @param {string} [description] - An optional description of the task.
    * @param {TaskOptions & EphemeralTaskOptions} [options={}] - The configuration options for the task, including concurrency, timeouts, and retry policies.
    * @return {EphemeralTask} The created ephemeral task instance.
+   *
+   * @example
+   * By default, ephemeral tasks are executed once and destroyed after execution.
+   * ```ts
+   * const task = Cadenza.createEphemeralTask('My ephemeral task', (ctx) => {
+   *   console.log('My task executed with context:', ctx);
+   * });
+   *
+   * Cadenza.run(task); // Executes the task once and destroys it after execution
+   * Cadenza.run(task); // Does nothing, since the task is destroyed
+   * ```
+   *
+   * Use destroy condition to conditionally destroy the task
+   * ```ts
+   * const task = Cadenza.createEphemeralTask(
+   *   'My ephemeral task',
+   *   (ctx) => {
+   *      console.log('My task executed with context:', ctx);
+   *   },
+   *   'My ephemeral task description',
+   *   {
+   *     once: false, // Should the task be executed only once? Default is true
+   *     destroyCondition: (ctx) => ctx.foo > 10, // Should the task be destroyed after execution? Default is undefined
+   *   },
+   * );
+   *
+   * Cadenza.run(task, { foo: 5 }); // The task will not be destroyed and can still be executed
+   * Cadenza.run(task, { foo: 10 }); // The task will not be destroyed and can still be executed
+   * Cadenza.run(task, { foo: 20 }); // The task will be destroyed after execution and cannot be executed anymore
+   * Cadenza.run(task, { foo: 30 }); // This will not be executed
+   * ```
+   *
+   * A practical use case for ephemeral tasks is to resolve a promise upon some external event.
+   * ```ts
+   * const task = Cadenza.createTask('Confirm something', (ctx, emit) => {
+   *   return new Promise((resolve) => {
+   *     ctx.foo = uuid();
+   *
+   *     Cadenza.createEphemeralTask(`Resolve promise of ${ctx.foo}`, (c) => {
+   *       console.log('My task executed with context:', ctx);
+   *       resolve(c);
+   *     }).doOn(`socket.confirmation_received:${ctx.foo}`);
+   *
+   *     emit('this_domain.confirmation_requested', ctx);
+   *   });
+   * });
+   * ```
    */
   static createEphemeralTask(
     name: string,
@@ -503,7 +707,7 @@ export default class Cadenza {
 
   /**
    * Creates an ephemeral meta task with the specified name, function, description, and options.
-   * See {@link createEphemeralTask} for more information.
+   * See {@link createEphemeralTask} and {@link createMetaTask} for more details.
    *
    * @param {string} name - The name of the task to be created.
    * @param {TaskFunction} func - The function to be executed as part of the task.
@@ -531,6 +735,23 @@ export default class Cadenza {
    * @param {Task[]} tasks - A list of tasks to include in the routine.
    * @param {string} [description=""] - An optional description for the routine.
    * @return {GraphRoutine} A new instance of the GraphRoutine containing the specified tasks and description.
+   *
+   * @example
+   * ```ts
+   * const task1 = Cadenza.createTask("Task 1", () => {});
+   * const task2 = Cadenza.createTask("Task 2", () => {});
+   *
+   * task1.then(task2);
+   *
+   * const routine = Cadenza.createRoutine("Some routine", [task1]);
+   *
+   * Cadenza.run(routine);
+   *
+   * // Or, routines can be triggered by signals
+   * routine.doOn("some.signal");
+   *
+   * Cadenza.emit("some.signal", {});
+   * ```
    */
   static createRoutine(
     name: string,
