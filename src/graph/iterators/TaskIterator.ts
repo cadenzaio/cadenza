@@ -1,6 +1,11 @@
 import Iterator from "../../interfaces/Iterator";
 import Task from "../definition/Task";
 
+/**
+ * TaskIterator is a custom iterator for traversing over a set of tasks.
+ * It provides mechanisms to iterate through tasks in a layered manner,
+ * where each task can branch out to other tasks forming multiple layers.
+ */
 export default class TaskIterator implements Iterator {
   currentTask: Task | undefined;
   currentLayer: Set<Task> = new Set();

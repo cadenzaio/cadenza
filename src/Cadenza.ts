@@ -33,6 +33,11 @@ export interface TaskOptions {
 
 export type CadenzaMode = "dev" | "debug" | "verbose" | "production";
 
+/**
+ * Represents the core class of the Cadenza framework managing tasks, meta-tasks, signal emissions, and execution strategies.
+ * All core components such as SignalBroker, GraphRunner, and GraphRegistry are initialized through this class, and it provides
+ * utility methods to create, register, and manage various task types.
+ */
 export default class Cadenza {
   public static broker: SignalBroker;
   public static runner: GraphRunner;
@@ -41,6 +46,13 @@ export default class Cadenza {
   static isBootstrapped = false;
   static mode: CadenzaMode = "production";
 
+  /**
+   * Initializes the system by setting up the required components such as the
+   * signal broker, runners, and graph registry. Ensures the initialization
+   * happens only once. Configures debug settings if applicable.
+   *
+   * @return {void} No value is returned.
+   */
   public static bootstrap(): void {
     if (this.isBootstrapped) return;
     this.isBootstrapped = true;
@@ -68,6 +80,13 @@ export default class Cadenza {
     this.metaRunner.init();
   }
 
+  /**
+   * Retrieves the available strategies for running graphs.
+   *
+   * @return {Object} An object containing the available run strategies, where:
+   *                  - PARALLEL: Executes graph runs asynchronously.
+   *                  - SEQUENTIAL: Executes graph runs in a sequential order.
+   */
   public static get runStrategy() {
     return {
       PARALLEL: new GraphAsyncRun(),
@@ -75,6 +94,14 @@ export default class Cadenza {
     };
   }
 
+  /**
+   * Sets the mode for the application and configures the broker and runner settings accordingly.
+   *
+   * @param {CadenzaMode} mode - The mode to set. It can be one of the following:
+   *                             "debug", "dev", "verbose", or "production".
+   *                             Each mode adjusts debug and verbosity settings.
+   * @return {void} This method does not return a value.
+   */
   public static setMode(mode: CadenzaMode) {
     this.mode = mode;
 
@@ -101,9 +128,12 @@ export default class Cadenza {
   }
 
   /**
-   * Validates a name for uniqueness and non-emptiness.
-   * @param name The name to validate.
-   * @throws Error if invalid.
+   * Validates the given name to ensure it is a non-empty string.
+   * Throws an error if the validation fails.
+   *
+   * @param {string} name - The name to validate.
+   * @return {void} This method does not return anything.
+   * @throws {Error} If the name is not a non-empty string.
    */
   public static validateName(name: string): void {
     if (!name || typeof name !== "string") {
@@ -112,22 +142,38 @@ export default class Cadenza {
     // Further uniqueness check delegated to GraphRegistry.register*
   }
 
+  /**
+   * Executes the specified task or GraphRoutine with the given context using an internal runner.
+   *
+   * @param {Task | GraphRoutine} task - The task or GraphRoutine to be executed.
+   * @param {AnyObject} context - The context in which the task or GraphRoutine should be executed.
+   * @return {void}
+   */
   public static run(task: Task | GraphRoutine, context: AnyObject) {
     this.runner?.run(task, context);
   }
 
+  /**
+   * Emits an event with the specified name and data payload to the broker.
+   *
+   * @param {string} event - The name of the event to emit.
+   * @param {AnyObject} [data={}] - The data payload associated with the event.
+   * @return {void} - No return value.
+   */
   public static emit(event: string, data: AnyObject = {}) {
     this.broker?.emit(event, data);
   }
 
   /**
-   * Creates a standard Task and registers it in the GraphRegistry.
-   * @param name Unique identifier for the task.
-   * @param func The function or async generator to execute.
-   * @param description Optional human-readable description for introspection.
-   * @param options Optional task options.
-   * @returns The created Task instance.
-   * @throws Error if name is invalid or duplicate in registry.
+   * Creates and registers a new task with the specified parameters and options.
+   * Tasks are the basic building blocks of Cadenza graphs and are responsible for executing logic.
+   * See {@link Task} for more information.
+   *
+   * @param {string} name - The unique name of the task.
+   * @param {TaskFunction} func - The function to be executed by the task.
+   * @param {string} [description] - An optional description for the task.
+   * @param {TaskOptions} [options={}] - Configuration options for the task, such as concurrency, timeout, and retry settings.
+   * @return {Task} The created task instance.
    */
   static createTask(
     name: string,
@@ -182,14 +228,14 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a MetaTask (for meta-layer graphs) and registers it.
-   * MetaTasks suppress further meta-signal emissions to prevent loops.
-   * @param name Unique identifier for the meta-task.
-   * @param func The function or async generator to execute.
-   * @param description Optional description.
-   * @param options Optional task options.
-   * @returns The created MetaTask instance.
-   * @throws Error if name invalid or duplicate.
+   * Creates a meta task with the specified name, functionality, description, and options.
+   * See {@link Task} or {@link createTask} for more information.
+   *
+   * @param {string} name - The name of the meta task.
+   * @param {TaskFunction} func - The function to be executed by the meta task.
+   * @param {string} [description] - An optional description of the meta task.
+   * @param {TaskOptions} [options={}] - Additional optional task configuration. Automatically sets `isMeta` to true.
+   * @return {Task} A task instance configured as a meta task.
    */
   static createMetaTask(
     name: string,
@@ -202,14 +248,16 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a UniqueTask (executes once per execution ID, merging parents) and registers it.
-   * Use for fan-in/joins after parallel branches.
-   * @param name Unique identifier.
-   * @param func Function receiving joinedContexts.
-   * @param description Optional description.
-   * @param options Optional task options.
-   * @returns The created UniqueTask.
-   * @throws Error if invalid.
+   * Creates a unique task by wrapping the provided task function with a uniqueness constraint.
+   * Unique tasks are designed to execute once per execution ID, merging parents. This is useful for
+   * tasks that require fan-in/joins after parallel branches.
+   * See {@link Task} for more information.
+   *
+   * @param {string} name - The name of the task to be created.
+   * @param {TaskFunction} func - The function that contains the logic for the task. It receives joinedContexts as a list in the context (context.joinedContexts).
+   * @param {string} [description] - An optional description of the task.
+   * @param {TaskOptions} [options={}] - Optional configuration for the task, such as additional metadata or task options.
+   * @return {Task} The task instance that was created with a uniqueness constraint.
    */
   static createUniqueTask(
     name: string,
@@ -222,12 +270,14 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a UniqueMetaTask for meta-layer joins.
-   * @param name Unique identifier.
-   * @param func Function.
-   * @param description Optional.
-   * @param options Optional task options.
-   * @returns The created UniqueMetaTask.
+   * Creates a unique meta task with the specified name, function, description, and options.
+   * See {@link createUniqueTask} for more information.
+   *
+   * @param {string} name - The name of the task to create.
+   * @param {TaskFunction} func - The function to execute when the task is run.
+   * @param {string} [description] - An optional description of the task.
+   * @param {TaskOptions} [options={}] - Optional settings for the task. Defaults to an empty object. Automatically sets `isMeta` and `isUnique` to true.
+   * @return {Task} The created unique meta task.
    */
   static createUniqueMetaTask(
     name: string,
@@ -241,14 +291,16 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a ThrottledTask (rate-limited by concurrency or custom groups) and registers it.
-   * @param name Unique identifier.
-   * @param func Function.
-   * @param throttledIdGetter Optional getter for dynamic grouping (e.g., per-user).
-   * @param description Optional.
-   * @param options Optional task options.
-   * @returns The created ThrottledTask.
-   * @edge If no getter, throttles per task ID; use for resource protection.
+   * Creates a throttled task with a concurrency limit of 1, ensuring that only one instance of the task can run at a time for a specific throttle tag.
+   * This is useful for ensuring execution order and preventing race conditions.
+   * See {@link Task} for more information.
+   *
+   * @param {string} name - The name of the task.
+   * @param {TaskFunction} func - The function to be executed when the task runs.
+   * @param {ThrottleTagGetter} [throttledIdGetter=() => "default"] - A function that generates a throttle tag identifier to group tasks for throttling.
+   * @param {string} [description] - An optional description of the task.
+   * @param {TaskOptions} [options={}] - Additional options to customize the task behavior.
+   * @return {Task} The created throttled task.
    */
   static createThrottledTask(
     name: string,
@@ -263,13 +315,15 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a ThrottledMetaTask for meta-layer throttling.
-   * @param name Identifier.
-   * @param func Function.
-   * @param throttledIdGetter Optional getter.
-   * @param description Optional.
-   * @param options Optional task options.
-   * @returns The created ThrottledMetaTask.
+   * Creates a throttled meta task with the specified configuration.
+   * See {@link createThrottledTask} for more information.
+   *
+   * @param {string} name - The name of the throttled meta task.
+   * @param {TaskFunction} func - The task function to be executed.
+   * @param {ThrottleTagGetter} throttledIdGetter - A function to retrieve the throttling identifier.
+   * @param {string} [description] - An optional description of the task.
+   * @param {TaskOptions} [options={}] - Additional options for configuring the task.
+   * @return {Task} The created throttled meta task.
    */
   static createThrottledMetaTask(
     name: string,
@@ -289,14 +343,16 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a DebounceTask (delays exec until quiet period) and registers it.
-   * @param name Identifier.
-   * @param func Function.
-   * @param description Optional.
-   * @param debounceTime Delay in ms (default 1000).
-   * @param options Optional task options plus optional debounce config (e.g., leading/trailing).
-   * @returns The created DebounceTask.
-   * @edge Multiple triggers within time collapse to one exec.
+   * Creates and returns a new debounced task with the specified parameters.
+   * This is useful to prevent rapid execution of tasks that may be triggered by multiple events within a certain time frame.
+   * See {@link DebounceTask} for more information.
+   *
+   * @param {string} name - The unique name of the task to be created.
+   * @param {TaskFunction} func - The function to be executed by the task.
+   * @param {string} [description] - An optional description of the task.
+   * @param {number} [debounceTime=1000] - The debounce time in milliseconds to delay the execution of the task.
+   * @param {TaskOptions & DebounceOptions} [options={}] - Additional configuration options for the task, including debounce behavior and other task properties.
+   * @return {DebounceTask} A new instance of the DebounceTask with the specified configuration.
    */
   static createDebounceTask(
     name: string,
@@ -349,13 +405,15 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a DebouncedMetaTask for meta-layer debouncing.
-   * @param name Identifier.
-   * @param func Function.
-   * @param description Optional.
-   * @param debounceTime Delay in ms.
-   * @param options Optional task options plus optional debounce config (e.g., leading/trailing).
-   * @returns The created DebouncedMetaTask.
+   * Creates a debounced meta task with the specified parameters.
+   * See {@link createDebounceTask} for more information.
+   *
+   * @param {string} name - The name of the task.
+   * @param {TaskFunction} func - The function to be executed by the task.
+   * @param {string} [description] - Optional description of the task.
+   * @param {number} [debounceTime=1000] - The debounce delay in milliseconds.
+   * @param {TaskOptions & DebounceOptions} [options={}] - Additional configuration options for the task.
+   * @return {DebounceTask} Returns an instance of the debounced meta task.
    */
   static createDebounceMetaTask(
     name: string,
@@ -375,14 +433,17 @@ export default class Cadenza {
   }
 
   /**
-   * Creates an EphemeralTask (self-destructs after exec or condition) without default registration.
-   * Useful for transients; optionally register if needed.
-   * @param name Identifier (may not be unique if not registered).
-   * @param func Function.
-   * @param description Optional.
-   * @param options Optional task options plus optional "once" (true) and "destroyCondition" (ctx => boolean).
-   * @returns The created EphemeralTask.
-   * @edge Destruction triggered post-exec via Node/Builder; emits meta-signal for cleanup.
+   * Creates an ephemeral task with the specified configuration.
+   * Ephemeral tasks are designed to self-destruct after execution or a certain condition is met.
+   * This is useful for transient tasks such as resolving promises or performing cleanup operations.
+   * They are not registered by default.
+   * See {@link EphemeralTask} for more information.
+   *
+   * @param {string} name - The name of the task to be created.
+   * @param {TaskFunction} func - The function that defines the logic of the task.
+   * @param {string} [description] - An optional description of the task.
+   * @param {TaskOptions & EphemeralTaskOptions} [options={}] - The configuration options for the task, including concurrency, timeouts, and retry policies.
+   * @return {EphemeralTask} The created ephemeral task instance.
    */
   static createEphemeralTask(
     name: string,
@@ -441,12 +502,14 @@ export default class Cadenza {
   }
 
   /**
-   * Creates an EphemeralMetaTask for meta-layer transients.
-   * @param name Identifier.
-   * @param func Function.
-   * @param description Optional.
-   * @param options Optional task options plus optional "once" (true) and "destroyCondition" (ctx => boolean).
-   * @returns The created EphemeralMetaTask.
+   * Creates an ephemeral meta task with the specified name, function, description, and options.
+   * See {@link createEphemeralTask} for more information.
+   *
+   * @param {string} name - The name of the task to be created.
+   * @param {TaskFunction} func - The function to be executed as part of the task.
+   * @param {string} [description] - An optional description of the task.
+   * @param {TaskOptions & EphemeralTaskOptions} [options={}] - Additional options for configuring the task.
+   * @return {EphemeralTask} The created ephemeral meta task.
    */
   static createEphemeralMetaTask(
     name: string,
@@ -459,12 +522,15 @@ export default class Cadenza {
   }
 
   /**
-   * Creates a GraphRoutine (named entry to starting tasks) and registers it.
-   * @param name Unique identifier.
-   * @param tasks Starting tasks (can be empty, but warns as no-op).
-   * @param description Optional.
-   * @returns The created GraphRoutine.
-   * @edge If tasks empty, routine is valid but inert.
+   * Creates a new routine with the specified name, tasks, and an optional description.
+   * Routines are named entry points to starting tasks and are registered in the GraphRegistry.
+   * They are used to group tasks together and provide a high-level structure for organizing and managing the execution of a set of tasks.
+   * See {@link GraphRoutine} for more information.
+   *
+   * @param {string} name - The name of the routine to create.
+   * @param {Task[]} tasks - A list of tasks to include in the routine.
+   * @param {string} [description=""] - An optional description for the routine.
+   * @return {GraphRoutine} A new instance of the GraphRoutine containing the specified tasks and description.
    */
   static createRoutine(
     name: string,
@@ -474,17 +540,22 @@ export default class Cadenza {
     this.bootstrap();
     this.validateName(name);
     if (tasks.length === 0) {
-      console.warn(`Routine '${name}' created with no starting tasks (no-op).`);
+      throw new Error(`Routine '${name}' created with no starting tasks.`);
     }
     return new GraphRoutine(name, tasks, description);
   }
 
   /**
-   * Creates a MetaRoutine for meta-layer entry points.
-   * @param name Identifier.
-   * @param tasks Starting tasks.
-   * @param description Optional.
-   * @returns The created MetaRoutine.
+   * Creates a meta routine with a given name, tasks, and optional description.
+   * Routines are named entry points to starting tasks and are registered in the GraphRegistry.
+   * They are used to group tasks together and provide a high-level structure for organizing and managing the execution of a set of tasks.
+   * See {@link GraphRoutine} for more information.
+   *
+   * @param {string} name - The name of the routine to be created.
+   * @param {Task[]} tasks - An array of tasks that the routine will consist of.
+   * @param {string} [description=""] - An optional description for the routine.
+   * @return {GraphRoutine} A new instance of the `GraphRoutine` representing the created routine.
+   * @throws {Error} If no starting tasks are provided.
    */
   static createMetaRoutine(
     name: string,
@@ -494,7 +565,7 @@ export default class Cadenza {
     this.bootstrap();
     this.validateName(name);
     if (tasks.length === 0) {
-      console.warn(`Routine '${name}' created with no starting tasks (no-op).`);
+      throw new Error(`Routine '${name}' created with no starting tasks.`);
     }
     return new GraphRoutine(name, tasks, description, true);
   }

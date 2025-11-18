@@ -3,6 +3,10 @@ import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import { AnyObject } from "../types/global";
 
+/**
+ * This class serves as a registry for managing tasks and routines within a graph-based execution model.
+ * It provides functionalities to register, update, retrieve, delete, and iterate over tasks and routines.
+ */
 export default class GraphRegistry {
   static _instance: GraphRegistry;
   public static get instance(): GraphRegistry {
@@ -27,6 +31,16 @@ export default class GraphRegistry {
   doForEachRoutine: Task;
   deleteRoutine: Task;
 
+  /**
+   * Constructs a new instance and sets up various meta tasks and routines.
+   *
+   * This constructor initializes several predefined tasks for managing operations
+   * like registering tasks, updating schemas for tasks, fetching tasks or routines,
+   * and performing actions on all tasks or routines. It also initializes routines
+   * to handle similar operations and hardcodes the initial meta tasks and routines.
+   *
+   * It initializes the instance state by setting up tasks and routines.
+   */
   constructor() {
     // Hardcode seed MetaTask (observes on existing broker)
     this.registerTask = new Task(

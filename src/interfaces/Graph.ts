@@ -1,6 +1,11 @@
 import GraphVisitor from "./GraphVisitor";
 import Iterator from "./Iterator";
 
+/**
+ * Represents an abstract base class for a graph node or task.
+ * This class provides the foundation for graph-related operations such as traversal,
+ * exportation, logging, and execution. It must be extended by concrete implementations.
+ */
 export default abstract class Graph {
   /**
    * Executes this graph node/task.

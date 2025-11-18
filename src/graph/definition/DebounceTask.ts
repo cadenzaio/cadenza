@@ -8,6 +8,11 @@ export interface DebounceOptions {
   maxWait?: number;
 }
 
+/**
+ * Class representing a debounced task, inheriting from the `Task` class.
+ * This class allows tasks to be executed with debounce behavior, controlling
+ * the frequency at which the task function is triggered.
+ */
 export default class DebounceTask extends Task {
   readonly debounceTime: number;
   leading: boolean;
@@ -66,6 +71,14 @@ export default class DebounceTask extends Task {
     this.maxWait = maxWait;
   }
 
+  /**
+   * Executes the taskFunction with the provided context, emit function, and progress callback.
+   * It clears any existing timeout before execution.
+   * Handles synchronous and asynchronous results from taskFunction.
+   * If an error occurs during execution, it resolves with the error.
+   *
+   * @return {void} This method does not return any value.
+   */
   executeFunction(): void {
     if (this.lastTimeout) {
       clearTimeout(this.lastTimeout);
@@ -94,6 +107,19 @@ export default class DebounceTask extends Task {
     }
   }
 
+  /**
+   * Executes a debounced operation, ensuring controlled execution of functions
+   * over a specified debounce time and maximum wait time. This method handles
+   * both leading and trailing edge executions and invokes callbacks accordingly.
+   *
+   * @param {Function} resolve - The function to call when the operation is successfully resolved.
+   * @param {Function} reject - The function to call with an error or reason if the operation fails.
+   * @param {GraphContext} context - The execution context for the operation.
+   * @param {NodeJS.Timeout} timeout - A timeout object for managing execution delays.
+   * @param {Function} emit - A callback function to emit signals with a specific context.
+   * @param {Function} progressCallback - A callback function to report progress during operation execution.
+   * @return {void} Does not return a value but sets internal timers and invokes provided callbacks.
+   */
   debouncedTrigger(
     resolve: (value: unknown) => void,
     reject: (reason?: any) => void,
@@ -153,6 +179,14 @@ export default class DebounceTask extends Task {
     }
   }
 
+  /**
+   * Executes a task with a debounced trigger mechanism.
+   *
+   * @param {GraphContext} context - The context containing relevant graph data for the execution.
+   * @param {function(string, any): void} emit - A function used to emit signals with associated context.
+   * @param {function(number): void} progressCallback - A callback function to report the progress of the task as a number between 0 and 1.
+   * @return {Promise<TaskResult>} A promise that resolves with the task result upon completion or rejects on failure.
+   */
   execute(
     context: GraphContext,
     emit: (signal: string, context: any) => void,

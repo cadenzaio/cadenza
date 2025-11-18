@@ -2,6 +2,13 @@ import Task from "./Task";
 import Cadenza from "../../Cadenza";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 
+/**
+ * Represents a routine in a graph structure with tasks and signal observation capabilities.
+ * Routines are named entrypoint for a sub-graph, describing the purpose for the subsequent flow.
+ * Since Task names are specific to the task it performs, it doesn't describe the overall flow.
+ * Routines, therefore are used to assign names to sub-flows that can be referenced using that name instead of the name of the task(s).
+ * Extends SignalEmitter to emit and handle signals related to the routine's lifecycle and tasks.
+ */
 export default class GraphRoutine extends SignalEmitter {
   readonly name: string;
   version: number = 1;
@@ -52,9 +59,12 @@ export default class GraphRoutine extends SignalEmitter {
   }
 
   /**
-   * Applies callback to starting tasks.
-   * @param callBack The callback.
-   * @returns Promise if async.
+   * Iterates over each task in the `tasks` collection and applies the provided callback function.
+   * If the callback returns a Promise, resolves all Promises concurrently.
+   *
+   * @param {function} callBack - A function to be executed on each task from the `tasks` collection.
+   *                              The callback receives the current task as its argument.
+   * @return {Promise<void>} A Promise that resolves once all callback executions, including asynchronous ones, are complete.
    */
   public async forEachTask(callBack: (task: Task) => any): Promise<void> {
     const promises = [];
@@ -75,10 +85,10 @@ export default class GraphRoutine extends SignalEmitter {
   }
 
   /**
-   * Subscribes to signals (chainable).
-   * @param signals The signal names.
-   * @returns This for chaining.
-   * @edge Duplicates ignored; assumes broker.observe binds this as handler.
+   * Subscribes the current instance to the specified signals, enabling it to observe them.
+   *
+   * @param {...string} signals - The names of the signals to observe.
+   * @return {this} Returns the instance to allow for method chaining.
    */
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
@@ -90,8 +100,11 @@ export default class GraphRoutine extends SignalEmitter {
   }
 
   /**
-   * Unsubscribes from all observed signals.
-   * @returns This for chaining.
+   * Unsubscribes from all observed signals and clears the internal collection
+   * of observed signals. This ensures that the instance is no longer listening
+   * or reacting to any previously subscribed signals.
+   *
+   * @return {this} Returns the current instance for chaining purposes.
    */
   unsubscribeAll(): this {
     this.observedSignals.forEach((signal) =>
@@ -102,10 +115,10 @@ export default class GraphRoutine extends SignalEmitter {
   }
 
   /**
-   * Unsubscribes from specific signals.
-   * @param signals The signals.
-   * @returns This for chaining.
-   * @edge No-op if not subscribed.
+   * Unsubscribes the current instance from the specified signals.
+   *
+   * @param {...string} signals - The signals to unsubscribe from.
+   * @return {this} The current instance for method chaining.
    */
   unsubscribe(...signals: string[]): this {
     signals.forEach((signal) => {
@@ -118,7 +131,12 @@ export default class GraphRoutine extends SignalEmitter {
   }
 
   /**
-   * Destroys the routine.
+   * Cleans up resources and emits an event indicating the destruction of the routine.
+   *
+   * This method unsubscribes from all events, clears the tasks list,
+   * and emits a "meta.routine.destroyed" event with details of the destruction.
+   *
+   * @return {void}
    */
   public destroy(): void {
     this.unsubscribeAll();

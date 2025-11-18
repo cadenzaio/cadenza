@@ -10,6 +10,20 @@ import { AnyObject } from "../../types/global";
 import { sleep } from "../../utils/promise";
 import { formatTimestamp } from "../../utils/tools";
 
+/**
+ * Represents a node in a graph structure used for executing tasks.
+ * A Node is a container for a task and its associated context, providing
+ * methods for executing the task and managing its lifecycle.
+ *
+ * It extends the SignalEmitter class to emit and handle signals related to
+ * the node's lifecycle, such as "meta.node.started" and "meta.node.completed".
+ *
+ * It also implements the Graph interface, allowing it to be used as a part of
+ * a graph structure, such as a GraphLayer or GraphRoutine.
+ *
+ * @extends SignalEmitter
+ * @implements Graph
+ */
 export default class GraphNode extends SignalEmitter implements Graph {
   id: string;
   routineExecId: string;
@@ -92,6 +106,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.graphComplete;
   }
 
+  /**
+   * Compares the current GraphNode instance with another GraphNode to determine if they are considered equal.
+   *
+   * @param {GraphNode} node - The GraphNode object to compare with the current instance.
+   * @return {boolean} Returns true if the nodes share the same task, context, and belong to the same graph; otherwise, false.
+   */
   public isEqualTo(node: GraphNode) {
     return (
       this.sharesTaskWith(node) &&
@@ -100,14 +120,33 @@ export default class GraphNode extends SignalEmitter implements Graph {
     );
   }
 
+  /**
+   * Determines if the given node is part of the same graph as the current node.
+   *
+   * @param {GraphNode} node - The node to compare with the current node.
+   * @return {boolean} Returns true if the provided node is part of the same graph
+   *                   (i.e., has the same routineExecId), otherwise false.
+   */
   public isPartOfSameGraph(node: GraphNode) {
     return this.routineExecId === node.routineExecId;
   }
 
+  /**
+   * Determines whether the current instance shares a task with the provided node.
+   *
+   * @param {GraphNode} node - The graph node to compare with the current instance.
+   * @return {boolean} Returns true if the task names of both nodes match, otherwise false.
+   */
   public sharesTaskWith(node: GraphNode) {
     return this.task.name === node.task.name;
   }
 
+  /**
+   * Determines whether the current node shares the same context as the specified node.
+   *
+   * @param {GraphNode} node - The graph node to compare with the current node's context.
+   * @return {boolean} True if both nodes share the same context; otherwise, false.
+   */
   public sharesContextWith(node: GraphNode) {
     return this.context.id === node.context.id;
   }
@@ -120,10 +159,27 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.task.concurrency;
   }
 
+  /**
+   * Retrieves the tag associated with the current task and context.
+   *
+   * @return {string} The tag retrieved from the task within the given context.
+   */
   public getTag() {
     return this.task.getTag(this.context);
   }
 
+  /**
+   * Schedules the current node/task on the specified graph layer if applicable.
+   *
+   * This method assesses whether the current node/task should be scheduled
+   * on the given graph layer. It ensures that tasks are only scheduled
+   * under certain conditions, such as checking if the task shares
+   * execution contexts or dependencies with other nodes, and handles
+   * various metadata emissions and context updates during the scheduling process.
+   *
+   * @param {GraphLayer} layer - The graph layer on which the current task should be scheduled.
+   * @returns {void} Does not return a value.
+   */
   public scheduleOn(layer: GraphLayer) {
     let shouldSchedule = true;
     const nodes = layer.getNodesByRoutineExecId(this.routineExecId);
@@ -220,6 +276,18 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
+  /**
+   * Starts the execution process by initializing the execution start timestamp,
+   * emitting relevant metadata, and logging debug information if applicable.
+   *
+   * The method performs the following actions:
+   * 1. Sets the execution start timestamp if it's not already initialized.
+   * 2. Emits metrics with metadata about the routine execution starting, including additional data if there are no previous nodes.
+   * 3. Optionally logs debug or verbose information based on the current settings.
+   * 4. Emits additional metrics to indicate that the execution has started.
+   *
+   * @return {number} The timestamp indicating when the execution started.
+   */
   public start() {
     if (this.executionStart === 0) {
       this.executionStart = Date.now();
@@ -255,6 +323,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.executionStart;
   }
 
+  /**
+   * Marks the end of an execution process, performs necessary cleanup, emits
+   * metrics with associated metadata, and signals the completion of execution.
+   * Also handles specific cases when the graph completes.
+   *
+   * @return {number} The timestamp corresponding to the end of execution. If execution
+   * was not started, it returns 0.
+   */
   public end() {
     if (this.executionStart === 0) {
       return 0;
@@ -316,6 +392,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return end;
   }
 
+  /**
+   * Executes the main logic of the task, including input validation, processing, and post-processing.
+   * Handles both synchronous and asynchronous workflows.
+   *
+   * @return {Array|Promise|undefined} Returns the next nodes to process if available.
+   * If asynchronous processing is required, it returns a Promise that resolves to the next nodes.
+   * Returns undefined in case of an error during input validation or preconditions that prevent processing.
+   */
   public execute() {
     if (!this.divided && !this.processing) {
       this.processing = true;
@@ -346,6 +430,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.nextNodes;
   }
 
+  /**
+   * Executes an asynchronous workflow that processes a result and retries on errors.
+   * The method handles different result states, checks for error properties, and invokes
+   * error handling when necessary.
+   *
+   * @return {Promise<void>} A promise that resolves when the operation completes successfully,
+   * or rejects if an unhandled error occurs.
+   */
   async workAsync() {
     try {
       this.result = await this.result;
@@ -370,6 +462,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
+  /**
+   * Executes an asynchronous operation, processes the result, and determines the next nodes to execute.
+   * This method will manage asynchronous work, handle post-processing of results, and ensure proper handling of both synchronous and asynchronous next node configurations.
+   *
+   * @return {Promise<any>} A promise resolving to the next nodes to be executed. Can be the result of post-processing or a directly resolved next nodes object.
+   */
   async executeAsync() {
     await this.workAsync();
     const nextNodes = this.postProcess();
@@ -380,6 +478,16 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.nextNodes;
   }
 
+  /**
+   * Executes the task associated with the current instance, using the given context,
+   * progress callback, and metadata. If the task fails or an error occurs, it attempts
+   * to retry the execution. If the retry is not successful, it propagates the error and
+   * returns the result.
+   *
+   * @return {TaskResult | Promise<TaskResult>} The result of the task execution, or a
+   * promise that resolves to the task result. This includes handling for retries on
+   * failure and error propagation.
+   */
   work(): TaskResult | Promise<TaskResult> {
     try {
       const result = this.task.execute(
@@ -407,6 +515,18 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
+  /**
+   * Emits a signal along with its associated metadata. The metadata includes
+   * task-specific information such as task name, version, execution ID, and
+   * additional context metadata like routine execution ID and execution trace ID.
+   * This method is designed to enrich emitted signals with relevant details
+   * before broadcasting them.
+   *
+   * @param {string} signal - The name of the signal to be emitted.
+   * @param {AnyObject} data - The data object to be sent along with the signal. Metadata
+   * will be injected into this object before being emitted.
+   * @return {void} No return value.
+   */
   emitWithMetadata(signal: string, data: AnyObject) {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
@@ -430,6 +550,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     // }
   }
 
+  /**
+   * Emits metrics with additional metadata describing the task execution and context.
+   *
+   * @param {string} signal - The signal name being emitted.
+   * @param {AnyObject} data - The data associated with the signal emission, enriched with metadata.
+   * @return {void} Emits the signal with enriched data and does not return a value.
+   */
   emitMetricsWithMetadata(signal: string, data: AnyObject) {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
@@ -454,6 +581,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     // }
   }
 
+  /**
+   * Updates the progress of a task and emits metrics with associated metadata.
+   *
+   * @param {number} progress - A number representing the progress value, which will be clamped between 0 and 1.
+   * @return {void} This method does not return a value.
+   */
   onProgress(progress: number) {
     progress = Math.min(Math.max(0, progress), 1);
 
@@ -481,6 +614,18 @@ export default class GraphNode extends SignalEmitter implements Graph {
     );
   }
 
+  /**
+   * Processes the result of the current operation, validates it, and determines the next set of nodes.
+   *
+   * This method ensures that results of certain types such as strings or arrays
+   * are flagged as errors. It divides the current context into subsequent nodes
+   * for further processing. If the division returns a promise, it delegates the
+   * processing to `postProcessAsync`. For synchronous division, it sets the
+   * `nextNodes` and finalizes the operation.
+   *
+   * @return {(Array|undefined)} Returns an array of next nodes for further processing,
+   * or undefined if no further processing is required.
+   */
   postProcess() {
     if (typeof this.result === "string") {
       this.onError(
@@ -503,12 +648,24 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.nextNodes;
   }
 
+  /**
+   * Asynchronously processes and finalizes the provided graph nodes.
+   *
+   * @param {Promise<GraphNode[]>} nextNodes A promise that resolves to an array of graph nodes to be processed.
+   * @return {Promise<GraphNode[]>} A promise that resolves to the processed array of graph nodes.
+   */
   async postProcessAsync(nextNodes: Promise<GraphNode[]>) {
     this.nextNodes = await nextNodes;
     this.finalize();
     return this.nextNodes;
   }
 
+  /**
+   * Finalizes the current task execution by determining if the task is complete, handles any errors or failures,
+   * emits relevant signals based on the task outcomes, and ensures proper end of the task lifecycle.
+   *
+   * @return {void} Does not return a value.
+   */
   finalize() {
     if (this.nextNodes.length === 0) {
       this.completeSubgraph();
@@ -527,6 +684,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.end();
   }
 
+  /**
+   * Handles an error event, processes the error, and updates the state accordingly.
+   *
+   * @param {unknown} error - The error object or message that occurred.
+   * @param {AnyObject} [errorData={}] - Additional error data to include in the result.
+   * @return {void} This method does not return any value.
+   */
   onError(error: unknown, errorData: AnyObject = {}) {
     this.result = {
       ...this.context.getFullContext(),
@@ -541,6 +705,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.errored = true;
   }
 
+  /**
+   * Retries a task based on the defined retry count and delay time. If the retry count is 0, it immediately resolves with the provided previous result.
+   *
+   * @param {any} [prevResult] - The result from a previous attempt, if any, to return when no retries are performed.
+   * @return {Promise<TaskResult>} - A promise that resolves with the result of the retried task or the previous result if no retries occur.
+   */
   async retry(prevResult?: any): Promise<TaskResult> {
     if (this.retryCount === 0) {
       return prevResult;
@@ -550,6 +720,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.work();
   }
 
+  /**
+   * Retries an asynchronous operation and returns its result.
+   * If the retry count is zero, the method immediately returns the provided previous result.
+   *
+   * @param {any} [prevResult] - The optional result from a previous operation attempt, if applicable.
+   * @return {Promise<TaskResult>} A promise that resolves to the result of the retried operation.
+   */
   async retryAsync(prevResult?: any): Promise<TaskResult> {
     if (this.retryCount === 0) {
       return prevResult;
@@ -573,6 +750,15 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
   }
 
+  /**
+   * Processes the result of a task by generating new nodes based on the task output.
+   * The method handles synchronous and asynchronous generators, validates task output,
+   * and creates new nodes accordingly. If errors occur, the method attempts to handle them
+   * by generating alternative task nodes.
+   *
+   * @return {GraphNode[] | Promise<GraphNode[]>} Returns an array of generated GraphNode objects
+   * (synchronously or wrapped in a Promise) based on the task result, or propagates errors if validation fails.
+   */
   divide(): GraphNode[] | Promise<GraphNode[]> {
     const newNodes: GraphNode[] = [];
 
@@ -640,6 +826,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return newNodes;
   }
 
+  /**
+   * Processes an asynchronous iterator result, validates its output, and generates new graph nodes accordingly.
+   * Additionally, continues to process and validate results from an asynchronous generator.
+   *
+   * @param {Promise<IteratorResult<any>>} current - A promise resolving to the current step result from an asynchronous iterator.
+   * @return {Promise<GraphNode[]>} A promise resolving to an array of generated GraphNode objects based on validated outputs.
+   */
   async divideAsync(
     current: Promise<IteratorResult<any>>,
   ): Promise<GraphNode[]> {
@@ -669,6 +862,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return nextNodes;
   }
 
+  /**
+   * Generates new nodes based on the provided result and task configuration.
+   *
+   * @param {any} result - The result of the previous operation, which determines the configuration and context for new nodes. It can be a boolean or an object containing details like failure, errors, or metadata.
+   * @return {GraphNode[]} An array of newly generated graph nodes configured based on the task and context.
+   */
   generateNewNodes(result: any) {
     const groupId = uuid();
     const newNodes = [];
@@ -719,6 +918,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return newNodes;
   }
 
+  /**
+   * Executes the differentiation process based on a given task and updates the instance properties accordingly.
+   *
+   * @param {Task} task - The task object containing information such as retry count, retry delay, and metadata status.
+   * @return {GraphNode} The updated instance after processing the task.
+   */
   differentiate(task: Task): GraphNode {
     this.task = task;
     this.retryCount = task.retryCount;
@@ -730,16 +935,34 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this;
   }
 
+  /**
+   * Migrates the current instance to a new context and returns the updated instance.
+   *
+   * @param {any} ctx - The context data to be used for migration.
+   * @return {GraphNode} The updated instance after migration.
+   */
   migrate(ctx: any): GraphNode {
     this.context = new GraphContext(ctx);
     return this;
   }
 
+  /**
+   * Splits the current node into a new group identified by the provided ID.
+   *
+   * @param {string} id - The unique identifier for the new split group.
+   * @return {GraphNode} The current instance of the GraphNode with the updated split group ID.
+   */
   split(id: string): GraphNode {
     this.splitGroupId = id;
     return this;
   }
 
+  /**
+   * Creates a new instance of the GraphNode with the current node's properties.
+   * This method allows for duplicating the existing graph node.
+   *
+   * @return {GraphNode} A new instance of GraphNode that is a copy of the current node.
+   */
   public clone(): GraphNode {
     return new GraphNode(
       this.task,
@@ -751,6 +974,13 @@ export default class GraphNode extends SignalEmitter implements Graph {
     );
   }
 
+  /**
+   * Consumes the given graph node by combining contexts, merging previous nodes,
+   * and performing associated operations on the provided node.
+   *
+   * @param {GraphNode} node - The graph node to be consumed.
+   * @return {void} This method does not return a value.
+   */
   public consume(node: GraphNode) {
     this.context = this.context.combine(node.context);
     this.previousNodes = this.previousNodes.concat(node.previousNodes);
@@ -759,10 +989,23 @@ export default class GraphNode extends SignalEmitter implements Graph {
     node.destroy();
   }
 
+  /**
+   * Changes the identity of the current instance by updating the `id` property.
+   *
+   * @param {string} id - The new identity value to be assigned.
+   * @return {void} Does not return a value.
+   */
   changeIdentity(id: string) {
     this.id = id;
   }
 
+  /**
+   * Completes the subgraph for the current node and recursively for its previous nodes
+   * once all next nodes have their subgraphs marked as done. If there are no previous nodes,
+   * it completes the entire graph.
+   *
+   * @return {void} Does not return a value.
+   */
   completeSubgraph() {
     for (const node of this.nextNodes) {
       if (!node.subgraphDone()) {
@@ -780,11 +1023,23 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.previousNodes.forEach((n) => n.completeSubgraph());
   }
 
+  /**
+   * Completes the current graph by setting a flag indicating the graph has been completed
+   * and recursively completes all subsequent nodes in the graph.
+   *
+   * @return {void} Does not return a value.
+   */
   completeGraph() {
     this.graphComplete = true;
     this.nextNodes.forEach((n) => n.completeGraph());
   }
 
+  /**
+   * Destroys the current instance by releasing resources, breaking references,
+   * and resetting properties to ensure proper cleanup.
+   *
+   * @return {void} No return value.
+   */
   public destroy() {
     // @ts-ignore
     this.context = null;
@@ -800,18 +1055,43 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.destroyed = true;
   }
 
+  /**
+   * Retrieves an iterator for traversing through the graph nodes.
+   *
+   * @return {GraphNodeIterator} An iterator instance specific to this graph node.
+   */
   public getIterator() {
     return new GraphNodeIterator(this);
   }
 
+  /**
+   * Applies a callback function to each node in the `nextNodes` array and returns
+   * the resulting array from the map operation.
+   *
+   * @param {function} callback - A function to execute on each `GraphNode` in the `nextNodes` array.
+   * The function receives a `GraphNode` as its argument.
+   * @return {Array} The resulting array after applying the callback function to each node in `nextNodes`.
+   */
   public mapNext(callback: (node: GraphNode) => any) {
     return this.nextNodes.map(callback);
   }
 
+  /**
+   * Accepts a visitor object and calls its visitNode method with the current instance.
+   *
+   * @param {GraphVisitor} visitor - The visitor instance implementing the GraphVisitor interface.
+   * @return {void} This method does not return a value.
+   */
   public accept(visitor: GraphVisitor) {
     visitor.visitNode(this);
   }
 
+  /**
+   * Exports the current object's state and returns it in a serialized format.
+   * The exported object contains metadata, task details, context information, execution times, node relationships, routine execution status, and other state information.
+   *
+   * @return {Object} An object representing the current state.
+   */
   public export() {
     return {
       __id: this.id,

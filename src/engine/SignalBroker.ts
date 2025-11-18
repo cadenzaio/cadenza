@@ -5,13 +5,13 @@ import GraphRoutine from "../graph/definition/GraphRoutine";
 import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
 
+/**
+ * This class manages signals and observers, enabling communication across different parts of an application.
+ * It follows a singleton design pattern, allowing for centralized signal management.
+ */
 export default class SignalBroker {
   static instance_: SignalBroker;
 
-  /**
-   * Singleton instance for signal management.
-   * @returns The broker instance.
-   */
   static get instance(): SignalBroker {
     if (!this.instance_) {
       this.instance_ = new SignalBroker();
@@ -30,6 +30,15 @@ export default class SignalBroker {
     this.verbose = value;
   }
 
+  /**
+   * Validates the provided signal name string to ensure it adheres to specific formatting rules.
+   * Throws an error if any of the validation checks fail.
+   *
+   * @param {string} signalName - The signal name to be validated.
+   * @return {void} - Returns nothing if the signal name is valid.
+   * @throws {Error} - Throws an error if the signal name is longer than 100 characters, contains spaces,
+   *                   contains backslashes, or contains uppercase letters in restricted parts of the name.
+   */
   validateSignalName(signalName: string) {
     if (signalName.length > 100) {
       throw new Error(
@@ -91,6 +100,11 @@ export default class SignalBroker {
     this.metaRunner = metaRunner;
   }
 
+  /**
+   * Initializes and sets up the various tasks for managing and processing signals.
+   *
+   * @return {void} This method does not return a value.
+   */
   init() {
     this.clearSignalsTask = Cadenza.createDebounceMetaTask(
       "Execute and clear queued signals",
@@ -164,6 +178,15 @@ export default class SignalBroker {
     }
   }
 
+  /**
+   * Schedules a signal to be emitted after a specified delay or at an exact date and time.
+   *
+   * @param {string} signal - The name of the signal to be emitted.
+   * @param {AnyObject} context - The context to be passed along with the signal.
+   * @param {number} [timeoutMs=60000] - The delay in milliseconds before the signal is emitted. Defaults to 60,000 ms.
+   * @param {Date} [exactDateTime] - An exact date and time at which to emit the signal. If provided, this overrides the `timeoutMs`.
+   * @return {AbortController} An AbortController instance that can be used to cancel the scheduled signal emission.
+   */
   schedule(
     signal: string,
     context: AnyObject,
@@ -258,11 +281,12 @@ export default class SignalBroker {
   }
 
   /**
-   * Emits a signal and bubbles to matching wildcards/parents (e.g., 'a.b.action' triggers 'a.b.action', 'a.b.*', 'a.*').
-   * @param signal The signal name.
-   * @param context The payload.
-   * @edge Fire-and-forget; guards against loops per execId (from context.__graphExecId).
-   * @edge For distribution, SignalTask can prefix and proxy remote.
+   * Emits a signal with the specified context, triggering any associated handlers for that signal.
+   *
+   * @param {string} signal - The name of the signal to emit.
+   * @param {AnyObject} [context={}] - An optional context object containing additional information or metadata
+   * associated with the signal. If the context includes a `__routineExecId`, it will be handled accordingly.
+   * @return {void} This method does not return a value.
    */
   emit(signal: string, context: AnyObject = {}): void {
     const execId = context.__routineExecId || "global"; // Assume from metadata
@@ -283,6 +307,17 @@ export default class SignalBroker {
     }
   }
 
+  /**
+   * Executes a signal with the provided context by emitting it to registered listeners
+   * and potentially their parent wildcard listeners. Handles different signal types,
+   * such as "meta" and "sub_meta", and logs activity when debugging is enabled.
+   *
+   * @param {string} signal - The name of the signal to be executed. May include hierarchical or meta-level information.
+   * @param {Object} context - The context object containing meta-data or state information
+   *                           related to the signal execution.
+   * @returns {boolean} - Indicates whether the signal execution was successfully handled
+   *                      by any listener.
+   */
   execute(signal: string, context: AnyObject): boolean {
     const isMeta = signal.includes("meta.");
     const isSubMeta = signal.includes("sub_meta.") || context.__isSubMeta;
@@ -327,6 +362,15 @@ export default class SignalBroker {
     return executed;
   }
 
+  /**
+   * Executes the tasks associated with a given signal and context.
+   * It processes both normal and meta tasks depending on the signal type
+   * and the availability of the appropriate runner.
+   *
+   * @param {string} signal - The signal identifier that determines which tasks to execute.
+   * @param {AnyObject} context - The context object passed to the task execution function.
+   * @return {boolean} - Returns true if tasks were executed; otherwise, false.
+   */
   executeListener(signal: string, context: AnyObject): boolean {
     const obs = this.signalObservers.get(signal);
     if (!obs || obs.tasks.size === 0) {
@@ -361,6 +405,15 @@ export default class SignalBroker {
     return false;
   }
 
+  /**
+   * Adds a signal to the signalObservers for tracking and execution.
+   * Performs validation on the signal name and emits a meta signal event when added.
+   * If the signal contains a namespace (denoted by a colon ":"), its base signal is
+   * also added if it doesn't already exist.
+   *
+   * @param {string} signal - The name of the signal to be added.
+   * @return {void} This method does not return any value.
+   */
   addSignal(signal: string): void {
     let _signal = signal;
     if (!this.signalObservers.has(_signal)) {
@@ -397,8 +450,6 @@ export default class SignalBroker {
       this.emit("meta.signal_broker.added", { __signalName: _signal });
     }
   }
-
-  // TODO schedule signals
 
   /**
    * Lists all observed signals.

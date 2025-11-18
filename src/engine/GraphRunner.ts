@@ -11,6 +11,10 @@ import GraphRegistry from "../registry/GraphRegistry";
 import GraphContext from "../graph/context/GraphContext";
 import { formatTimestamp } from "../utils/tools";
 
+/**
+ * Represents a runner for managing and executing tasks or routines within a graph.
+ * The `GraphRunner` extends `SignalEmitter` to include signal-based event-driven mechanisms.
+ */
 export default class GraphRunner extends SignalEmitter {
   currentRun: GraphRun;
   debug: boolean = false;
@@ -46,12 +50,14 @@ export default class GraphRunner extends SignalEmitter {
   }
 
   /**
-   * Adds tasks/routines to current run.
-   * @param tasks Tasks/routines.
-   * @param context Context (defaults {}).
-   * @edge Flattens routines to tasks; generates routineExecId if not in context.
-   * @edge Emits 'meta.runner.added_tasks' with metadata.
-   * @edge Empty tasks warns no-op.
+   * Adds tasks or routines to the current execution pipeline. Supports both individual tasks,
+   * routines, or arrays of tasks and routines. Handles metadata and execution context management.
+   *
+   * @param {Task|GraphRoutine|(Task|GraphRoutine)[]} tasks - The task(s) or routine(s) to be added.
+   * It can be a single task, a single routine, or an array of tasks and routines.
+   * @param {AnyObject} [context={}] - Optional context object to provide execution trace and metadata.
+   * Used to propagate information across task or routine executions.
+   * @return {void} - This method does not return a value.
    */
   addTasks(
     tasks: Task | GraphRoutine | (Task | GraphRoutine)[],
@@ -148,11 +154,12 @@ export default class GraphRunner extends SignalEmitter {
   }
 
   /**
-   * Runs tasks/routines.
-   * @param tasks Optional tasks/routines.
-   * @param context Optional context.
-   * @returns Current/last run (Promise if async).
-   * @edge If running, returns current; else runs and resets.
+   * Executes the provided tasks or routines. Maintains the execution state
+   * and handles synchronous or asynchronous processing.
+   *
+   * @param {Task|GraphRoutine|(Task|GraphRoutine)[]} [tasks] - A single task, a single routine, or an array of tasks or routines to execute. Optional.
+   * @param {AnyObject} [context] - An optional context object to be used during task execution.
+   * @return {GraphRun|Promise<GraphRun>} - Returns a `GraphRun` instance if the execution is synchronous, or a `Promise` resolving to a `GraphRun` for asynchronous execution.
    */
   public run(
     tasks?: Task | GraphRoutine | (Task | GraphRoutine)[],
@@ -178,11 +185,24 @@ export default class GraphRunner extends SignalEmitter {
     return this.reset();
   }
 
+  /**
+   * Executes the provided asynchronous operation and resets the state afterwards.
+   *
+   * @param {Promise<void>} run - A promise representing the asynchronous operation to execute.
+   * @return {Promise<GraphRun>} A promise that resolves to the result of the reset operation after the asynchronous operation completes.
+   */
   async runAsync(run: Promise<void>): Promise<GraphRun> {
     await run;
     return this.reset();
   }
 
+  /**
+   * Resets the current state of the graph, creating a new GraphRun instance
+   * and returning the previous run instance.
+   * If the debug mode is not enabled, it will destroy the existing resources.
+   *
+   * @return {GraphRun} The last GraphRun instance before the reset.
+   */
   reset(): GraphRun {
     this.isRunning = false;
 
@@ -209,6 +229,13 @@ export default class GraphRunner extends SignalEmitter {
     this.currentRun.destroy();
   }
 
+  /**
+   * Sets the strategy to be used for running the graph and initializes
+   * the current run with the provided strategy if no process is currently running.
+   *
+   * @param {GraphRunStrategy} strategy - The strategy to use for running the graph.
+   * @return {void}
+   */
   public setStrategy(strategy: GraphRunStrategy): void {
     this.strategy = strategy;
     if (!this.isRunning) {

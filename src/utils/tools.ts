@@ -1,10 +1,9 @@
 /**
- * Deep clones an input with optional filter.
- * @param input The input to clone.
- * @param filterOut Predicate to skip keys (true = skip).
- * @returns Cloned input.
- * @edge Handles arrays/objects; skips cycles with visited.
- * @edge Primitives returned as-is; functions copied by reference.
+ * Creates a deep clone of the given input object or array, while allowing specific keys to be filtered out based on a provided criteria.
+ *
+ * @param {T} input The input data to be cloned. It can be an object or an array.
+ * @param {(key: string) => boolean} [filterOut] A callback function to determine which keys should be excluded from the cloned structure. It receives the key as a parameter and should return `true` to exclude the key, or `false` to include it. Default is a function that includes all keys (`() => false`).
+ * @return {T} Returns a deep clone of the input object or array with the specified keys filtered out.
  */
 export function deepCloneFilter<T>(
   input: T,
@@ -65,6 +64,12 @@ export function deepCloneFilter<T>(
   return output as T;
 }
 
+/**
+ * Converts a given timestamp to an ISO 8601 formatted string.
+ *
+ * @param {number} timestamp - The timestamp in milliseconds to be formatted.
+ * @return {string} The ISO 8601 formatted date string.
+ */
 export function formatTimestamp(timestamp: number) {
   return new Date(timestamp).toISOString();
 }

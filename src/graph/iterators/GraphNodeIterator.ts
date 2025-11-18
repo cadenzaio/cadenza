@@ -1,6 +1,10 @@
 import Iterator from "../../interfaces/Iterator";
 import GraphNode from "../execution/GraphNode";
 
+/**
+ * Represents an iterator for traversing nodes in a graph structure.
+ * Implements the Iterator interface and allows traversal of nodes layer by layer.
+ */
 export default class GraphNodeIterator implements Iterator {
   currentNode: GraphNode | undefined;
   currentLayer: GraphNode[] = [];

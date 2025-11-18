@@ -1,6 +1,10 @@
 import Cadenza from "../Cadenza";
 import { AnyObject } from "../types/global";
 
+/**
+ * Abstract class representing a signal emitter.
+ * Allows emitting events or signals, with the option to suppress emissions if desired.
+ */
 export default abstract class SignalEmitter {
   silent: boolean;
 

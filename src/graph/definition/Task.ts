@@ -15,6 +15,12 @@ export type TaskFunction = (
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
 export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
 
+/**
+ * Represents a task with a specific behavior, configuration, and lifecycle management.
+ * Tasks are used to define units of work that can be executed and orchestrated.
+ * Tasks can specify input/output validation, concurrency, retry policies, and more.
+ * This class extends SignalEmitter and implements Graph, allowing tasks to emit and observe signals.
+ */
 export default class Task extends SignalEmitter implements Graph {
   readonly name: string;
   readonly description: string;
@@ -59,27 +65,27 @@ export default class Task extends SignalEmitter implements Graph {
   readonly taskFunction: TaskFunction;
 
   /**
-   * Constructs a Task (static definition).
-   * @param name Name.
-   * @param task Function.
-   * @param description Description.
-   * @param concurrency Limit.
-   * @param timeout ms.
-   * @param register Register via signal (default true).
-   * @param isUnique
-   * @param isMeta
-   * @param isSubMeta
-   * @param isHidden
-   * @param getTagCallback
-   * @param inputSchema
-   * @param validateInputContext
-   * @param outputSchema
-   * @param validateOutputContext
-   * @param retryCount
-   * @param retryDelay
-   * @param retryDelayMax
-   * @param retryDelayFactor
-   * @edge Emits 'meta.task.created' with { __task: this } for seed.
+   * Constructs an instance of the task with the specified properties and configuration options.
+   *
+   * @param {string} name - The name of the task.
+   * @param {TaskFunction} task - The function that represents the task logic.
+   * @param {string} [description=""] - A description of the task.
+   * @param {number} [concurrency=0] - The number of concurrent executions allowed for the task.
+   * @param {number} [timeout=0] - The maximum execution time for the task in milliseconds.
+   * @param {boolean} [register=true] - Indicates if the task should be registered or not.
+   * @param {boolean} [isUnique=false] - Specifies if the task should only allow one instance to exist at any time.
+   * @param {boolean} [isMeta=false] - Indicates if the task is a meta-task.
+   * @param {boolean} [isSubMeta=false] - Indicates if the task is a sub-meta-task.
+   * @param {boolean} [isHidden=false] - Determines if the task is hidden and not exposed publicly.
+   * @param {ThrottleTagGetter} [getTagCallback=undefined] - A callback to generate a throttle tag for the task.
+   * @param {SchemaDefinition} [inputSchema=undefined] - The input schema for validating the task's input context.
+   * @param {boolean} [validateInputContext=false] - Specifies if the input context should be validated against the input schema.
+   * @param {SchemaDefinition} [outputSchema=undefined] - The output schema for validating the task's output context.
+   * @param {boolean} [validateOutputContext=false] - Specifies if the output context should be validated against the output schema.
+   * @param {number} [retryCount=0] - The number of retry attempts allowed for the task in case of failure.
+   * @param {number} [retryDelay=0] - The initial delay (in milliseconds) between retry attempts.
+   * @param {number} [retryDelayMax=0] - The maximum delay (in milliseconds) allowed between retries.
+   * @param {number} [retryDelayFactor=1] - The factor by which the retry delay increases after each attempt.
    */
   constructor(
     name: string,
@@ -161,6 +167,13 @@ export default class Task extends SignalEmitter implements Graph {
     }
   }
 
+  /**
+   * Retrieves the tag associated with the instance.
+   * Can be overridden by subclasses.
+   *
+   * @param {AnyObject} [context] - Optional context parameter that can be provided.
+   * @return {string} The tag value of the instance.
+   */
   public getTag(context?: AnyObject): string {
     return this.name;
   }
@@ -200,6 +213,16 @@ export default class Task extends SignalEmitter implements Graph {
     this.validateOutputContext = value;
   }
 
+  /**
+   * Emits a signal along with metadata if certain conditions are met.
+   *
+   * This method sends a signal with optional context data and adds metadata
+   * to the emitted data if the instance is not hidden and not a subordinate metadata object.
+   *
+   * @param {string} signal - The name of the signal to emit.
+   * @param {AnyObject} [ctx={}] - Additional context data to include with the emitted signal.
+   * @return {void} Does not return a value.
+   */
   emitWithMetadata(signal: string, ctx: AnyObject = {}) {
     const data = { ...ctx };
     if (!this.isHidden && !this.isSubMeta) {
@@ -212,6 +235,14 @@ export default class Task extends SignalEmitter implements Graph {
     this.emit(signal, data);
   }
 
+  /**
+   * Emits metrics with additional metadata enhancement based on the context and the state of the instance.
+   * This is used to prevent loops on the meta layer in debug mode.
+   *
+   * @param {string} signal - The signal identifier for the metric being emitted.
+   * @param {AnyObject} [ctx={}] - Optional context object to provide additional information with the metric.
+   * @return {void} This method does not return any value.
+   */
   emitMetricsWithMetadata(signal: string, ctx: AnyObject = {}) {
     const data = { ...ctx };
     if (!this.isHidden && !this.isSubMeta) {
@@ -226,12 +257,13 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Validates a context deeply against a schema.
-   * @param data - The data to validate (input context or output result).
-   * @param schema - The schema definition.
-   * @param path - The current path for error reporting (default: 'root').
-   * @returns { { valid: boolean, errors: Record<string, string> } } - Validation result with detailed errors if invalid.
-   * @description Recursively checks types, required fields, and constraints; allows extra properties not in schema.
+   * Validates a data object against a specified schema definition and returns validation results.
+   *
+   * @param {any} data - The target object to validate against the schema.
+   * @param {SchemaDefinition | undefined} schema - The schema definition describing the expected structure and constraints of the data.
+   * @param {string} [path="context"] - The base path or context for traversing the data, used in generating error messages.
+   * @return {{ valid: boolean, errors: Record<string, string> }} - An object containing a validity flag (`valid`)
+   * and a map (`errors`) of validation error messages keyed by property paths.
    */
   validateSchema(
     data: any,
@@ -376,6 +408,12 @@ export default class Task extends SignalEmitter implements Graph {
     return { valid: true, errors: {} };
   }
 
+  /**
+   * Validates the input context against the predefined schema and emits metadata if validation fails.
+   *
+   * @param {AnyObject} context - The input context to validate.
+   * @return {true | AnyObject} - Returns `true` if validation succeeds, otherwise returns an error object containing details of the validation failure.
+   */
   public validateInput(context: AnyObject): true | AnyObject {
     if (this.validateInputContext) {
       const validationResult = this.validateSchema(
@@ -399,6 +437,13 @@ export default class Task extends SignalEmitter implements Graph {
     return true;
   }
 
+  /**
+   * Validates the output context using the provided schema and emits metadata if validation fails.
+   *
+   * @param {AnyObject} context - The output context to validate.
+   * @return {true | AnyObject} Returns `true` if the output context is valid; otherwise, returns an object
+   * containing error information when validation fails.
+   */
   public validateOutput(context: AnyObject): true | AnyObject {
     if (this.validateOutputContext) {
       const validationResult = this.validateSchema(
@@ -423,14 +468,13 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Executes the task function after optional input validation.
-   * @param context - The GraphContext to validate and execute.
-   * @param emit
-   * @param progressCallback - Callback for progress updates.
-   * @param nodeData
-   * @returns TaskResult from the taskFunction or error object on validation failure.
-   * @edge If validateInputContext is true, validates context; on failure, emits 'meta.task.validationFailed' with detailed errors.
-   * @edge If validateOutputContext is true, validates output; on failure, emits 'meta.task.outputValidationFailed' with detailed errors.
+   * Executes a task within a given context, optionally emitting signals and reporting progress.
+   *
+   * @param {GraphContext} context The execution context which provides data and functions necessary for the task.
+   * @param {function(string, AnyObject): void} emit A function to emit signals and communicate intermediate results or states.
+   * @param {function(number): void} progressCallback A callback function used to report task progress as a percentage (0 to 100).
+   * @param {{ nodeId: string; routineExecId: string }} nodeData An object containing identifiers related to the node and execution routine.
+   * @return {TaskResult} The result of the executed task.
    */
   public execute(
     context: GraphContext,
@@ -445,6 +489,15 @@ export default class Task extends SignalEmitter implements Graph {
     );
   }
 
+  /**
+   * Adds tasks as predecessors to the current task and establishes dependencies between them.
+   * Ensures that adding predecessors does not create cyclic dependencies.
+   * Updates task relationships, progress weights, and emits relevant metrics after operations.
+   *
+   * @param {Task[]} tasks - An array of tasks to be added as predecessors to the current task.
+   * @return {this} The current task instance for method chaining.
+   * @throws {Error} Throws an error if adding a predecessor creates a cycle in the task structure.
+   */
   public doAfter(...tasks: Task[]): this {
     for (const pred of tasks) {
       if (this.predecessorTasks.has(pred)) continue;
@@ -472,6 +525,14 @@ export default class Task extends SignalEmitter implements Graph {
     return this;
   }
 
+  /**
+   * Adds a sequence of tasks as successors to the current task, ensuring no cyclic dependencies are introduced.
+   * Metrics are emitted when a relationship is successfully added.
+   *
+   * @param {...Task} tasks - The tasks to be added as successors to the current task.
+   * @return {this} Returns the current task instance for method chaining.
+   * @throws {Error} Throws an error if adding a task causes a cyclic dependency.
+   */
   public then(...tasks: Task[]): this {
     for (const next of tasks) {
       if (this.nextTasks.has(next)) continue;
@@ -499,6 +560,12 @@ export default class Task extends SignalEmitter implements Graph {
     return this;
   }
 
+  /**
+   * Decouples the current task from the provided task by removing mutual references.
+   *
+   * @param {Task} task - The task to decouple from the current task.
+   * @return {void} This method does not return a value.
+   */
   public decouple(task: Task): void {
     if (task.nextTasks.has(this)) {
       task.nextTasks.delete(this);
@@ -515,6 +582,14 @@ export default class Task extends SignalEmitter implements Graph {
     this.updateLayerFromPredecessors();
   }
 
+  /**
+   * Updates the progress weights for tasks within each layer of the subgraph.
+   * The progress weight for each task is calculated based on the inverse proportion
+   * of the number of layers and the number of tasks in each layer. This ensures an
+   * even distribution of progress weight across the tasks in the layers.
+   *
+   * @return {void} Does not return a value.
+   */
   updateProgressWeights(): void {
     const layers = this.getSubgraphLayers();
     const numLayers = layers.size;
@@ -531,6 +606,12 @@ export default class Task extends SignalEmitter implements Graph {
     });
   }
 
+  /**
+   * Retrieves a mapping of layer indices to sets of tasks within each layer of a subgraph.
+   * This method traverses the task dependencies and organizes tasks by their respective layer indices.
+   *
+   * @return {Map<number, Set<Task>>} A map where the key is the layer index (number) and the value is a set of tasks (Set<Task>) belonging to that layer.
+   */
   getSubgraphLayers(): Map<number, Set<Task>> {
     const layers = new Map<number, Set<Task>>();
     const queue = [this as Task];
@@ -550,6 +631,13 @@ export default class Task extends SignalEmitter implements Graph {
     return layers;
   }
 
+  /**
+   * Updates the `layerIndex` of the current task based on the maximum layer index of its predecessors
+   * and propagates the update recursively to all subsequent tasks. If the `layerIndex` changes,
+   * emits a metric event with metadata about the change.
+   *
+   * @return {void} This method does not return a value.
+   */
   updateLayerFromPredecessors(): void {
     const prevLayerIndex = this.layerIndex;
     let maxPred = 0;
@@ -575,6 +663,12 @@ export default class Task extends SignalEmitter implements Graph {
     }
   }
 
+  /**
+   * Determines whether there is a cycle in the tasks graph.
+   * This method performs a depth-first search (DFS) to detect cycles.
+   *
+   * @return {boolean} - Returns true if a cycle is found in the graph, otherwise false.
+   */
   hasCycle(): boolean {
     const visited = new Set<Task>();
     const recStack = new Set<Task>();
@@ -597,6 +691,13 @@ export default class Task extends SignalEmitter implements Graph {
     return dfs(this);
   }
 
+  /**
+   * Maps over the next set of tasks or failed tasks if specified, applying the provided callback function.
+   *
+   * @param {Function} callback A function that will be called with each task, transforming the task as needed. It receives a single parameter of type Task.
+   * @param {boolean} [failed=false] A boolean that determines whether to map over the failed tasks (true) or the next tasks (false).
+   * @return {any[]} An array of transformed tasks resulting from applying the callback function.
+   */
   public mapNext(
     callback: (task: Task) => any,
     failed: boolean = false,
@@ -607,15 +708,23 @@ export default class Task extends SignalEmitter implements Graph {
     return tasks.map(callback);
   }
 
+  /**
+   * Maps through each task in the set of predecessor tasks and applies the provided callback function.
+   *
+   * @param {function} callback - A function to execute on each task in the predecessor tasks. The function receives a `Task` object as its argument and returns any value.
+   * @return {any[]} An array containing the results of applying the callback function to each predecessor task.
+   */
   public mapPrevious(callback: (task: Task) => any): any[] {
     return Array.from(this.predecessorTasks).map(callback);
   }
 
   /**
-   * Subscribes to signals (chainable).
-   * @param signals The signal names.
-   * @returns This for chaining.
-   * @edge Duplicates ignored; assumes broker.observe binds this as handler.
+   * Adds the specified signals to the current instance, making it observe them.
+   * If the instance is already observing a signal, it will be skipped.
+   * The method also emits metadata information if the `register` property is set.
+   *
+   * @param {...string[]} signals - The array of signal names to observe.
+   * @return {this} The current instance after adding the specified signals.
    */
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
@@ -636,9 +745,10 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Sets signals to emit post-execution (chainable).
-   * @param signals The signal names.
-   * @returns This for chaining.
+   * Registers the specified signals to be emitted after the Task executes successfully and attaches them for further processing.
+   *
+   * @param {...string} signals - The list of signals to be registered for emission.
+   * @return {this} The current instance for method chaining.
    */
   emits(...signals: string[]): this {
     signals.forEach((signal) => {
@@ -648,6 +758,13 @@ export default class Task extends SignalEmitter implements Graph {
     return this;
   }
 
+  /**
+   * Configures the instance to emit specified signals when the task execution fails.
+   * A failure is defined as anything that does not return a successful result.
+   *
+   * @param {...string} signals - The names of the signals to emit upon failure.
+   * @return {this} Returns the current instance for chaining.
+   */
   emitsOnFail(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitOnFail.add(signal);
@@ -656,6 +773,13 @@ export default class Task extends SignalEmitter implements Graph {
     return this;
   }
 
+  /**
+   * Attaches a signal to the current context and emits metadata if the register flag is set.
+   *
+   * @param {string} signal - The name of the signal to attach.
+   * @param {boolean} [isOnFail=false] - Indicates if the signal should be marked as "on fail".
+   * @return {void} This method does not return a value.
+   */
   attachSignal(signal: string, isOnFail: boolean = false) {
     this.emitsSignals.add(signal);
     if (this.register) {
@@ -671,10 +795,12 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Unsubscribes from specific signals.
-   * @param signals The signals.
-   * @returns This for chaining.
-   * @edge No-op if not subscribed.
+   * Unsubscribes the current instance from the specified signals.
+   * This method removes the signals from the observedSignals set, unsubscribes
+   * from the underlying broker, and emits metadata for the unsubscription if applicable.
+   *
+   * @param {string[]} signals - The list of signal names to unsubscribe from.
+   * @return {this} Returns the current instance for method chaining.
    */
   unsubscribe(...signals: string[]): this {
     signals.forEach((signal) => {
@@ -698,8 +824,9 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Unsubscribes from all observed signals.
-   * @returns This for chaining.
+   * Unsubscribes from all currently observed signals and clears the list of observed signals.
+   *
+   * @return {this} The instance of the class to allow method chaining.
    */
   unsubscribeAll(): this {
     this.unsubscribe(...this.observedSignals);
@@ -708,9 +835,10 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Detaches specific emitted signals.
-   * @param signals The signals.
-   * @returns This for chaining.
+   * Detaches the specified signals from being emitted after execution and optionally emits metadata for each detached signal.
+   *
+   * @param {...string} signals - The list of signal names to be detached. Signals can be in the format "namespace:signalName".
+   * @return {this} Returns the current instance of the object for method chaining.
    */
   detachSignals(...signals: string[]): this {
     signals.forEach((signal) => {
@@ -730,8 +858,10 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Detaches all emitted signals.
-   * @returns This for chaining.
+   * Detaches all signals associated with the object by invoking the `detachSignals` method
+   * and clearing the `signalsToEmitAfter` collection.
+   *
+   * @return {this} Returns the current instance to allow method chaining.
    */
   detachAllSignals(): this {
     this.detachSignals(...this.signalsToEmitAfter);
@@ -739,22 +869,43 @@ export default class Task extends SignalEmitter implements Graph {
     return this;
   }
 
+  /**
+   * Maps over the signals in the `signalsToEmitAfter` set and applies a callback function to each signal.
+   *
+   * @param {function(string): void} callback - A function that is called with each signal
+   *   in the `signalsToEmitAfter` set, providing the signal as an argument.
+   * @return {Array<any>} An array containing the results of applying the callback
+   *   function to each signal.
+   */
   mapSignals(callback: (signal: string) => void) {
     return Array.from(this.signalsToEmitAfter).map(callback);
   }
 
+  /**
+   * Maps over the signals in `signalsToEmitOnFail` and applies the provided callback to each signal.
+   *
+   * @param {function(string): void} callback - A function that receives each signal as a string and performs an operation or transformation on it.
+   * @return {Array} The array resulting from applying the callback to each signal in `signalsToEmitOnFail`.
+   */
   mapOnFailSignals(callback: (signal: string) => void) {
     return Array.from(this.signalsToEmitOnFail).map(callback);
   }
 
+  /**
+   * Maps over the observed signals with the provided callback function.
+   *
+   * @param {function(string): void} callback - A function to execute on each signal in the observed signals array.
+   * @return {Array} A new array containing the results of calling the callback function on each observed signal.
+   */
   mapObservedSignals(callback: (signal: string) => void) {
     return Array.from(this.observedSignals).map(callback);
   }
 
   /**
-   * Emits attached signals.
-   * @param context The context for emission.
-   * @edge If isMeta (from Task), suppresses further "meta.*" to prevent loops.
+   * Emits a collection of signals stored in the `signalsToEmitAfter` array.
+   *
+   * @param {GraphContext} context - The context object containing data or state to be passed to the emitted signals.
+   * @return {void} This method does not return a value.
    */
   emitSignals(context: GraphContext): void {
     this.signalsToEmitAfter.forEach((signal) => {
@@ -763,9 +914,10 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   /**
-   * Emits attached fail signals.
-   * @param context The context for emission.
-   * @edge If isMeta (from Task), suppresses further "meta.*" to prevent loops.
+   * Emits registered signals when an operation fails.
+   *
+   * @param {GraphContext} context - The context from which the full context is derived and passed to the signals being emitted.
+   * @return {void} This method does not return any value.
    */
   emitOnFailSignals(context: GraphContext): void {
     this.signalsToEmitOnFail.forEach((signal) => {
@@ -773,6 +925,19 @@ export default class Task extends SignalEmitter implements Graph {
     });
   }
 
+  /**
+   * Cleans up and destroys the task instance, detaching it from other tasks and
+   * performing necessary cleanup operations.
+   *
+   * This method:
+   * - Unsubscribes from all signals and events.
+   * - Detaches all associated signal handlers.
+   * - Removes the task from successor and predecessor task mappings.
+   * - Clears all task relationships and marks the task as destroyed.
+   * - Emits destruction metrics, if applicable.
+   *
+   * @return {void} No value is returned because the function performs clean-up operations.
+   */
   public destroy(): void {
     this.unsubscribeAll();
     this.detachAllSignals();
@@ -797,6 +962,18 @@ export default class Task extends SignalEmitter implements Graph {
     // TODO: Delete task map instances
   }
 
+  /**
+   * Exports the current state of the object as a structured plain object.
+   *
+   * @return {AnyObject} An object containing the serialized properties of the current instance. The exported object includes various metadata, schema information, task attributes, and related tasks, such as:
+   * - Name and description of the task.
+   * - Layer index, uniqueness, meta, and signal-related flags.
+   * - Event triggers and attached signals.
+   * - Throttling, concurrency, timeout settings, and ephemeral flag.
+   * - Task function as a string.
+   * - Serialization of getter callbacks and schemas for input/output validation.
+   * - Relationships such as next tasks, failure tasks, and predecessor tasks.
+   */
   public export(): AnyObject {
     return {
       __name: this.name,
@@ -824,10 +1001,21 @@ export default class Task extends SignalEmitter implements Graph {
     };
   }
 
+  /**
+   * Returns an iterator for iterating over tasks associated with this instance.
+   *
+   * @return {TaskIterator} An iterator instance for tasks.
+   */
   public getIterator(): TaskIterator {
     return new TaskIterator(this);
   }
 
+  /**
+   * Accepts a visitor object to perform operations on the current instance.
+   *
+   * @param {GraphVisitor} visitor - The visitor object implementing operations for this instance.
+   * @return {void} This method does not return a value.
+   */
   public accept(visitor: GraphVisitor): void {
     visitor.visitTask(this);
   }

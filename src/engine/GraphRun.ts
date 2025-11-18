@@ -13,7 +13,10 @@ export interface RunJson {
   __data: any;
 }
 
-// A unique execution of the graph
+/**
+ * Represents a GraphRun instance which manages the execution of a graph-based workflow.
+ * It utilizes a specific strategy and export mechanism to manage, execute, and export the graph data.
+ */
 export default class GraphRun {
   readonly id: string;
   graph: GraphLayer | undefined;

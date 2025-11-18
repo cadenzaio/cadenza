@@ -2,6 +2,13 @@ import Iterator from "../../interfaces/Iterator";
 import SyncGraphLayer from "../execution/SyncGraphLayer";
 import GraphLayer from "../../interfaces/GraphLayer";
 
+/**
+ * The `GraphLayerIterator` class provides an iterator for traversing through
+ * layers of a `GraphLayer` data structure. It allows sequential and bi-directional
+ * iteration, as well as access to the first and last layers in the graph.
+ *
+ * @implements {Iterator}
+ */
 export default class GraphLayerIterator implements Iterator {
   graph: GraphLayer;
   currentLayer: GraphLayer | undefined;

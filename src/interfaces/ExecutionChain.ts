@@ -1,3 +1,8 @@
+/**
+ * Represents an abstract chain of execution, where each instance can be
+ * connected to a succeeding or preceding instance to form a chain of steps.
+ * Provides methods to manage the links between instances in the chain.
+ */
 export default abstract class ExecutionChain {
   next: ExecutionChain | undefined;
   previous: ExecutionChain | undefined;
