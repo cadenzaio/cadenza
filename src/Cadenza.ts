@@ -770,7 +770,7 @@ export default class Cadenza {
    * Creates a meta routine with a given name, tasks, and optional description.
    * Routines are named entry points to starting tasks and are registered in the GraphRegistry.
    * They are used to group tasks together and provide a high-level structure for organizing and managing the execution of a set of tasks.
-   * See {@link GraphRoutine} for more information.
+   * See {@link GraphRoutine} and {@link createRoutine} for more information.
    *
    * @param {string} name - The name of the routine to be created.
    * @param {Task[]} tasks - An array of tasks that the routine will consist of.

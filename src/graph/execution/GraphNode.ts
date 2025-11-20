@@ -27,6 +27,7 @@ import { formatTimestamp } from "../../utils/tools";
 export default class GraphNode extends SignalEmitter implements Graph {
   id: string;
   routineExecId: string;
+  executionTraceId: string;
   task: Task;
   context: GraphContext;
   layer: GraphLayer | undefined;
@@ -72,6 +73,9 @@ export default class GraphNode extends SignalEmitter implements Graph {
     this.splitGroupId = routineExecId;
     this.debug = debug;
     this.verbose = verbose;
+    const ctx = context.getMetadata();
+    this.executionTraceId =
+      ctx.__executionTraceId ?? ctx.__metadata?.__executionTraceId;
 
     if (!this.task || !this.task.validateInput) {
       console.log("task not found", this.task, this.context);
@@ -207,9 +211,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         data: {
           uuid: this.id,
           routineExecutionId: this.routineExecId,
-          executionTraceId:
-            context.__executionTraceId ??
-            context.__metadata?.__executionTraceId,
+          executionTraceId: this.executionTraceId,
           context:
             this.previousNodes.length === 0
               ? this.context.id
@@ -262,10 +264,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
       ) {
         this.emitMetricsWithMetadata("meta.node.consumed_signal", {
           data: {
+            signalEmissionId: context.__signalEmission.uuid,
             signalName: context.__signalEmission.signalName,
+            signalTag: context.__signalEmission.signalTag,
             taskName: this.task.name,
             taskVersion: this.task.version,
             taskExecutionId: this.id,
+            routineExecutionId: this.routineExecId,
+            executionTraceId: this.executionTraceId,
             consumedAt: formatTimestamp(scheduledAt),
           },
         });
@@ -533,13 +539,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
         taskName: this.task.name,
         taskVersion: this.task.version,
         taskExecutionId: this.id,
+        routineExecutionId: this.routineExecId,
+        executionTraceId: this.executionTraceId,
+        isMetric: false,
       };
-      const context = this.context.getMetadata();
       data.__metadata = {
         ...data.__metadata,
         __routineExecId: this.routineExecId,
-        __executionTraceId:
-          context.__metadata?.__executionTraceId ?? context.__executionTraceId,
+        __executionTraceId: this.executionTraceId,
       };
     }
 
@@ -563,14 +570,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
         taskName: this.task.name,
         taskVersion: this.task.version,
         taskExecutionId: this.id,
+        routineExecutionId: this.routineExecId,
+        executionTraceId: this.executionTraceId,
         isMetric: true,
       };
-      const context = this.context.getMetadata();
       data.__metadata = {
         ...data.__metadata,
         __routineExecId: this.routineExecId,
-        __executionTraceId:
-          context.__metadata?.__executionTraceId ?? context.__executionTraceId,
+        __executionTraceId: this.executionTraceId,
       };
     }
 

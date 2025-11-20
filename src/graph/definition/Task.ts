@@ -229,6 +229,7 @@ export default class Task extends SignalEmitter implements Graph {
       data.__signalEmission = {
         taskName: this.name,
         taskVersion: this.version,
+        isMetric: false,
       };
     }
 

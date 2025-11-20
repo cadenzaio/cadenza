@@ -4,6 +4,7 @@ import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
+import { v4 as uuid } from "uuid";
 
 /**
  * This class manages signals and observers, enabling communication across different parts of an application.
@@ -324,10 +325,53 @@ export default class SignalBroker {
     const isMetric = context.__signalEmission?.isMetric;
 
     if (!isSubMeta && (!isMeta || this.debug)) {
+      const isNewTrace =
+        !context.__signalEmission?.executionTraceId &&
+        !context.__metadata?.__executionTraceId &&
+        !context.__executionTraceId;
+
+      const executionTraceId =
+        context.__metadata?.__executionTraceId ??
+        context.__executionTraceId ??
+        uuid();
+
+      if (isNewTrace) {
+        this.emit("sub_meta.signal_broker.new_trace", {
+          data: {
+            uuid: executionTraceId,
+            issuer_type: "service", // TODO: Add issuer type
+            issuer_id:
+              context.__metadata?.__issuerId ?? context.__issuerId ?? null,
+            issued_at: formatTimestamp(Date.now()),
+            intent: context.__metadata?.__intent ?? context.__intent ?? null,
+            context: {
+              id: uuid(),
+              context: context,
+            },
+            is_meta: isMeta,
+          },
+          metadata: {
+            __executionTraceId: executionTraceId,
+          },
+        });
+
+        context.__metadata = {
+          ...context.__metadata,
+          __executionTraceId: executionTraceId,
+        };
+      }
+
       const emittedAt = Date.now();
+
+      const signalParts = signal.split(":");
+      const signalName = signalParts[0];
+      const signalTag = signalParts.length > 1 ? signalParts[1] : null;
       context.__signalEmission = {
         ...(context.__signalEmission ?? {}),
-        signalName: signal,
+        uuid: uuid(),
+        executionTraceId,
+        signalName,
+        signalTag,
         emittedAt: formatTimestamp(emittedAt),
         consumed: false,
         consumedBy: null,
