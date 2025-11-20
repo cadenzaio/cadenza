@@ -1,3 +1,10 @@
+# [3.12.0](https://github.com/cadenzaio/cadenza/compare/v3.11.0...v3.12.0) (2025-11-20)
+
+
+### Features
+
+* now signal emission is emitting its own signal for faster recording and avoiding race error with the consumption. ([38eca3a](https://github.com/cadenzaio/cadenza/commit/38eca3aa5529adb6d3b3a6738cf81b43233f05ea))
+
 # [3.11.0](https://github.com/cadenzaio/cadenza/compare/v3.10.0...v3.11.0) (2025-11-20)
 
 
