@@ -309,15 +309,13 @@ export default class SignalBroker {
   }
 
   /**
-   * Executes a signal with the provided context by emitting it to registered listeners
-   * and potentially their parent wildcard listeners. Handles different signal types,
-   * such as "meta" and "sub_meta", and logs activity when debugging is enabled.
+   * Executes a signal by emitting events, updating context, and invoking listeners.
+   * Creates a new execution trace if necessary and updates the context with relevant metadata.
+   * Handles specific, hierarchy-based, and wildcard signals.
    *
-   * @param {string} signal - The name of the signal to be executed. May include hierarchical or meta-level information.
-   * @param {Object} context - The context object containing meta-data or state information
-   *                           related to the signal execution.
-   * @returns {boolean} - Indicates whether the signal execution was successfully handled
-   *                      by any listener.
+   * @param {string} signal - The signal name to be executed, potentially including namespaces or tags (e.g., "meta.*" or "signal:type").
+   * @param {AnyObject} context - An object containing relevant metadata and execution details used for handling the signal.
+   * @return {boolean} Returns true if any listeners were successfully executed, otherwise false.
    */
   execute(signal: string, context: AnyObject): boolean {
     const isMeta = signal.includes("meta.");
