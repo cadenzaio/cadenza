@@ -1,3 +1,16 @@
+# [3.11.0](https://github.com/cadenzaio/cadenza/compare/v3.10.0...v3.11.0) (2025-11-20)
+
+
+### Bug Fixes
+
+* removed docs ([de5ec98](https://github.com/cadenzaio/cadenza/commit/de5ec98ad21891dcb28cca2fb9d94045d7d63cff))
+
+
+### Features
+
+* execution trace ca now be started from the signal broker. This allows for better signal emission and consumption records. ([00bbbda](https://github.com/cadenzaio/cadenza/commit/00bbbda62050b94d2115e96533b1085f42503c56))
+* improved signal records. ([36e6ae3](https://github.com/cadenzaio/cadenza/commit/36e6ae3521d71d13429323d961953c9b1b05af0b))
+
 # [3.10.0](https://github.com/cadenzaio/cadenza/compare/v3.9.2...v3.10.0) (2025-11-11)
 
 
