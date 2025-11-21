@@ -1,3 +1,10 @@
+## [3.12.4](https://github.com/cadenzaio/cadenza/compare/v3.12.3...v3.12.4) (2025-11-21)
+
+
+### Bug Fixes
+
+* fixed another bug in signal broker. ([1cd073e](https://github.com/cadenzaio/cadenza/commit/1cd073ece4f616ceb536b1520a2f7e6abd41f405))
+
 ## [3.12.3](https://github.com/cadenzaio/cadenza/compare/v3.12.2...v3.12.3) (2025-11-21)
 
 
