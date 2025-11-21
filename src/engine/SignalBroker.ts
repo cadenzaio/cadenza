@@ -322,16 +322,17 @@ export default class SignalBroker {
     const isSubMeta = signal.includes("sub_meta.") || context.__isSubMeta;
     const isMetric = context.__signalEmission?.isMetric;
 
+    const executionTraceId =
+      context.__signalEmission?.executionTraceId ??
+      context.__metadata?.__executionTraceId ??
+      context.__executionTraceId ??
+      uuid();
+
     if (!isSubMeta && (!isMeta || this.debug)) {
       const isNewTrace =
         !context.__signalEmission?.executionTraceId &&
         !context.__metadata?.__executionTraceId &&
         !context.__executionTraceId;
-
-      const executionTraceId =
-        context.__metadata?.__executionTraceId ??
-        context.__executionTraceId ??
-        uuid();
 
       if (isNewTrace) {
         this.emit("sub_meta.signal_broker.new_trace", {
@@ -352,12 +353,12 @@ export default class SignalBroker {
             __executionTraceId: executionTraceId,
           },
         });
-
-        context.__metadata = {
-          ...context.__metadata,
-          __executionTraceId: executionTraceId,
-        };
       }
+
+      context.__metadata = {
+        ...context.__metadata,
+        __executionTraceId: executionTraceId,
+      };
 
       const emittedAt = Date.now();
 
@@ -379,9 +380,12 @@ export default class SignalBroker {
       this.emit("sub_meta.signal_broker.emitting_signal", context);
     } else if (isSubMeta) {
       context.__isSubMeta = true;
-    } else {
-      delete context.__signalEmission;
     }
+
+    context.__metadata = {
+      ...context.__metadata,
+      __executionTraceId: executionTraceId,
+    };
 
     if (this.debug && ((!isMetric && !isSubMeta) || this.verbose)) {
       console.log(
