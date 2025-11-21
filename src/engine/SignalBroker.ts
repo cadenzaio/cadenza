@@ -377,7 +377,7 @@ export default class SignalBroker {
         isMeta,
       };
 
-      this.emit("sub_meta.signal_broker.emitting_signal", context);
+      this.emit("sub_meta.signal_broker.emitting_signal", { ...context });
     } else if (isSubMeta) {
       context.__isSubMeta = true;
     }
