@@ -1,3 +1,10 @@
+## [3.12.2](https://github.com/cadenzaio/cadenza/compare/v3.12.1...v3.12.2) (2025-11-21)
+
+
+### Bug Fixes
+
+* added full signal name to signal metadata. ([db648f7](https://github.com/cadenzaio/cadenza/commit/db648f78f67596ae44a79023993196392a165ecb))
+
 ## [3.12.1](https://github.com/cadenzaio/cadenza/compare/v3.12.0...v3.12.1) (2025-11-20)
 
 
