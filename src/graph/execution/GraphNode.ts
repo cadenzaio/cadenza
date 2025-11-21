@@ -536,6 +536,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
   emitWithMetadata(signal: string, data: AnyObject) {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
+        fullSignalName: signal,
         taskName: this.task.name,
         taskVersion: this.task.version,
         taskExecutionId: this.id,
