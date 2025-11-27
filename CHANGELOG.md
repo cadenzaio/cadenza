@@ -1,3 +1,10 @@
+## [3.13.2](https://github.com/cadenzaio/cadenza/compare/v3.13.1...v3.13.2) (2025-11-27)
+
+
+### Bug Fixes
+
+* removed unnecessary underscores ([5415566](https://github.com/cadenzaio/cadenza/commit/541556604d4f74f883184b422ea9e8c2d733a805))
+
 ## [3.13.1](https://github.com/cadenzaio/cadenza/compare/v3.13.0...v3.13.1) (2025-11-27)
 
 
