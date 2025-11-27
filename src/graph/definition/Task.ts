@@ -164,7 +164,7 @@ export default class Task extends SignalEmitter implements Graph {
           // inputContextSchemaId: this.inputContextSchema,
           // outputContextSchemaId: this.outputContextSchema,
         },
-        __taskInstance: this,
+        taskInstance: this,
         __isSubMeta: this.isSubMeta,
       });
     }

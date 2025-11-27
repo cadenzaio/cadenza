@@ -123,7 +123,7 @@ Cadenza.createTask('My task', (ctx) => {
 }).emits('meta.some.event');
 
 Cadenza.createMetaTask('My meta task', (ctx) => {
-  console.log(ctx.__task.name);
+  console.log(ctx.task.name);
   return true;
 })
   .doOn('meta.some.event')

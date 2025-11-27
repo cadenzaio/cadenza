@@ -36,7 +36,7 @@ export default class GraphRoutine extends SignalEmitter {
         description: this.description,
         isMeta: this.isMeta,
       },
-      __routineInstance: this,
+      routineInstance: this,
     });
     tasks.forEach((t) => {
       this.tasks.add(t);

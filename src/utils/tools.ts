@@ -27,15 +27,14 @@ export function deepCloneFilter<T>(
 
     if (
       // TODO Should probably not be done like this...
-      key === "__taskInstance" ||
-      key === "__routineInstance" ||
-      key === "__task" ||
-      key === "__routine" ||
-      key === "__tasks" ||
-      key === "__routines" ||
-      key === "__httpServer" ||
-      key === "__httpsServer" ||
-      key === "__socketServer"
+      key === "taskInstance" ||
+      key === "routineInstance" ||
+      key === "task" ||
+      key === "routine" ||
+      key === "tasks" ||
+      key === "routines" ||
+      key === "httpServer" ||
+      key === "httpsServer"
     ) {
       target[key] = source;
       continue;
