@@ -1,3 +1,10 @@
+## [3.13.3](https://github.com/cadenzaio/cadenza/compare/v3.13.2...v3.13.3) (2025-11-27)
+
+
+### Bug Fixes
+
+* Stability improvements ([410cd2f](https://github.com/cadenzaio/cadenza/commit/410cd2f4b22d574df12f34489f30f0d637458a25))
+
 ## [3.13.2](https://github.com/cadenzaio/cadenza/compare/v3.13.1...v3.13.2) (2025-11-27)
 
 
