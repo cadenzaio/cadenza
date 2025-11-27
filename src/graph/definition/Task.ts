@@ -1,3 +1,4 @@
+import { v4 as uuid } from "uuid";
 import GraphContext from "../context/GraphContext";
 import GraphVisitor from "../../interfaces/GraphVisitor";
 import TaskIterator from "../iterators/TaskIterator";
@@ -56,6 +57,8 @@ export default class Task extends SignalEmitter implements Graph {
   destroyed: boolean = false;
   register: boolean = true;
   registered: boolean = false;
+  registeredSignals: Set<string> = new Set();
+  taskMapRegistration: Set<string> = new Set();
 
   emitsSignals: Set<string> = new Set();
   signalsToEmitAfter: Set<string> = new Set();
@@ -110,7 +113,7 @@ export default class Task extends SignalEmitter implements Graph {
   ) {
     super(isSubMeta || isHidden);
     this.name = name;
-    this.taskFunction = task.bind(this);
+    this.taskFunction = task;
     this.description = description;
     this.concurrency = concurrency;
     this.timeout = timeout;
@@ -165,6 +168,45 @@ export default class Task extends SignalEmitter implements Graph {
         __isSubMeta: this.isSubMeta,
       });
     }
+  }
+
+  clone(traverse: boolean = false, includeSignals: boolean = false) {
+    const clonedTask = new Task(
+      `${this.name} (clone ${uuid().slice(0, 8)})`,
+      this.taskFunction,
+      this.description,
+      this.concurrency,
+      this.timeout,
+      this.register,
+      this.isUnique,
+      this.isMeta,
+      this.isSubMeta,
+      this.isHidden,
+      this.getTag,
+      this.inputContextSchema,
+      this.validateInputContext,
+      this.outputContextSchema,
+      this.validateOutputContext,
+      this.retryCount,
+      this.retryDelay,
+      this.retryDelayMax,
+      this.retryDelayFactor,
+    );
+
+    if (includeSignals) {
+      clonedTask.doOn(...this.observedSignals);
+      clonedTask.emits(...this.signalsToEmitAfter);
+      clonedTask.emitsOnFail(...this.signalsToEmitOnFail);
+      clonedTask.emitsSignals = new Set(Array.from(this.emitsSignals));
+    }
+
+    if (traverse) {
+      this.mapNext((t: Task) => {
+        clonedTask.then(t.clone(traverse, includeSignals));
+      });
+    }
+
+    return clonedTask;
   }
 
   /**
@@ -730,6 +772,10 @@ export default class Task extends SignalEmitter implements Graph {
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
       if (this.observedSignals.has(signal)) return;
+      if (this.emitsSignals.has(signal))
+        throw new Error(
+          `Detected signal loop for task ${this.name}. Signal name: ${signal}`,
+        );
       Cadenza.broker.observe(signal, this as any);
       this.observedSignals.add(signal);
       if (this.register) {
@@ -753,6 +799,10 @@ export default class Task extends SignalEmitter implements Graph {
    */
   emits(...signals: string[]): this {
     signals.forEach((signal) => {
+      if (this.observedSignals.has(signal))
+        throw new Error(
+          `Detected signal loop for task ${this.name}. Signal name: ${signal}`,
+        );
       this.signalsToEmitAfter.add(signal);
       this.attachSignal(signal);
     });

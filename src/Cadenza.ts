@@ -184,6 +184,35 @@ export default class Cadenza {
     this.broker?.emit(event, data);
   }
 
+  public static schedule(
+    taskName: string,
+    context: AnyObject,
+    timeoutMs: number,
+    exactDateTime?: Date,
+  ) {
+    this.broker?.schedule(taskName, context, timeoutMs, exactDateTime);
+  }
+
+  public static throttle(
+    taskName: string,
+    context: AnyObject,
+    intervalMs: number,
+    leading = false,
+    startDateTime?: Date,
+  ) {
+    this.broker?.throttle(
+      taskName,
+      context,
+      intervalMs,
+      leading,
+      startDateTime,
+    );
+  }
+
+  public static get(taskName: string): Task | undefined {
+    return this.registry?.tasks.get(taskName);
+  }
+
   /**
    * Creates and registers a new task with the specified parameters and options.
    * Tasks are the basic building blocks of Cadenza graphs and are responsible for executing logic.
