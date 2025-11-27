@@ -1,3 +1,10 @@
+# [3.13.0](https://github.com/cadenzaio/cadenza/compare/v3.12.4...v3.13.0) (2025-11-27)
+
+
+### Features
+
+* Quick functions to schedule and throttle signals and to get tasks by name. ([fc899f1](https://github.com/cadenzaio/cadenza/commit/fc899f1457b2e6d3f4ba7dcbc5d9b5425c79bbcd))
+
 ## [3.12.4](https://github.com/cadenzaio/cadenza/compare/v3.12.3...v3.12.4) (2025-11-21)
 
 
