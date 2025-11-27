@@ -1,3 +1,10 @@
+## [3.13.1](https://github.com/cadenzaio/cadenza/compare/v3.13.0...v3.13.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* fixed infinite loop. ([5129c92](https://github.com/cadenzaio/cadenza/commit/5129c9230a3431cbeef7f4ecdaa401d7958399fb))
+
 # [3.13.0](https://github.com/cadenzaio/cadenza/compare/v3.12.4...v3.13.0) (2025-11-27)
 
 
