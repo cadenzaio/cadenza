@@ -541,8 +541,9 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} The current task instance for method chaining.
    * @throws {Error} Throws an error if adding a predecessor creates a cycle in the task structure.
    */
-  public doAfter(...tasks: Task[]): this {
+  public doAfter(...tasks: (Task | undefined)[]): this {
     for (const pred of tasks) {
+      if (!pred) continue;
       if (this.predecessorTasks.has(pred)) continue;
 
       pred.nextTasks.add(this);
@@ -576,8 +577,9 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} Returns the current task instance for method chaining.
    * @throws {Error} Throws an error if adding a task causes a cyclic dependency.
    */
-  public then(...tasks: Task[]): this {
+  public then(...tasks: (Task | undefined)[]): this {
     for (const next of tasks) {
+      if (!next) continue;
       if (this.nextTasks.has(next)) continue;
 
       this.nextTasks.add(next);

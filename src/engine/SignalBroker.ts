@@ -138,7 +138,7 @@ export default class SignalBroker {
       }));
 
       return {
-        __signals: processedSignals,
+        signals: processedSignals,
         ...ctx,
       };
     });
@@ -146,8 +146,8 @@ export default class SignalBroker {
     this.registerSignalTask = Cadenza.createMetaTask(
       "Register signal",
       (ctx) => {
-        const { __signalName } = ctx;
-        this.signalObservers.get(__signalName)!.registered = true;
+        const { signalName } = ctx;
+        this.signalObservers.get(signalName)!.registered = true;
       },
     ).doOn("meta.signal.registered");
   }
@@ -494,7 +494,7 @@ export default class SignalBroker {
         }
       }
 
-      this.emit("meta.signal_broker.added", { __signalName: _signal });
+      this.emit("meta.signal_broker.added", { signalName: _signal });
     }
   }
 
