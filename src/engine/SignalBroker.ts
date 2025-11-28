@@ -5,6 +5,7 @@ import GraphRoutine from "../graph/definition/GraphRoutine";
 import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
 import { v4 as uuid } from "uuid";
+import debounce from "lodash-es/debounce";
 
 /**
  * This class manages signals and observers, enabling communication across different parts of an application.
@@ -66,6 +67,8 @@ export default class SignalBroker {
 
   runner: GraphRunner | undefined;
   metaRunner: GraphRunner | undefined;
+
+  debouncedEmitters: Map<string, any> = new Map();
 
   public clearSignalsTask: Task | undefined;
   public getSignalsTask: Task | undefined;
@@ -279,6 +282,22 @@ export default class SignalBroker {
         if (timer !== null) clearTimeout(timer);
       },
     };
+  }
+
+  debounce(signal: string, context: any, delayMs: number = 500) {
+    let debouncedEmitter = this.debouncedEmitters.get(signal);
+    if (!debouncedEmitter) {
+      this.debouncedEmitters.set(
+        signal,
+        debounce((ctx: any) => {
+          this.emit(signal, ctx);
+        }, delayMs),
+      );
+
+      debouncedEmitter = this.debouncedEmitters.get(signal);
+    }
+
+    debouncedEmitter(context);
   }
 
   /**

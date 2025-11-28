@@ -209,6 +209,10 @@ export default class Cadenza {
     );
   }
 
+  public static debounce(signalName: string, context: any, delayMs: number) {
+    this.broker?.debounce(signalName, context, delayMs);
+  }
+
   public static get(taskName: string): Task | undefined {
     return this.registry?.tasks.get(taskName);
   }
