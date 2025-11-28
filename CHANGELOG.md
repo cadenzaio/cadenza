@@ -1,3 +1,10 @@
+# [3.14.0](https://github.com/cadenzaio/cadenza/compare/v3.13.3...v3.14.0) (2025-11-28)
+
+
+### Features
+
+* debounced signals. ([51514b6](https://github.com/cadenzaio/cadenza/commit/51514b60be99d11c181ae35a66c335e50f76eebb))
+
 ## [3.13.3](https://github.com/cadenzaio/cadenza/compare/v3.13.2...v3.13.3) (2025-11-27)
 
 
