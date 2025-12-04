@@ -74,10 +74,7 @@ export default class Cadenza {
     // 3. GraphRegistry (seed observes on broker)
     this.registry = GraphRegistry.instance;
 
-    // 4. Runners (create meta tasks)
     this.broker.init();
-    this.runner.init();
-    this.metaRunner.init();
   }
 
   /**
