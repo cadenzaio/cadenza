@@ -88,6 +88,8 @@ export default class SignalBroker {
     }
   > = new Map();
 
+  emittedSignalsRegistry: Set<string> = new Set();
+
   emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
 
   constructor() {
@@ -164,6 +166,10 @@ export default class SignalBroker {
   observe(signal: string, routineOrTask: Task | GraphRoutine): void {
     this.addSignal(signal);
     this.signalObservers.get(signal)!.tasks.add(routineOrTask);
+  }
+
+  registerEmittedSignal(signal: string): void {
+    this.emittedSignalsRegistry.add(signal);
   }
 
   /**
@@ -525,8 +531,13 @@ export default class SignalBroker {
     return Array.from(this.signalObservers.keys());
   }
 
+  listEmittedSignals(): string[] {
+    return Array.from(this.emittedSignalsRegistry);
+  }
+
   reset() {
     this.emitStacks.clear();
     this.signalObservers.clear();
+    this.emittedSignalsRegistry.clear();
   }
 }

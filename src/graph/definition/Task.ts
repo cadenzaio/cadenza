@@ -763,6 +763,16 @@ export default class Task extends SignalEmitter implements Graph {
     return Array.from(this.predecessorTasks).map(callback);
   }
 
+  makeRoutine(name: string, description: string) {
+    if (this.isMeta) {
+      Cadenza.createMetaRoutine(name, [this], description);
+    } else {
+      Cadenza.createRoutine(name, [this], description);
+    }
+
+    return this;
+  }
+
   /**
    * Adds the specified signals to the current instance, making it observe them.
    * If the instance is already observing a signal, it will be skipped.
@@ -821,7 +831,7 @@ export default class Task extends SignalEmitter implements Graph {
   emitsOnFail(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitOnFail.add(signal);
-      this.attachSignal(signal, true);
+      this.attachSignal(signal);
     });
     return this;
   }
@@ -829,22 +839,27 @@ export default class Task extends SignalEmitter implements Graph {
   /**
    * Attaches a signal to the current context and emits metadata if the register flag is set.
    *
-   * @param {string} signal - The name of the signal to attach.
-   * @param {boolean} [isOnFail=false] - Indicates if the signal should be marked as "on fail".
+   * @param {...string} signals - The names of the signals to attach.
    * @return {void} This method does not return a value.
    */
-  attachSignal(signal: string, isOnFail: boolean = false) {
-    this.emitsSignals.add(signal);
-    if (this.register) {
-      this.emitWithMetadata("meta.task.attached_signal", {
-        data: {
-          signalName: signal.split(":")[0],
-          taskName: this.name,
-          taskVersion: this.version,
-          isOnFail,
-        },
-      });
-    }
+  attachSignal(...signals: string[]): Task {
+    signals.forEach((signal) => {
+      this.emitsSignals.add(signal);
+      Cadenza.broker.registerEmittedSignal(signal);
+      if (this.register) {
+        const isOnFail = this.signalsToEmitOnFail.has(signal);
+        this.emitWithMetadata("meta.task.attached_signal", {
+          data: {
+            signalName: signal.split(":")[0],
+            taskName: this.name,
+            taskVersion: this.version,
+            isOnFail,
+          },
+        });
+      }
+    });
+
+    return this;
   }
 
   /**
