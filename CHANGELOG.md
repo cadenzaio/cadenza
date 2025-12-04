@@ -1,3 +1,10 @@
+## [3.15.1](https://github.com/cadenzaio/cadenza/compare/v3.15.0...v3.15.1) (2025-12-04)
+
+
+### Bug Fixes
+
+* signal broker memory leak. ([33802d8](https://github.com/cadenzaio/cadenza/commit/33802d866b8bb69d3775cc52e1b613c1f9f2f6eb))
+
 # [3.15.0](https://github.com/cadenzaio/cadenza/compare/v3.14.0...v3.15.0) (2025-12-04)
 
 
