@@ -70,6 +70,7 @@ export default class SignalBroker {
 
   debouncedEmitters: Map<string, any> = new Map();
 
+  public clearSignalsTask: Task | undefined;
   public getSignalsTask: Task | undefined;
   public registerSignalTask: Task | undefined;
 
@@ -88,6 +89,8 @@ export default class SignalBroker {
   > = new Map();
 
   emittedSignalsRegistry: Set<string> = new Set();
+
+  emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
 
   constructor() {
     this.addSignal("meta.signal_broker.added");
@@ -109,6 +112,24 @@ export default class SignalBroker {
    * @return {void} This method does not return a value.
    */
   init() {
+    this.clearSignalsTask = Cadenza.createDebounceMetaTask(
+      "Execute and clear queued signals",
+      () => {
+        for (const [id, signals] of this.emitStacks.entries()) {
+          signals.forEach((context, signal) => {
+            this.execute(signal, context);
+            signals.delete(signal);
+          });
+
+          this.emitStacks.delete(id);
+        }
+        return true;
+      },
+      "Executes queued signals and clears the stack",
+    )
+      .doOn("meta.process_signal_queue_requested")
+      .emits("meta.signal_broker.queue_empty");
+
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       const uniqueSignals = Array.from(this.signalObservers.keys()).filter(
         (s) => !s.includes(":"),
@@ -294,9 +315,22 @@ export default class SignalBroker {
    * @return {void} This method does not return a value.
    */
   emit(signal: string, context: AnyObject = {}): void {
+    const execId = context.__routineExecId || "global"; // Assume from metadata
     delete context.__routineExecId;
+
+    if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
+    const stack = this.emitStacks.get(execId)!;
+    stack.set(signal, context);
+
     this.addSignal(signal);
-    this.execute(signal, context);
+
+    let executed = false;
+    try {
+      executed = this.execute(signal, context);
+    } finally {
+      if (executed) stack.delete(signal);
+      if (stack.size === 0) this.emitStacks.delete(execId);
+    }
   }
 
   /**
@@ -502,6 +536,7 @@ export default class SignalBroker {
   }
 
   reset() {
+    this.emitStacks.clear();
     this.signalObservers.clear();
     this.emittedSignalsRegistry.clear();
   }
