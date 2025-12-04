@@ -1,3 +1,11 @@
+# [3.15.0](https://github.com/cadenzaio/cadenza/compare/v3.14.0...v3.15.0) (2025-12-04)
+
+
+### Features
+
+* removed code that belonged in the service package. ([b5040de](https://github.com/cadenzaio/cadenza/commit/b5040de31a8b05f2224639761398b7d6d95cf3cd))
+* removed code that belonged in the service package. ([1be558f](https://github.com/cadenzaio/cadenza/commit/1be558f46de4545243312be266f9bbb4db7f946f))
+
 # [3.14.0](https://github.com/cadenzaio/cadenza/compare/v3.13.3...v3.14.0) (2025-11-28)
 
 
