@@ -1,3 +1,10 @@
+## [3.15.2](https://github.com/cadenzaio/cadenza/compare/v3.15.1...v3.15.2) (2025-12-06)
+
+
+### Bug Fixes
+
+* attached meta signals to tasks ([482df21](https://github.com/cadenzaio/cadenza/commit/482df21dd6f0be51ab15b7da914910d81c9ae3d4))
+
 ## [3.15.1](https://github.com/cadenzaio/cadenza/compare/v3.15.0...v3.15.1) (2025-12-04)
 
 
