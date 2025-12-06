@@ -351,12 +351,11 @@ export default class GraphNode extends SignalEmitter implements Graph {
     if (this.errored || this.failed) {
       this.emitMetricsWithMetadata("meta.node.errored", {
         data: {
-          isRunning: false,
-          errored: this.errored,
-          failed: this.failed,
+          taskName: this.task.name,
+          taskVersion: this.task.version,
+          nodeId: this.id,
           errorMessage: context.__error,
         },
-        filter: { uuid: this.id },
       });
     }
 

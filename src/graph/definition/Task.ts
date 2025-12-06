@@ -136,6 +136,31 @@ export default class Task extends SignalEmitter implements Graph {
       this.throttled = true;
     }
 
+    this.attachSignal(
+      "meta.task.created",
+      "meta.task.destroyed",
+      "meta.task.version_set",
+      "meta.task.output_validation_failed",
+      "meta.task.input_validation_failed",
+      "meta.task.relationship_added",
+      "meta.task.relationship_removed",
+      "meta.task.layer_index_changed",
+      "meta.node.scheduled",
+      "meta.node.mapped",
+      "meta.node.errored",
+      "meta.node.started",
+      "meta.node.ended",
+      "meta.node.mapped",
+      "meta.node.progress",
+      "meta.node.graph_completed",
+      "meta.node.observed_signal",
+      "meta.node.consumed_signal",
+      "meta.node.detected_previous_task_execution",
+      "meta.node.started_routine_execution",
+      "meta.node.ended_routine_execution",
+      "meta.node.routine_execution_progress",
+    );
+
     if (register && !this.isHidden) {
       const { __functionString, __getTagCallback } = this.export();
       this.emitWithMetadata("meta.task.created", {
@@ -622,7 +647,14 @@ export default class Task extends SignalEmitter implements Graph {
       this.predecessorTasks.delete(task);
     }
 
-    // TODO: Delete task map instances
+    // this.emitMetricsWithMetadata("meta.task.relationship_removed", {
+    //   data: {
+    //     taskName: this.name,
+    //     taskVersion: this.version,
+    //     predecessorTaskName: pred.name,
+    //     predecessorTaskVersion: pred.version,
+    //   },
+    // });
 
     this.updateLayerFromPredecessors();
   }
