@@ -1,3 +1,10 @@
+## [3.15.3](https://github.com/cadenzaio/cadenza/compare/v3.15.2...v3.15.3) (2025-12-08)
+
+
+### Bug Fixes
+
+* removed one attached signal ([e7194d4](https://github.com/cadenzaio/cadenza/commit/e7194d422b6c08e0255a89f7d50997bee0226f3b))
+
 ## [3.15.2](https://github.com/cadenzaio/cadenza/compare/v3.15.1...v3.15.2) (2025-12-06)
 
 
