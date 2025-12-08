@@ -137,7 +137,6 @@ export default class Task extends SignalEmitter implements Graph {
     }
 
     this.attachSignal(
-      "meta.task.created",
       "meta.task.destroyed",
       "meta.task.version_set",
       "meta.task.output_validation_failed",
