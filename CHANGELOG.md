@@ -1,3 +1,10 @@
+## [3.15.5](https://github.com/cadenzaio/cadenza/compare/v3.15.4...v3.15.5) (2025-12-09)
+
+
+### Bug Fixes
+
+* added emitted signals to get signals task. ([134740e](https://github.com/cadenzaio/cadenza/commit/134740e14ea1226e1562fe1ac2459cbd7ef4398e))
+
 ## [3.15.4](https://github.com/cadenzaio/cadenza/compare/v3.15.3...v3.15.4) (2025-12-09)
 
 
