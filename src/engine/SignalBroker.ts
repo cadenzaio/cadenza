@@ -110,9 +110,12 @@ export default class SignalBroker {
    */
   init() {
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
-      const uniqueSignals = Array.from(this.signalObservers.keys()).filter(
-        (s) => !s.includes(":"),
-      );
+      const uniqueSignals = Array.from(
+        new Set([
+          ...this.signalObservers.keys(),
+          ...this.emittedSignalsRegistry,
+        ]),
+      ).filter((s) => !s.includes(":"));
 
       const processedSignals = uniqueSignals.map((signal) => ({
         signal,
