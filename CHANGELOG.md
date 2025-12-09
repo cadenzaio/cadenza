@@ -1,3 +1,10 @@
+## [3.15.4](https://github.com/cadenzaio/cadenza/compare/v3.15.3...v3.15.4) (2025-12-09)
+
+
+### Bug Fixes
+
+* removed loop detection on doOn ([1e854e0](https://github.com/cadenzaio/cadenza/commit/1e854e0a561195009d4a6b0b90e2074e53c19dc6))
+
 ## [3.15.3](https://github.com/cadenzaio/cadenza/compare/v3.15.2...v3.15.3) (2025-12-08)
 
 
