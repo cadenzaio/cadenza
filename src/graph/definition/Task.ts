@@ -137,6 +137,7 @@ export default class Task extends SignalEmitter implements Graph {
     }
 
     this.attachSignal(
+      "meta.task.created",
       "meta.task.destroyed",
       "meta.task.version_set",
       "meta.task.output_validation_failed",
@@ -815,10 +816,6 @@ export default class Task extends SignalEmitter implements Graph {
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
       if (this.observedSignals.has(signal)) return;
-      if (this.emitsSignals.has(signal))
-        throw new Error(
-          `Detected signal loop for task ${this.name}. Signal name: ${signal}`,
-        );
       Cadenza.broker.observe(signal, this as any);
       this.observedSignals.add(signal);
       if (this.register) {
@@ -942,6 +939,7 @@ export default class Task extends SignalEmitter implements Graph {
   detachSignals(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitAfter.delete(signal);
+      this.emitsSignals.delete(signal);
       if (this.register) {
         signal = signal.split(":")[0];
         this.emitWithMetadata("meta.task.detached_signal", {
