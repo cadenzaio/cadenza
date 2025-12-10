@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read # for checkout
+
 jobs:
   release:
     name: Release and Publish
@@ -35,7 +38,10 @@ jobs:
       - name: Update npm
         run: npm install -g npm@latest
 
+      - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
+        run: npm audit signatures
+
       - name: Release with semantic-release
-        run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
