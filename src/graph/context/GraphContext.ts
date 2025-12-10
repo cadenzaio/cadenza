@@ -72,14 +72,6 @@ export default class GraphContext {
   }
 
   /**
-   * Clones this context (new instance).
-   * @returns New GraphContext.
-   */
-  clone(): GraphContext {
-    return this.mutate(this.fullContext);
-  }
-
-  /**
    * Creates new context from data (via registry).
    * @param context New data.
    * @returns New GraphContext.
