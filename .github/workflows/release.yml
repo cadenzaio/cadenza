@@ -10,10 +10,6 @@ jobs:
     name: Release and Publish
     runs-on: ubuntu-latest
 
-    id_tokens:
-      NPM_ID_TOKEN:
-        aud: "npm:registry.npmjs.org"
-
     permissions:
       contents: write # to push tags and release notes
       issues: write # if using semantic-release to comment on issues/PRs
