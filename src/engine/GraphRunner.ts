@@ -93,7 +93,6 @@ export default class GraphRunner extends SignalEmitter {
     const ctx = new GraphContext(context || {});
 
     if (!isSubMeta) {
-      const contextData = ctx.export();
       if (isNewTrace) {
         this.emitMetrics("meta.runner.new_trace", {
           data: {
@@ -103,7 +102,8 @@ export default class GraphRunner extends SignalEmitter {
               context.__metadata?.__issuerId ?? context.__issuerId ?? null,
             issued_at: formatTimestamp(Date.now()),
             intent: context.__metadata?.__intent ?? context.__intent ?? null,
-            context: contextData,
+            context: ctx.getContext(),
+            metaContext: ctx.getMetadata(),
             is_meta: isMeta,
           },
           __metadata: {
@@ -119,7 +119,8 @@ export default class GraphRunner extends SignalEmitter {
           routineVersion,
           isMeta,
           executionTraceId,
-          context: isNewTrace ? contextData.id : contextData,
+          context: ctx.getContext(),
+          metaContext: ctx.getMetadata(),
           previousRoutineExecution:
             context.__localRoutineExecId ??
             context.__metadata?.__routineExecId ??

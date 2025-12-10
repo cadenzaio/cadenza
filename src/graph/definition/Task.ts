@@ -52,7 +52,6 @@ export default class Task extends SignalEmitter implements Graph {
   layerIndex: number = 0;
   progressWeight: number = 0;
   nextTasks: Set<Task> = new Set();
-  onFailTasks: Set<Task> = new Set();
   predecessorTasks: Set<Task> = new Set();
   destroyed: boolean = false;
   register: boolean = true;
@@ -188,6 +187,10 @@ export default class Task extends SignalEmitter implements Graph {
           validateOutputContext: this.validateOutputContext,
           // inputContextSchemaId: this.inputContextSchema,
           // outputContextSchemaId: this.outputContextSchema,
+          emitsSignals: Array.from(this.emitsSignals),
+          signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
+          signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
+          observesSignals: Array.from(this.observedSignals),
         },
         taskInstance: this,
         __isSubMeta: this.isSubMeta,
@@ -642,11 +645,6 @@ export default class Task extends SignalEmitter implements Graph {
       this.predecessorTasks.delete(task);
     }
 
-    if (task.onFailTasks.has(this)) {
-      task.onFailTasks.delete(this);
-      this.predecessorTasks.delete(task);
-    }
-
     // this.emitMetricsWithMetadata("meta.task.relationship_removed", {
     //   data: {
     //     taskName: this.name,
@@ -772,16 +770,10 @@ export default class Task extends SignalEmitter implements Graph {
    * Maps over the next set of tasks or failed tasks if specified, applying the provided callback function.
    *
    * @param {Function} callback A function that will be called with each task, transforming the task as needed. It receives a single parameter of type Task.
-   * @param {boolean} [failed=false] A boolean that determines whether to map over the failed tasks (true) or the next tasks (false).
    * @return {any[]} An array of transformed tasks resulting from applying the callback function.
    */
-  public mapNext(
-    callback: (task: Task) => any,
-    failed: boolean = false,
-  ): any[] {
-    const tasks = failed
-      ? Array.from(this.onFailTasks)
-      : Array.from(this.nextTasks);
+  public mapNext(callback: (task: Task) => any): any[] {
+    const tasks = Array.from(this.nextTasks);
     return tasks.map(callback);
   }
 
@@ -875,13 +867,23 @@ export default class Task extends SignalEmitter implements Graph {
       this.emitsSignals.add(signal);
       Cadenza.broker.registerEmittedSignal(signal);
       if (this.register) {
-        const isOnFail = this.signalsToEmitOnFail.has(signal);
+        const data: any = {
+          emitsSignals: Array.from(this.emitsSignals),
+        };
+
+        if (this.signalsToEmitAfter.has(signal)) {
+          data.emitsSignalsAfter = Array.from(this.signalsToEmitAfter);
+        }
+
+        if (this.signalsToEmitOnFail.has(signal)) {
+          data.emitsSignalsOnFail = Array.from(this.signalsToEmitOnFail);
+        }
+
         this.emitWithMetadata("meta.task.attached_signal", {
-          data: {
-            signalName: signal.split(":")[0],
-            taskName: this.name,
-            taskVersion: this.version,
-            isOnFail,
+          data,
+          filter: {
+            name: this.name,
+            version: this.version,
           },
         });
       }
@@ -1041,11 +1043,9 @@ export default class Task extends SignalEmitter implements Graph {
 
     this.predecessorTasks.forEach((pred) => pred.nextTasks.delete(this));
     this.nextTasks.forEach((next) => next.predecessorTasks.delete(this));
-    this.onFailTasks.forEach((fail) => fail.predecessorTasks.delete(this));
 
     this.nextTasks.clear();
     this.predecessorTasks.clear();
-    this.onFailTasks.clear();
 
     this.destroyed = true;
 
@@ -1093,7 +1093,6 @@ export default class Task extends SignalEmitter implements Graph {
       __outputSchema: this.outputContextSchema,
       __validateOutputContext: this.validateOutputContext,
       __nextTasks: Array.from(this.nextTasks).map((t) => t.name),
-      __onFailTasks: Array.from(this.onFailTasks).map((t) => t.name),
       __previousTasks: Array.from(this.predecessorTasks).map((t) => t.name),
     };
   }
