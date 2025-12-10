@@ -10,6 +10,10 @@ jobs:
     name: Release and Publish
     runs-on: ubuntu-latest
 
+    id_tokens:
+      NPM_ID_TOKEN:
+        aud: "npm:registry.npmjs.org"
+
     permissions:
       contents: write # to push tags and release notes
       issues: write # if using semantic-release to comment on issues/PRs
@@ -34,5 +38,4 @@ jobs:
       - name: Release with semantic-release
         run: npx semantic-release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
