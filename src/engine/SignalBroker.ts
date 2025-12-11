@@ -492,18 +492,6 @@ export default class SignalBroker {
     }
   }
 
-  /**
-   * Lists all observed signals.
-   * @returns Array of signals.
-   */
-  listObservedSignals(): string[] {
-    return Array.from(this.signalObservers.keys());
-  }
-
-  listEmittedSignals(): string[] {
-    return Array.from(this.emittedSignalsRegistry);
-  }
-
   reset() {
     this.signalObservers.clear();
     this.emittedSignalsRegistry.clear();
