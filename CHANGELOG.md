@@ -1,3 +1,10 @@
+## [3.15.9](https://github.com/cadenzaio/cadenza/compare/v3.15.8...v3.15.9) (2025-12-11)
+
+
+### Bug Fixes
+
+* release fix ([d08cb36](https://github.com/cadenzaio/cadenza/commit/d08cb360bc252e2d66ab57e4f83bf000c85ec4e6))
+
 ## [3.15.8](https://github.com/cadenzaio/cadenza/compare/v3.15.7...v3.15.8) (2025-12-11)
 
 
