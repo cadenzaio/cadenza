@@ -1,3 +1,20 @@
+## [3.15.6](https://github.com/cadenzaio/cadenza/compare/v3.15.5...v3.15.6) (2025-12-11)
+
+
+### Bug Fixes
+
+* updated registration and metrics data. ([204c3d4](https://github.com/cadenzaio/cadenza/commit/204c3d493aa6eaf01fe2892562d5371018e016f2))
+* updated registration and metrics data. ([04288ba](https://github.com/cadenzaio/cadenza/commit/04288ba0ea0574cf573dff429e2a50ed73eb6c00))
+* updated release script ([3162dfe](https://github.com/cadenzaio/cadenza/commit/3162dfe7bb5ac0e023bd78f3c0aa17e4e09a8ec8))
+* updated release script ([7676e6d](https://github.com/cadenzaio/cadenza/commit/7676e6d0c4744fd7f95d8fe012937a65efde7b86))
+* updated release script ([cf70777](https://github.com/cadenzaio/cadenza/commit/cf7077755be47fec79cf81b6ffd0ae054aaba04a))
+* updated release script ([9e35a5b](https://github.com/cadenzaio/cadenza/commit/9e35a5b942047320f57949f0a84d66852cf1d380))
+* updated release script ([5ac7b02](https://github.com/cadenzaio/cadenza/commit/5ac7b02e9a19d6027aaf54bf08a6763e433250d7))
+* updated release script ([14120e7](https://github.com/cadenzaio/cadenza/commit/14120e75a9c21a3e224612d3fe84eae9deb3aa5a))
+* updated release script ([3b79a79](https://github.com/cadenzaio/cadenza/commit/3b79a7938926d7a30acbd9f4e4e95c748d740ada))
+* updated release script ([69b07f0](https://github.com/cadenzaio/cadenza/commit/69b07f06793e522aa964d263e27b605d12c8e9f5))
+* updated release script ([41bb8ae](https://github.com/cadenzaio/cadenza/commit/41bb8ae87bbfe8baed934704d65f1074b56d1bd2))
+
 ## [3.15.5](https://github.com/cadenzaio/cadenza/compare/v3.15.4...v3.15.5) (2025-12-09)
 
 
