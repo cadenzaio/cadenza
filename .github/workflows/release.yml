@@ -26,10 +26,10 @@ jobs:
           registry-url: https://registry.npmjs.org/
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: npm ci
 
       - name: Build package
-        run: yarn build
+        run: npm run build --if-present
 
       - name: Release with semantic-release
         run: npx semantic-release
