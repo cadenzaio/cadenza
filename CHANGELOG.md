@@ -1,3 +1,10 @@
+## [3.15.11](https://github.com/cadenzaio/cadenza/compare/v3.15.10...v3.15.11) (2025-12-11)
+
+
+### Bug Fixes
+
+* task registration. ([10b4c9a](https://github.com/cadenzaio/cadenza/commit/10b4c9a63b467faf82bbf4a5fdd7a7b5a8c95bb7))
+
 ## [3.15.10](https://github.com/cadenzaio/cadenza/compare/v3.15.9...v3.15.10) (2025-12-11)
 
 
