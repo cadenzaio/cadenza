@@ -1,3 +1,10 @@
+## [3.15.10](https://github.com/cadenzaio/cadenza/compare/v3.15.9...v3.15.10) (2025-12-11)
+
+
+### Bug Fixes
+
+* reverted signal broker cleanup ([48fca97](https://github.com/cadenzaio/cadenza/commit/48fca976359cde50a61b2ba2c2592c332f2d0d6d))
+
 ## [3.15.9](https://github.com/cadenzaio/cadenza/compare/v3.15.8...v3.15.9) (2025-12-11)
 
 
