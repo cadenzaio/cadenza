@@ -153,7 +153,6 @@ export default class Task extends SignalEmitter implements Graph {
       "meta.node.progress",
       "meta.node.graph_completed",
       "meta.node.observed_signal",
-      "meta.node.consumed_signal",
       "meta.node.detected_previous_task_execution",
       "meta.node.started_routine_execution",
       "meta.node.ended_routine_execution",
@@ -187,10 +186,12 @@ export default class Task extends SignalEmitter implements Graph {
           validateOutputContext: this.validateOutputContext,
           // inputContextSchemaId: this.inputContextSchema,
           // outputContextSchemaId: this.outputContextSchema,
-          emitsSignals: Array.from(this.emitsSignals),
-          signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
-          signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
-          observesSignals: Array.from(this.observedSignals),
+          signals: {
+            emits: Array.from(this.emitsSignals),
+            signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
+            signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
+            observed: Array.from(this.observedSignals),
+          },
         },
         taskInstance: this,
         __isSubMeta: this.isSubMeta,
@@ -868,16 +869,13 @@ export default class Task extends SignalEmitter implements Graph {
       Cadenza.broker.registerEmittedSignal(signal);
       if (this.register) {
         const data: any = {
-          emitsSignals: Array.from(this.emitsSignals),
+          signals: {
+            emits: Array.from(this.emitsSignals),
+            signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
+            signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
+            observed: Array.from(this.observedSignals),
+          },
         };
-
-        if (this.signalsToEmitAfter.has(signal)) {
-          data.emitsSignalsAfter = Array.from(this.signalsToEmitAfter);
-        }
-
-        if (this.signalsToEmitOnFail.has(signal)) {
-          data.emitsSignalsOnFail = Array.from(this.signalsToEmitOnFail);
-        }
 
         this.emitWithMetadata("meta.task.attached_signal", {
           data,
