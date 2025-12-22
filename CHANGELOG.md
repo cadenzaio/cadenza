@@ -1,3 +1,10 @@
+## [3.15.13](https://github.com/cadenzaio/cadenza/compare/v3.15.12...v3.15.13) (2025-12-22)
+
+
+### Bug Fixes
+
+* fixed undefined return of an async generator ([b269d7b](https://github.com/cadenzaio/cadenza/commit/b269d7b5fd2097d45345d72203d33c622a26dfe0))
+
 ## [3.15.12](https://github.com/cadenzaio/cadenza/compare/v3.15.11...v3.15.12) (2025-12-22)
 
 
