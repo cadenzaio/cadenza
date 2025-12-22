@@ -218,7 +218,7 @@ export default class SignalBroker {
    * @param startDateTime  Optional absolute Date when the *first* emission after `leading` should occur.
    * @returns a handle with `clear()` to stop the loop.
    */
-  throttle(
+  interval(
     signal: string,
     context: AnyObject,
     intervalMs: number = 60_000,

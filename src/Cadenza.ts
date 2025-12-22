@@ -190,14 +190,14 @@ export default class Cadenza {
     this.broker?.schedule(taskName, context, timeoutMs, exactDateTime);
   }
 
-  public static throttle(
+  public static interval(
     taskName: string,
     context: AnyObject,
     intervalMs: number,
     leading = false,
     startDateTime?: Date,
   ) {
-    this.broker?.throttle(
+    this.broker?.interval(
       taskName,
       context,
       intervalMs,
@@ -212,6 +212,10 @@ export default class Cadenza {
 
   public static get(taskName: string): Task | undefined {
     return this.registry?.tasks.get(taskName);
+  }
+
+  public static getRoutine(routineName: string): GraphRoutine | undefined {
+    return this.registry?.routines.get(routineName);
   }
 
   /**
