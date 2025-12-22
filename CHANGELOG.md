@@ -1,3 +1,10 @@
+## [3.15.12](https://github.com/cadenzaio/cadenza/compare/v3.15.11...v3.15.12) (2025-12-22)
+
+
+### Bug Fixes
+
+* added routine getter. Renamed signal throttle to interval. ([0688cec](https://github.com/cadenzaio/cadenza/commit/0688cec44d80c58c784c7726a35ac065f8aa53e5))
+
 ## [3.15.11](https://github.com/cadenzaio/cadenza/compare/v3.15.10...v3.15.11) (2025-12-11)
 
 
