@@ -857,7 +857,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
   generateNewNodes(result: any) {
     const groupId = uuid();
     const newNodes = [];
-    if (typeof result !== "boolean") {
+    if (result && typeof result !== "boolean") {
       this.failed =
         (result.failed !== undefined && result.failed) ||
         result.error !== undefined;
