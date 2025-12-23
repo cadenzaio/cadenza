@@ -189,10 +189,10 @@ export default class Cadenza {
   public static schedule(
     taskName: string,
     context: AnyObject,
-    timeoutMs: number,
+    delayMs: number,
     exactDateTime?: Date,
   ) {
-    this.broker?.schedule(taskName, context, { timeoutMs, exactDateTime });
+    this.broker?.schedule(taskName, context, { delayMs, exactDateTime });
   }
 
   public static interval(
