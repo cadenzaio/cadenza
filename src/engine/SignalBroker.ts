@@ -149,7 +149,7 @@ export default class SignalBroker {
       "Register signal",
       (ctx) => {
         const { signalName } = ctx;
-        if (this.signalObservers.has(signalName)) {
+        if (!this.signalObservers.has(signalName)) {
           this.addSignal(signalName);
         }
 
