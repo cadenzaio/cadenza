@@ -1,5 +1,6 @@
 import Cadenza from "../Cadenza";
 import { AnyObject } from "../types/global";
+import { EmitOptions } from "../engine/SignalBroker";
 
 /**
  * Abstract class representing a signal emitter.
@@ -20,8 +21,9 @@ export default abstract class SignalEmitter {
    * Emits a signal via the broker.
    * @param signal The signal name.
    * @param data Optional payload (defaults to empty object).
+   * @param options
    */
-  emit(signal: string, data: AnyObject = {}): void {
+  emit(signal: string, data: AnyObject = {}, options: EmitOptions = {}): void {
     Cadenza.broker.emit(signal, data);
   }
 
@@ -29,8 +31,13 @@ export default abstract class SignalEmitter {
    * Emits a signal via the broker if not silent.
    * @param signal The signal name.
    * @param data Optional payload (defaults to empty object).
+   * @param options
    */
-  emitMetrics(signal: string, data: AnyObject = {}): void {
+  emitMetrics(
+    signal: string,
+    data: AnyObject = {},
+    options: EmitOptions = {},
+  ): void {
     if (this.silent) {
       return;
     }

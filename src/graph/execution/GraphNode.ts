@@ -9,6 +9,7 @@ import GraphLayer from "../../interfaces/GraphLayer";
 import { AnyObject } from "../../types/global";
 import { sleep } from "../../utils/promise";
 import { formatTimestamp } from "../../utils/tools";
+import { EmitOptions } from "../../engine/SignalBroker";
 
 /**
  * Represents a node in a graph structure used for executing tasks.
@@ -218,37 +219,55 @@ export default class GraphNode extends SignalEmitter implements Graph {
         context.__signalEmission.consumedBy = this.id;
       }
 
-      const scheduledAt = Date.now();
-      this.emitMetricsWithMetadata("meta.node.scheduled", {
-        data: {
-          uuid: this.id,
-          routineExecutionId: this.routineExecId,
-          executionTraceId: this.executionTraceId,
-          context: this.context.getContext(),
-          metaContext: this.context.getMetadata(),
-          taskName: this.task.name,
-          taskVersion: this.task.version,
-          isMeta: this.isMeta(),
-          isScheduled: true,
-          splitGroupId: this.splitGroupId,
-          signalEmissionId,
-          created: formatTimestamp(scheduledAt),
-        },
-      });
+      const prevNodesIds = this.previousNodes.map((node) => node.id);
 
-      this.previousNodes.forEach((node) => {
-        this.emitMetricsWithMetadata("meta.node.mapped", {
+      if (context.__previousTaskExecutionId) {
+        prevNodesIds.push(context.__previousTaskExecutionId);
+        context.__previousTaskExecutionId = null;
+      }
+
+      const scheduledAt = Date.now();
+      this.emitMetricsWithMetadata(
+        "meta.node.scheduled",
+        {
           data: {
-            taskExecutionId: this.id,
-            previousTaskExecutionId: node.id,
-          },
-          filter: {
+            uuid: this.id,
+            routineExecutionId: this.routineExecId,
+            executionTraceId: this.executionTraceId,
+            context: this.context.getContext(),
+            metaContext: this.context.getMetadata(),
             taskName: this.task.name,
             taskVersion: this.task.version,
-            predecessorTaskName: node.task.name,
-            predecessorTaskVersion: node.task.version,
+            isMeta: this.isMeta(),
+            isScheduled: true,
+            splitGroupId: this.splitGroupId,
+            signalEmissionId,
+            previousExecutionIds: {
+              ids: prevNodesIds,
+            },
+            created: formatTimestamp(scheduledAt),
           },
-        });
+        },
+        { squash: true, squashId: this.id },
+      );
+
+      this.previousNodes.forEach((node) => {
+        this.emitMetricsWithMetadata(
+          "meta.node.mapped",
+          {
+            data: {
+              taskExecutionId: this.id,
+              previousTaskExecutionId: node.id,
+            },
+            filter: {
+              taskName: this.task.name,
+              taskVersion: this.task.version,
+              predecessorTaskName: node.task.name,
+              predecessorTaskVersion: node.task.version,
+            },
+          },
+          { schedule: true, delayMs: 1000 },
+        );
       });
 
       if (!this.silent && context.__previousTaskExecutionId) {
@@ -266,6 +285,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
               predecessorTaskVersion: context.__localTaskVersion,
             },
           },
+          { schedule: true, delayMs: 1000 },
         );
         context.__previousTaskExecutionId = null;
       }
@@ -290,13 +310,17 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     if (this.previousNodes.length === 0) {
-      this.emitMetricsWithMetadata("meta.node.started_routine_execution", {
-        data: {
-          isRunning: true,
-          started: formatTimestamp(this.executionStart),
+      this.emitMetricsWithMetadata(
+        "meta.node.started_routine_execution",
+        {
+          data: {
+            isRunning: true,
+            started: formatTimestamp(this.executionStart),
+          },
+          filter: { uuid: this.routineExecId },
         },
-        filter: { uuid: this.routineExecId },
-      });
+        { squash: true, squashId: this.routineExecId },
+      );
     }
 
     if (
@@ -308,13 +332,17 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.log();
     }
 
-    this.emitMetricsWithMetadata("meta.node.started", {
-      data: {
-        isRunning: true,
-        started: formatTimestamp(this.executionStart),
+    this.emitMetricsWithMetadata(
+      "meta.node.started",
+      {
+        data: {
+          isRunning: true,
+          started: formatTimestamp(this.executionStart),
+        },
+        filter: { uuid: this.id },
       },
-      filter: { uuid: this.id },
-    });
+      { squash: true, squashId: this.id },
+    );
 
     return this.executionStart;
   }
@@ -349,20 +377,24 @@ export default class GraphNode extends SignalEmitter implements Graph {
       });
     }
 
-    this.emitMetricsWithMetadata("meta.node.ended", {
-      data: {
-        isRunning: false,
-        isComplete: true,
-        resultContext: this.context.getContext(),
-        metaResultContext: this.context.getMetadata(),
-        errored: this.errored,
-        failed: this.failed,
-        errorMessage: context.__error,
-        progress: 1.0,
-        ended: formatTimestamp(end),
+    this.emitMetricsWithMetadata(
+      "meta.node.ended",
+      {
+        data: {
+          isRunning: false,
+          isComplete: true,
+          resultContext: this.context.getContext(),
+          metaResultContext: this.context.getMetadata(),
+          errored: this.errored,
+          failed: this.failed,
+          errorMessage: context.__error,
+          progress: 1.0,
+          ended: formatTimestamp(end),
+        },
+        filter: { uuid: this.id },
       },
-      filter: { uuid: this.id },
-    });
+      { squash: true, squashId: this.id },
+    );
 
     if (this.graphDone()) {
       const context = this.context.getFullContext();
@@ -373,17 +405,21 @@ export default class GraphNode extends SignalEmitter implements Graph {
         );
 
       // TODO Reminder, Service registry should be listening to this event, (updateSelf)
-      this.emitMetricsWithMetadata("meta.node.ended_routine_execution", {
-        data: {
-          isRunning: false,
-          isComplete: true,
-          resultContext: this.context.getContext(),
-          metaResultContext: this.context.getMetadata(),
-          progress: 1.0,
-          ended: formatTimestamp(end),
+      this.emitMetricsWithMetadata(
+        "meta.node.ended_routine_execution",
+        {
+          data: {
+            isRunning: false,
+            isComplete: true,
+            resultContext: this.context.getContext(),
+            metaResultContext: this.context.getMetadata(),
+            progress: 1.0,
+            ended: formatTimestamp(end),
+          },
+          filter: { uuid: this.routineExecId },
         },
-        filter: { uuid: this.routineExecId },
-      });
+        { squash: true, squashId: this.routineExecId },
+      );
     }
 
     return end;
@@ -522,9 +558,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
    * @param {string} signal - The name of the signal to be emitted.
    * @param {AnyObject} data - The data object to be sent along with the signal. Metadata
    * will be injected into this object before being emitted.
+   * @param options
    * @return {void} No return value.
    */
-  emitWithMetadata(signal: string, data: AnyObject) {
+  emitWithMetadata(
+    signal: string,
+    data: AnyObject,
+    options: EmitOptions = {},
+  ): void {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
         fullSignalName: signal,
@@ -542,7 +583,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       };
     }
 
-    this.emit(signal, data);
+    this.emit(signal, data, options);
 
     if (!this.task.emitsSignals.has(signal)) {
       this.task.emitsSignals.add(signal);
@@ -554,9 +595,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
    *
    * @param {string} signal - The signal name being emitted.
    * @param {AnyObject} data - The data associated with the signal emission, enriched with metadata.
+   * @param options
    * @return {void} Emits the signal with enriched data and does not return a value.
    */
-  emitMetricsWithMetadata(signal: string, data: AnyObject) {
+  emitMetricsWithMetadata(
+    signal: string,
+    data: AnyObject,
+    options: EmitOptions = {},
+  ): void {
     if (!this.task?.isHidden) {
       data.__signalEmission = {
         taskName: this.task.name,
@@ -573,7 +619,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       };
     }
 
-    this.emitMetrics(signal, data);
+    this.emitMetrics(signal, data, options);
 
     if (!this.task.emitsSignals.has(signal)) {
       this.task.emitsSignals.add(signal);
@@ -589,14 +635,18 @@ export default class GraphNode extends SignalEmitter implements Graph {
   onProgress(progress: number) {
     progress = Math.min(Math.max(0, progress), 1);
 
-    this.emitMetricsWithMetadata("meta.node.progress", {
-      data: {
-        progress,
+    this.emitMetricsWithMetadata(
+      "meta.node.progress",
+      {
+        data: {
+          progress,
+        },
+        filter: {
+          uuid: this.id,
+        },
       },
-      filter: {
-        uuid: this.id,
-      },
-    });
+      { debounce: true },
+    );
 
     this.emitMetricsWithMetadata(
       `meta.node.routine_execution_progress:${this.routineExecId}`,
@@ -610,6 +660,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
           uuid: this.routineExecId,
         },
       },
+      { debounce: true },
     );
   }
 

@@ -6,6 +6,19 @@ import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
 import { v4 as uuid } from "uuid";
 import debounce from "lodash-es/debounce";
+import { merge } from "lodash-es";
+
+export interface EmitOptions {
+  squash?: boolean;
+  squashId?: string | null;
+  mergeFunction?:
+    | ((oldContext: AnyObject, newContext: AnyObject) => AnyObject)
+    | null;
+  debounce?: boolean;
+  delayMs?: number;
+  schedule?: boolean;
+  exactDateTime?: Date | null;
+}
 
 /**
  * This class manages signals and observers, enabling communication across different parts of an application.
@@ -69,6 +82,8 @@ export default class SignalBroker {
   metaRunner: GraphRunner | undefined;
 
   debouncedEmitters: Map<string, any> = new Map();
+  squashedEmitters: Map<string, any> = new Map();
+  squashedContexts: Map<string, any> = new Map();
 
   public getSignalsTask: Task | undefined;
   public registerSignalTask: Task | undefined;
@@ -134,6 +149,10 @@ export default class SignalBroker {
       "Register signal",
       (ctx) => {
         const { signalName } = ctx;
+        if (this.signalObservers.has(signalName)) {
+          this.addSignal(signalName);
+        }
+
         this.signalObservers.get(signalName)!.registered = true;
       },
     ).doOn("meta.signal.registered");
@@ -175,22 +194,20 @@ export default class SignalBroker {
    *
    * @param {string} signal - The name of the signal to be emitted.
    * @param {AnyObject} context - The context to be passed along with the signal.
-   * @param {number} [timeoutMs=60000] - The delay in milliseconds before the signal is emitted. Defaults to 60,000 ms.
-   * @param {Date} [exactDateTime] - An exact date and time at which to emit the signal. If provided, this overrides the `timeoutMs`.
+   * @param options
    * @return {AbortController} An AbortController instance that can be used to cancel the scheduled signal emission.
    */
   schedule(
     signal: string,
     context: AnyObject,
-    timeoutMs: number = 60_000,
-    exactDateTime?: Date,
+    options: EmitOptions = { delayMs: 60_000 },
   ): AbortController {
     // 1. Compute the final delay
-    let delay = timeoutMs;
-    if (exactDateTime != null) {
-      delay = exactDateTime.getTime() - Date.now();
+    let delay = options.delayMs;
+    if (options.exactDateTime != null) {
+      delay = options.exactDateTime.getTime() - Date.now();
     }
-    delay = Math.max(0, timeoutMs);
+    delay = Math.max(0, delay ?? 0);
 
     // 2. Create an AbortController so the caller can cancel
     const controller = new AbortController();
@@ -272,14 +289,14 @@ export default class SignalBroker {
     };
   }
 
-  debounce(signal: string, context: any, delayMs: number = 500) {
+  debounce(signal: string, context: any, options = { delayMs: 500 }) {
     let debouncedEmitter = this.debouncedEmitters.get(signal);
     if (!debouncedEmitter) {
       this.debouncedEmitters.set(
         signal,
         debounce((ctx: any) => {
           this.emit(signal, ctx);
-        }, delayMs),
+        }, options.delayMs ?? 300),
       );
 
       debouncedEmitter = this.debouncedEmitters.get(signal);
@@ -289,15 +306,78 @@ export default class SignalBroker {
   }
 
   /**
+   * Aggregates and debounces multiple events with the same identifier to minimize redundant operations.
+   *
+   * @param {string} signal - The identifier for the event being emitted.
+   * @param {AnyObject} context - The context data associated with the event.
+   * @param {Object} [options] - Configuration options for handling the squashed event.
+   * @param {boolean} [options.squash=true] - Whether the event should be squashed.
+   * @param {string|null} [options.squashId=null] - A unique identifier for the squashed group of events. Defaults to the signal if null.
+   * @param {function|null} [options.mergeFunction=null] - A custom merge function that combines old and new contexts. If null, a default merge is used.
+   * @return {void} Does not return a value.
+   */
+  squash(
+    signal: string,
+    context: AnyObject,
+    options: EmitOptions = { squash: true },
+  ) {
+    let { squashId, delayMs } = options;
+    if (!squashId) {
+      squashId = signal;
+    }
+
+    if (!this.squashedEmitters.has(squashId)) {
+      this.squashedEmitters.set(
+        squashId,
+        debounce(() => {
+          this.emit(signal, this.squashedContexts.get(squashId));
+          this.squashedEmitters.delete(squashId);
+          this.squashedContexts.delete(squashId);
+        }, delayMs ?? 300),
+      );
+      this.squashedContexts.set(squashId, context);
+    } else {
+      this.squashedContexts.set(
+        squashId,
+        options.mergeFunction
+          ? options.mergeFunction(this.squashedContexts.get(squashId), context)
+          : merge(this.squashedContexts.get(squashId), context),
+      );
+    }
+
+    this.squashedEmitters.get(squashId)();
+  }
+
+  /**
    * Emits a signal with the specified context, triggering any associated handlers for that signal.
    *
    * @param {string} signal - The name of the signal to emit.
    * @param {AnyObject} [context={}] - An optional context object containing additional information or metadata
    * associated with the signal. If the context includes a `__routineExecId`, it will be handled accordingly.
+   * @param options
    * @return {void} This method does not return a value.
    */
-  emit(signal: string, context: AnyObject = {}): void {
+  emit(
+    signal: string,
+    context: AnyObject = {},
+    options: EmitOptions = {},
+  ): void {
     delete context.__routineExecId;
+    if (options.squash) {
+      this.squash(signal, context, options);
+      return;
+    }
+
+    if (options.debounce) {
+      this.debounce(signal, context);
+      return;
+    }
+
+    if (options.schedule) {
+      this.schedule(signal, context, options);
+      return;
+    }
+
     this.addSignal(signal);
     this.execute(signal, context);
   }

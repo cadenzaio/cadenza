@@ -112,25 +112,29 @@ export default class GraphRunner extends SignalEmitter {
         });
       }
 
-      this.emitMetrics("meta.runner.added_tasks", {
-        data: {
-          uuid: routineExecId,
-          name: routineName,
-          routineVersion,
-          isMeta,
-          executionTraceId,
-          context: ctx.getContext(),
-          metaContext: ctx.getMetadata(),
-          previousRoutineExecution:
-            context.__localRoutineExecId ??
-            context.__metadata?.__routineExecId ??
-            null,
-          created: formatTimestamp(Date.now()),
+      this.emitMetrics(
+        "meta.runner.added_tasks",
+        {
+          data: {
+            uuid: routineExecId,
+            name: routineName,
+            routineVersion,
+            isMeta,
+            executionTraceId,
+            context: ctx.getContext(),
+            metaContext: ctx.getMetadata(),
+            previousRoutineExecution:
+              context.__localRoutineExecId ??
+              context.__metadata?.__routineExecId ??
+              null,
+            created: formatTimestamp(Date.now()),
+          },
+          __metadata: {
+            __executionTraceId: executionTraceId,
+          },
         },
-        __metadata: {
-          __executionTraceId: executionTraceId,
-        },
-      });
+        { squash: true, squashId: routineExecId },
+      );
     }
 
     allTasks.forEach((task) =>

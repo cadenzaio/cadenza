@@ -1,4 +1,4 @@
-import SignalBroker from "./engine/SignalBroker";
+import SignalBroker, { EmitOptions } from "./engine/SignalBroker";
 import GraphRunner from "./engine/GraphRunner";
 import GraphRegistry from "./registry/GraphRegistry";
 import Task, { TaskFunction, ThrottleTagGetter } from "./graph/definition/Task";
@@ -168,6 +168,7 @@ export default class Cadenza {
    *
    * @param {string} event - The name of the event to emit.
    * @param {AnyObject} [data={}] - The data payload associated with the event.
+   * @param options
    * @return {void} - No return value.
    *
    * @example
@@ -177,8 +178,12 @@ export default class Cadenza {
    * Cadenza.emit('main.my_event', { foo: 'bar' });
    * ```
    */
-  public static emit(event: string, data: AnyObject = {}) {
-    this.broker?.emit(event, data);
+  public static emit(
+    event: string,
+    data: AnyObject = {},
+    options: EmitOptions = {},
+  ) {
+    this.broker?.emit(event, data, options);
   }
 
   public static schedule(
@@ -187,7 +192,7 @@ export default class Cadenza {
     timeoutMs: number,
     exactDateTime?: Date,
   ) {
-    this.broker?.schedule(taskName, context, timeoutMs, exactDateTime);
+    this.broker?.schedule(taskName, context, { timeoutMs, exactDateTime });
   }
 
   public static interval(
@@ -207,7 +212,7 @@ export default class Cadenza {
   }
 
   public static debounce(signalName: string, context: any, delayMs: number) {
-    this.broker?.debounce(signalName, context, delayMs);
+    this.broker?.debounce(signalName, context, { delayMs });
   }
 
   public static get(taskName: string): Task | undefined {
