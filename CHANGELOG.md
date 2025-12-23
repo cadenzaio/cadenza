@@ -1,3 +1,10 @@
+## [3.16.1](https://github.com/cadenzaio/cadenza/compare/v3.16.0...v3.16.1) (2025-12-23)
+
+
+### Bug Fixes
+
+* added export ([d6195d8](https://github.com/cadenzaio/cadenza/commit/d6195d8b12b01178e1088a1429e3ceb189c54882))
+
 # [3.16.0](https://github.com/cadenzaio/cadenza/compare/v3.15.13...v3.16.0) (2025-12-23)
 
 
