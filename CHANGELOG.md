@@ -1,3 +1,10 @@
+## [3.16.3](https://github.com/cadenzaio/cadenza/compare/v3.16.2...v3.16.3) (2025-12-23)
+
+
+### Bug Fixes
+
+* squash fix ([7fa687c](https://github.com/cadenzaio/cadenza/commit/7fa687c0eb81a8dbcccdff85f247aab151a06d16))
+
 ## [3.16.2](https://github.com/cadenzaio/cadenza/compare/v3.16.1...v3.16.2) (2025-12-23)
 
 
