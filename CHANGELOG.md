@@ -1,3 +1,10 @@
+## [3.16.2](https://github.com/cadenzaio/cadenza/compare/v3.16.1...v3.16.2) (2025-12-23)
+
+
+### Bug Fixes
+
+* signal registration bug ([6a156ef](https://github.com/cadenzaio/cadenza/commit/6a156ef98fdaeadbd5ae7514d993b8840a6f43db))
+
 ## [3.16.1](https://github.com/cadenzaio/cadenza/compare/v3.16.0...v3.16.1) (2025-12-23)
 
 
