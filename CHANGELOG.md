@@ -1,3 +1,10 @@
+## [3.17.1](https://github.com/cadenzaio/cadenza/compare/v3.17.0...v3.17.1) (2025-12-24)
+
+
+### Bug Fixes
+
+* metric squash fixes ([6c47060](https://github.com/cadenzaio/cadenza/commit/6c470608271615ee32ca0bdc26c6366639a0be0a))
+
 # [3.17.0](https://github.com/cadenzaio/cadenza/compare/v3.16.4...v3.17.0) (2025-12-24)
 
 
