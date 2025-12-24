@@ -133,7 +133,7 @@ export default class GraphRunner extends SignalEmitter {
             __executionTraceId: executionTraceId,
           },
         },
-        { squash: true, squashId: routineExecId },
+        { squash: true, squashId: routineExecId, delayMs: 200 },
       );
     }
 

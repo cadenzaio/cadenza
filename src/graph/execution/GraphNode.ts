@@ -319,7 +319,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
           },
           filter: { uuid: this.routineExecId },
         },
-        { squash: true, squashId: this.routineExecId },
+        { squash: true, squashId: this.routineExecId, delayMs: 200 },
       );
     }
 
@@ -393,7 +393,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         },
         filter: { uuid: this.id },
       },
-      { squash: true, squashId: this.id },
+      { squash: true, squashId: this.id, delayMs: 0 },
     );
 
     if (this.graphDone()) {
@@ -418,7 +418,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
           },
           filter: { uuid: this.routineExecId },
         },
-        { squash: true, squashId: this.routineExecId },
+        { squash: true, squashId: this.routineExecId, delayMs: 0 },
       );
     }
 

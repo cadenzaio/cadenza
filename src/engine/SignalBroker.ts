@@ -7,17 +7,21 @@ import { formatTimestamp } from "../utils/tools";
 import { v4 as uuid } from "uuid";
 import debounce from "lodash-es/debounce";
 import { merge } from "lodash-es";
+import { sleep } from "../utils/promise";
 
 export interface EmitOptions {
   squash?: boolean;
   squashId?: string | null;
+  groupId?: string | null;
   mergeFunction?:
     | ((oldContext: AnyObject, newContext: AnyObject) => AnyObject)
     | null;
   debounce?: boolean;
+  throttle?: boolean;
   delayMs?: number;
   schedule?: boolean;
   exactDateTime?: Date | null;
+  throttleBatch?: number;
 }
 
 /**
@@ -84,6 +88,8 @@ export default class SignalBroker {
   debouncedEmitters: Map<string, any> = new Map();
   squashedEmitters: Map<string, any> = new Map();
   squashedContexts: Map<string, any> = new Map();
+  throttleEmitters: Map<string, any> = new Map();
+  throttleQueues: Map<string, any> = new Map();
 
   public getSignalsTask: Task | undefined;
   public registerSignalTask: Task | undefined;
@@ -305,6 +311,46 @@ export default class SignalBroker {
     debouncedEmitter(context);
   }
 
+  throttle(
+    signal: string,
+    context: any,
+    options: EmitOptions = { delayMs: 1000 },
+  ) {
+    let { groupId, delayMs = 300 } = options;
+    if (!groupId) {
+      groupId = signal;
+    }
+
+    if (!this.throttleQueues.has(groupId)) {
+      this.throttleQueues.set(groupId, []);
+    }
+
+    const queue = this.throttleQueues.get(groupId);
+    queue.push([signal, context]);
+
+    if (!this.throttleEmitters.has(groupId)) {
+      this.throttleEmitters.set(groupId, async () => {
+        while (queue.length > 0) {
+          let batchSize = options.throttleBatch ?? 1;
+          if (batchSize > queue.length) {
+            batchSize = queue.length;
+          }
+          for (let i = 0; i < batchSize; i++) {
+            const [nextSignal, nextContext] = queue.shift();
+            this.emit(nextSignal, nextContext); // Emit the signal
+          }
+          await sleep(delayMs); // Wait for the delay
+        }
+        // Remove the groupId from throttleEmitters when the queue is done
+        this.throttleEmitters.delete(groupId);
+        this.throttleQueues.delete(groupId);
+      });
+
+      // Start processing the queue
+      this.throttleEmitters.get(groupId)();
+    }
+  }
+
   /**
    * Aggregates and debounces multiple events with the same identifier to minimize redundant operations.
    *
@@ -330,7 +376,8 @@ export default class SignalBroker {
       this.squashedEmitters.set(
         squashId,
         debounce(() => {
-          this.emit(signal, this.squashedContexts.get(squashId));
+          options.squash = false;
+          this.emit(signal, this.squashedContexts.get(squashId), options);
           this.squashedEmitters.delete(squashId);
           this.squashedContexts.delete(squashId);
         }, delayMs ?? 300),
