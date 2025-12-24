@@ -319,7 +319,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
           },
           filter: { uuid: this.routineExecId },
         },
-        { squash: true, squashId: this.routineExecId, delayMs: 200 },
+        { squash: true, squashId: this.routineExecId },
       );
     }
 
