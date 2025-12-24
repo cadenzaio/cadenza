@@ -24,7 +24,7 @@ export default abstract class SignalEmitter {
    * @param options
    */
   emit(signal: string, data: AnyObject = {}, options: EmitOptions = {}): void {
-    Cadenza.broker.emit(signal, data);
+    Cadenza.broker.emit(signal, data, options);
   }
 
   /**
@@ -41,6 +41,6 @@ export default abstract class SignalEmitter {
     if (this.silent) {
       return;
     }
-    Cadenza.broker.emit(signal, data);
+    Cadenza.broker.emit(signal, data, options);
   }
 }

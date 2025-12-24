@@ -64,6 +64,8 @@ export default class Task extends SignalEmitter implements Graph {
   signalsToEmitOnFail: Set<string> = new Set();
   observedSignals: Set<string> = new Set();
 
+  intents: Set<string> = new Set();
+
   readonly taskFunction: TaskFunction;
 
   /**
@@ -190,6 +192,9 @@ export default class Task extends SignalEmitter implements Graph {
             signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
             signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
             observed: Array.from(this.observedSignals),
+          },
+          intents: {
+            handles: Array.from(this.intents),
           },
         },
         taskInstance: this,
@@ -962,6 +967,11 @@ export default class Task extends SignalEmitter implements Graph {
   detachAllSignals(): this {
     this.detachSignals(...this.signalsToEmitAfter);
     this.signalsToEmitAfter.clear();
+    return this;
+  }
+
+  handlesIntent(intent: string): this {
+    this.intents.add(intent);
     return this;
   }
 

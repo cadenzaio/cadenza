@@ -321,7 +321,7 @@ export default class SignalBroker {
     context: AnyObject,
     options: EmitOptions = { squash: true },
   ): void {
-    let { squashId, delayMs = 500 } = options;
+    let { squashId, delayMs = 300 } = options;
     if (!squashId) {
       squashId = signal;
     }
@@ -333,7 +333,7 @@ export default class SignalBroker {
           this.emit(signal, this.squashedContexts.get(squashId));
           this.squashedEmitters.delete(squashId);
           this.squashedContexts.delete(squashId);
-        }, delayMs ?? 500),
+        }, delayMs ?? 300),
       );
       this.squashedContexts.set(squashId, context);
     } else {
