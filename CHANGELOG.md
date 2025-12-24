@@ -1,3 +1,10 @@
+# [3.17.0](https://github.com/cadenzaio/cadenza/compare/v3.16.4...v3.17.0) (2025-12-24)
+
+
+### Features
+
+* signal throttling ([6206d3b](https://github.com/cadenzaio/cadenza/commit/6206d3b37bdef4ab227ef5d43918b5901409cf1b))
+
 ## [3.16.4](https://github.com/cadenzaio/cadenza/compare/v3.16.3...v3.16.4) (2025-12-24)
 
 
