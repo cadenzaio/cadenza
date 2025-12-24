@@ -1,3 +1,10 @@
+## [3.16.4](https://github.com/cadenzaio/cadenza/compare/v3.16.3...v3.16.4) (2025-12-24)
+
+
+### Bug Fixes
+
+* squash fix. starting on intents. ([94aea55](https://github.com/cadenzaio/cadenza/commit/94aea55f1476f42e8da6c2d7ae996b5321ee2a96))
+
 ## [3.16.3](https://github.com/cadenzaio/cadenza/compare/v3.16.2...v3.16.3) (2025-12-23)
 
 
