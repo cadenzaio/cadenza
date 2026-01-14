@@ -1,14 +1,13 @@
 import Cadenza, { CadenzaMode, TaskOptions } from "./Cadenza";
 import GraphRun from "./engine/GraphRun";
 import GraphRunner from "./engine/GraphRunner";
-import SignalBroker from "./engine/SignalBroker";
+import SignalBroker, { EmitOptions } from "./engine/SignalBroker";
 import GraphContext from "./graph/context/GraphContext";
 import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
 import EphemeralTask, {
   EphemeralTaskOptions,
 } from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
-import SignalTask from "./graph/definition/SignalTask";
 import Task, {
   TaskFunction,
   TaskResult,
@@ -36,13 +35,13 @@ export type {
   TaskFunction,
   DebounceOptions,
   EphemeralTaskOptions,
+  EmitOptions,
 };
 export {
   Task,
   GraphRoutine,
   DebounceTask,
   EphemeralTask,
-  SignalTask,
   SignalEmitter,
   GraphContext,
   GraphRegistry,

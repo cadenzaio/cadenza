@@ -7,7 +7,6 @@ import { AnyObject } from "../types/global";
 import GraphRoutine from "../graph/definition/GraphRoutine";
 import SignalEmitter from "../interfaces/SignalEmitter";
 import Cadenza from "../Cadenza";
-import GraphRegistry from "../registry/GraphRegistry";
 import GraphContext from "../graph/context/GraphContext";
 import { formatTimestamp } from "../utils/tools";
 
@@ -34,19 +33,6 @@ export default class GraphRunner extends SignalEmitter {
     this.isMeta = isMeta;
     this.strategy = Cadenza.runStrategy.PARALLEL;
     this.currentRun = new GraphRun(this.strategy);
-  }
-
-  init() {
-    if (this.isMeta) return;
-
-    Cadenza.createMetaTask(
-      "Start run",
-      this.startRun.bind(this),
-      "Starts a run",
-    ).doAfter(
-      GraphRegistry.instance.getTaskByName,
-      GraphRegistry.instance.getRoutineByName,
-    );
   }
 
   /**
@@ -107,7 +93,6 @@ export default class GraphRunner extends SignalEmitter {
     const ctx = new GraphContext(context || {});
 
     if (!isSubMeta) {
-      const contextData = ctx.export();
       if (isNewTrace) {
         this.emitMetrics("meta.runner.new_trace", {
           data: {
@@ -117,7 +102,8 @@ export default class GraphRunner extends SignalEmitter {
               context.__metadata?.__issuerId ?? context.__issuerId ?? null,
             issued_at: formatTimestamp(Date.now()),
             intent: context.__metadata?.__intent ?? context.__intent ?? null,
-            context: contextData,
+            context: ctx.getContext(),
+            metaContext: ctx.getMetadata(),
             is_meta: isMeta,
           },
           __metadata: {
@@ -133,11 +119,12 @@ export default class GraphRunner extends SignalEmitter {
           routineVersion,
           isMeta,
           executionTraceId,
-          context: isNewTrace ? contextData.id : contextData,
+          context: ctx.getContext(),
+          metaContext: ctx.getMetadata(),
           previousRoutineExecution:
             context.__localRoutineExecId ??
             context.__metadata?.__routineExecId ??
-            null, // TODO: There is a chance this is not added to the database yet...
+            null,
           created: formatTimestamp(Date.now()),
         },
         __metadata: {
@@ -240,27 +227,6 @@ export default class GraphRunner extends SignalEmitter {
     this.strategy = strategy;
     if (!this.isRunning) {
       this.currentRun = new GraphRun(this.strategy);
-    }
-  }
-
-  // TODO This should not live here. This is deputy related.
-  startRun(
-    context: AnyObject,
-    emit: (signal: string, ctx: AnyObject) => void,
-  ): boolean {
-    if (context.__task || context.__routine) {
-      const routine = context.__task ?? context.__routine;
-      delete context.__task;
-      delete context.__routine;
-      context.__routineExecId = context.__metadata?.__deputyExecId ?? null;
-      context.__isDeputy = true;
-      this.run(routine, context);
-      return true;
-    } else {
-      context.errored = true;
-      context.__error = "No routine or task defined.";
-      emit("meta.runner.failed", context);
-      return false;
     }
   }
 }

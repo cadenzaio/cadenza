@@ -46,11 +46,11 @@ export default class GraphRegistry {
     this.registerTask = new Task(
       "Register task",
       (context: AnyObject) => {
-        const { __taskInstance } = context;
-        if (__taskInstance && !this.tasks.has(__taskInstance.name)) {
-          this.tasks.set(__taskInstance.name, __taskInstance);
+        const { taskInstance } = context;
+        if (taskInstance && !this.tasks.has(taskInstance.name)) {
+          this.tasks.set(taskInstance.name, taskInstance);
         }
-        delete context.__taskInstance;
+        delete context.taskInstance;
         return true;
       },
       "Registers tasks. Seed for meta.taskCreated",
@@ -94,7 +94,7 @@ export default class GraphRegistry {
         const { __name } = context;
         for (const task of this.tasks.values()) {
           if (task.name === __name) {
-            return { ...context, __task: task };
+            return { ...context, task };
           }
         }
         return false;
@@ -109,14 +109,14 @@ export default class GraphRegistry {
         const layerTasks = Array.from(this.tasks.values()).filter(
           (task) => task.layerIndex === __layerIndex,
         );
-        return { ...context, __tasks: layerTasks };
+        return { ...context, tasks: layerTasks };
       },
       "Gets tasks by layer index.",
     );
 
     this.getAllTasks = Cadenza.createMetaTask(
       "Get all tasks",
-      (context) => ({ ...context, __tasks: Array.from(this.tasks.values()) }), // Use arrow to capture this
+      (context) => ({ ...context, tasks: Array.from(this.tasks.values()) }), // Use arrow to capture this
       "Gets all tasks.",
     );
 
@@ -125,7 +125,7 @@ export default class GraphRegistry {
       function* (context: AnyObject) {
         // @ts-ignore
         for (const task of this.tasks.values()) {
-          yield { ...context, __task: task };
+          yield { ...context, task };
         }
       }.bind(this), // Bind to capture this in generator
       "Yields each task for branching.",
@@ -144,11 +144,11 @@ export default class GraphRegistry {
     this.registerRoutine = Cadenza.createMetaTask(
       "Register routine",
       (context) => {
-        const { __routineInstance } = context;
-        if (__routineInstance && !this.routines.has(__routineInstance.name)) {
-          this.routines.set(__routineInstance.name, __routineInstance);
+        const { routineInstance } = context;
+        if (routineInstance && !this.routines.has(routineInstance.name)) {
+          this.routines.set(routineInstance.name, routineInstance);
         }
-        delete context.__routineInstance;
+        delete context.routineInstance;
         return true;
       },
       "Registers routine.",
@@ -160,7 +160,7 @@ export default class GraphRegistry {
         const { __name } = context;
         for (const routine of this.routines.values()) {
           if (routine.name === __name) {
-            return { ...context, __routine: routine };
+            return { ...context, routine };
           }
         }
         return false;
@@ -172,7 +172,7 @@ export default class GraphRegistry {
       "Get all routines",
       (context) => ({
         ...context,
-        __routines: Array.from(this.routines.values()),
+        routines: Array.from(this.routines.values()),
       }), // Use arrow to capture this
       "Gets all routines.",
     );
@@ -182,7 +182,7 @@ export default class GraphRegistry {
       function* (context: AnyObject) {
         // @ts-ignore
         for (const routine of this.routines.values()) {
-          yield { ...context, __routine: routine };
+          yield { ...context, routine: routine };
         }
       }.bind(this),
       "Yields each routine.",

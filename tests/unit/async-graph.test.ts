@@ -322,4 +322,92 @@ describe("Async Graph", () => {
   it("should not add too much latency overhead", () => {
     // TODO
   });
+
+  it("should squash signals correctly", async () => {
+    let counter = 0;
+    let squashedContext = {};
+    Cadenza.createTask("task1", (ctx) => {
+      counter++;
+      squashedContext = ctx;
+      return true;
+    }).doOn("signal.foo");
+    Cadenza.emit("signal.foo", { foo: "bar" }, { squash: true, delayMs: 10 });
+    Cadenza.emit("signal.foo", { bar: "bar" }, { squash: true, delayMs: 10 });
+    Cadenza.emit("signal.foo", { foo: "bar" }, { squash: true, delayMs: 10 });
+    Cadenza.emit("signal.foo", { bar: "foo" }, { squash: true, delayMs: 10 });
+    Cadenza.emit("signal.foo", { baz: "boo" }, { squash: true, delayMs: 10 });
+
+    await sleep(20);
+    expect(counter).toBe(1);
+    expect(squashedContext).toHaveProperty("foo", "bar");
+    expect(squashedContext).toHaveProperty("bar", "foo");
+    expect(squashedContext).toHaveProperty("baz", "boo");
+  });
+
+  it("should squash signals correctly with squashId", async () => {
+    let counter = 0;
+    let squashedContext = {};
+    Cadenza.createTask("task10", (ctx) => {
+      counter++;
+      squashedContext = ctx;
+      return true;
+    }).doOn("signal.foo");
+    Cadenza.emit(
+      "signal.foo",
+      { foo: "bar" },
+      { squash: true, delayMs: 10, squashId: "foo" },
+    );
+    Cadenza.emit(
+      "signal.boo",
+      { bar: "bar" },
+      { squash: true, delayMs: 10, squashId: "foo" },
+    );
+    Cadenza.emit(
+      "signal.bar",
+      { foo: "bar" },
+      { squash: true, delayMs: 10, squashId: "foo" },
+    );
+    Cadenza.emit(
+      "signal.baz",
+      { bar: "foo" },
+      { squash: true, delayMs: 10, squashId: "foo" },
+    );
+    Cadenza.emit(
+      "signal.boo",
+      { baz: "boo" },
+      { squash: true, delayMs: 10, squashId: "foo" },
+    );
+
+    await sleep(30);
+    expect(squashedContext).toHaveProperty("foo", "bar");
+    expect(squashedContext).toHaveProperty("bar", "foo");
+    expect(squashedContext).toHaveProperty("baz", "boo");
+    expect(counter).toBe(1);
+  });
+
+  it("should create an intent and perform and inquiry", async () => {
+    Cadenza.defineIntent({
+      name: "testInquiry",
+      description: "Test inquiry",
+    });
+
+    Cadenza.createTask("testInquiry", () => {
+      return true;
+    })
+      .respondsTo("test-inquiry")
+      .then(
+        Cadenza.createTask("testInquiry3", () => {
+          return { foo: "bar" };
+        }),
+      );
+
+    Cadenza.createTask("testInquiry2", () => {
+      return { bar: "foo" };
+    }).respondsTo("test-inquiry");
+
+    const result = await Cadenza.inquire("test-inquiry", {}, { timeout: 1000 });
+
+    expect(result).toHaveProperty("foo", "bar");
+    expect(result).toHaveProperty("bar", "foo");
+  });
 });

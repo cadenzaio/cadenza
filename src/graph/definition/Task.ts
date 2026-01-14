@@ -1,3 +1,4 @@
+import { v4 as uuid } from "uuid";
 import GraphContext from "../context/GraphContext";
 import GraphVisitor from "../../interfaces/GraphVisitor";
 import TaskIterator from "../iterators/TaskIterator";
@@ -6,10 +7,16 @@ import { AnyObject } from "../../types/global";
 import { SchemaDefinition } from "../../types/schema";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 import Cadenza from "../../Cadenza";
+import { InquiryOptions } from "../../engine/InquiryBroker";
 
 export type TaskFunction = (
   context: AnyObject,
   emit: (signal: string, context: AnyObject) => void,
+  inquire: (
+    inquiry: string,
+    context: AnyObject,
+    options: InquiryOptions,
+  ) => Promise<AnyObject>,
   progressCallback: (progress: number) => void,
 ) => TaskResult;
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
@@ -51,16 +58,20 @@ export default class Task extends SignalEmitter implements Graph {
   layerIndex: number = 0;
   progressWeight: number = 0;
   nextTasks: Set<Task> = new Set();
-  onFailTasks: Set<Task> = new Set();
   predecessorTasks: Set<Task> = new Set();
   destroyed: boolean = false;
   register: boolean = true;
   registered: boolean = false;
+  registeredSignals: Set<string> = new Set();
+  taskMapRegistration: Set<string> = new Set();
 
   emitsSignals: Set<string> = new Set();
   signalsToEmitAfter: Set<string> = new Set();
   signalsToEmitOnFail: Set<string> = new Set();
   observedSignals: Set<string> = new Set();
+
+  handlesIntents: Set<string> = new Set();
+  inquiresIntents: Set<string> = new Set();
 
   readonly taskFunction: TaskFunction;
 
@@ -110,7 +121,7 @@ export default class Task extends SignalEmitter implements Graph {
   ) {
     super(isSubMeta || isHidden);
     this.name = name;
-    this.taskFunction = task.bind(this);
+    this.taskFunction = task;
     this.description = description;
     this.concurrency = concurrency;
     this.timeout = timeout;
@@ -132,6 +143,29 @@ export default class Task extends SignalEmitter implements Graph {
       this.getTag = (context?: AnyObject) => getTagCallback(context, this);
       this.throttled = true;
     }
+
+    this.attachSignal(
+      "meta.task.created",
+      "meta.task.destroyed",
+      "meta.task.output_validation_failed",
+      "meta.task.input_validation_failed",
+      "meta.task.relationship_added",
+      "meta.task.relationship_removed",
+      "meta.task.layer_index_changed",
+      "meta.node.scheduled",
+      "meta.node.mapped",
+      "meta.node.errored",
+      "meta.node.started",
+      "meta.node.ended",
+      "meta.node.mapped",
+      "meta.node.progress",
+      "meta.node.graph_completed",
+      "meta.node.observed_signal",
+      "meta.node.detected_previous_task_execution",
+      "meta.node.started_routine_execution",
+      "meta.node.ended_routine_execution",
+      "meta.node.routine_execution_progress",
+    );
 
     if (register && !this.isHidden) {
       const { __functionString, __getTagCallback } = this.export();
@@ -160,11 +194,60 @@ export default class Task extends SignalEmitter implements Graph {
           validateOutputContext: this.validateOutputContext,
           // inputContextSchemaId: this.inputContextSchema,
           // outputContextSchemaId: this.outputContextSchema,
+          signals: {
+            emits: Array.from(this.emitsSignals),
+            signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
+            signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
+            observed: Array.from(this.observedSignals),
+          },
+          intents: {
+            handles: Array.from(this.handlesIntents),
+            inquires: Array.from(this.inquiresIntents),
+          },
         },
-        __taskInstance: this,
+        taskInstance: this,
         __isSubMeta: this.isSubMeta,
       });
     }
+  }
+
+  clone(traverse: boolean = false, includeSignals: boolean = false) {
+    const clonedTask = new Task(
+      `${this.name} (clone ${uuid().slice(0, 8)})`,
+      this.taskFunction,
+      this.description,
+      this.concurrency,
+      this.timeout,
+      this.register,
+      this.isUnique,
+      this.isMeta,
+      this.isSubMeta,
+      this.isHidden,
+      this.getTag,
+      this.inputContextSchema,
+      this.validateInputContext,
+      this.outputContextSchema,
+      this.validateOutputContext,
+      this.retryCount,
+      this.retryDelay,
+      this.retryDelayMax,
+      this.retryDelayFactor,
+    );
+
+    if (includeSignals) {
+      clonedTask.doOn(...this.observedSignals);
+      clonedTask.emits(...this.signalsToEmitAfter);
+      clonedTask.emitsOnFail(...this.signalsToEmitOnFail);
+      clonedTask.emitsSignals = new Set(Array.from(this.emitsSignals));
+    }
+
+    if (traverse) {
+      this.mapNext((t: Task) => {
+        clonedTask.then(t.clone(traverse, includeSignals));
+      });
+    }
+
+    return clonedTask;
   }
 
   /**
@@ -473,6 +556,7 @@ export default class Task extends SignalEmitter implements Graph {
    *
    * @param {GraphContext} context The execution context which provides data and functions necessary for the task.
    * @param {function(string, AnyObject): void} emit A function to emit signals and communicate intermediate results or states.
+   * @param {function(string, AnyObject, InquiryOptions): Promise<AnyObject>} inquire A function to inquire something from another task.
    * @param {function(number): void} progressCallback A callback function used to report task progress as a percentage (0 to 100).
    * @param {{ nodeId: string; routineExecId: string }} nodeData An object containing identifiers related to the node and execution routine.
    * @return {TaskResult} The result of the executed task.
@@ -480,12 +564,18 @@ export default class Task extends SignalEmitter implements Graph {
   public execute(
     context: GraphContext,
     emit: (signal: string, context: AnyObject) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
     progressCallback: (progress: number) => void,
     nodeData: { nodeId: string; routineExecId: string },
   ): TaskResult {
     return this.taskFunction(
       this.isMeta ? context.getClonedFullContext() : context.getClonedContext(),
       emit,
+      inquire,
       progressCallback,
     );
   }
@@ -499,8 +589,9 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} The current task instance for method chaining.
    * @throws {Error} Throws an error if adding a predecessor creates a cycle in the task structure.
    */
-  public doAfter(...tasks: Task[]): this {
+  public doAfter(...tasks: (Task | undefined)[]): this {
     for (const pred of tasks) {
+      if (!pred) continue;
       if (this.predecessorTasks.has(pred)) continue;
 
       pred.nextTasks.add(this);
@@ -534,8 +625,9 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} Returns the current task instance for method chaining.
    * @throws {Error} Throws an error if adding a task causes a cyclic dependency.
    */
-  public then(...tasks: Task[]): this {
+  public then(...tasks: (Task | undefined)[]): this {
     for (const next of tasks) {
+      if (!next) continue;
       if (this.nextTasks.has(next)) continue;
 
       this.nextTasks.add(next);
@@ -573,12 +665,14 @@ export default class Task extends SignalEmitter implements Graph {
       this.predecessorTasks.delete(task);
     }
 
-    if (task.onFailTasks.has(this)) {
-      task.onFailTasks.delete(this);
-      this.predecessorTasks.delete(task);
-    }
-
-    // TODO: Delete task map instances
+    // this.emitMetricsWithMetadata("meta.task.relationship_removed", {
+    //   data: {
+    //     taskName: this.name,
+    //     taskVersion: this.version,
+    //     predecessorTaskName: pred.name,
+    //     predecessorTaskVersion: pred.version,
+    //   },
+    // });
 
     this.updateLayerFromPredecessors();
   }
@@ -696,16 +790,10 @@ export default class Task extends SignalEmitter implements Graph {
    * Maps over the next set of tasks or failed tasks if specified, applying the provided callback function.
    *
    * @param {Function} callback A function that will be called with each task, transforming the task as needed. It receives a single parameter of type Task.
-   * @param {boolean} [failed=false] A boolean that determines whether to map over the failed tasks (true) or the next tasks (false).
    * @return {any[]} An array of transformed tasks resulting from applying the callback function.
    */
-  public mapNext(
-    callback: (task: Task) => any,
-    failed: boolean = false,
-  ): any[] {
-    const tasks = failed
-      ? Array.from(this.onFailTasks)
-      : Array.from(this.nextTasks);
+  public mapNext(callback: (task: Task) => any): any[] {
+    const tasks = Array.from(this.nextTasks);
     return tasks.map(callback);
   }
 
@@ -719,6 +807,16 @@ export default class Task extends SignalEmitter implements Graph {
     return Array.from(this.predecessorTasks).map(callback);
   }
 
+  makeRoutine(name: string, description: string) {
+    if (this.isMeta) {
+      Cadenza.createMetaRoutine(name, [this], description);
+    } else {
+      Cadenza.createRoutine(name, [this], description);
+    }
+
+    return this;
+  }
+
   /**
    * Adds the specified signals to the current instance, making it observe them.
    * If the instance is already observing a signal, it will be skipped.
@@ -730,7 +828,7 @@ export default class Task extends SignalEmitter implements Graph {
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
       if (this.observedSignals.has(signal)) return;
-      Cadenza.broker.observe(signal, this as any);
+      Cadenza.signalBroker.observe(signal, this as any);
       this.observedSignals.add(signal);
       if (this.register) {
         this.emitWithMetadata("meta.task.observed_signal", {
@@ -753,6 +851,10 @@ export default class Task extends SignalEmitter implements Graph {
    */
   emits(...signals: string[]): this {
     signals.forEach((signal) => {
+      if (this.observedSignals.has(signal))
+        throw new Error(
+          `Detected signal loop for task ${this.name}. Signal name: ${signal}`,
+        );
       this.signalsToEmitAfter.add(signal);
       this.attachSignal(signal);
     });
@@ -769,7 +871,7 @@ export default class Task extends SignalEmitter implements Graph {
   emitsOnFail(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitOnFail.add(signal);
-      this.attachSignal(signal, true);
+      this.attachSignal(signal);
     });
     return this;
   }
@@ -777,22 +879,34 @@ export default class Task extends SignalEmitter implements Graph {
   /**
    * Attaches a signal to the current context and emits metadata if the register flag is set.
    *
-   * @param {string} signal - The name of the signal to attach.
-   * @param {boolean} [isOnFail=false] - Indicates if the signal should be marked as "on fail".
+   * @param {...string} signals - The names of the signals to attach.
    * @return {void} This method does not return a value.
    */
-  attachSignal(signal: string, isOnFail: boolean = false) {
-    this.emitsSignals.add(signal);
-    if (this.register) {
-      this.emitWithMetadata("meta.task.attached_signal", {
-        data: {
-          signalName: signal.split(":")[0],
-          taskName: this.name,
-          taskVersion: this.version,
-          isOnFail,
-        },
-      });
-    }
+  attachSignal(...signals: string[]): Task {
+    signals.forEach((signal) => {
+      this.emitsSignals.add(signal);
+      Cadenza.signalBroker.registerEmittedSignal(signal);
+      if (this.register) {
+        const data: any = {
+          signals: {
+            emits: Array.from(this.emitsSignals),
+            signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
+            signalsToEmitOnFail: Array.from(this.signalsToEmitOnFail),
+            observed: Array.from(this.observedSignals),
+          },
+        };
+
+        this.emitWithMetadata("meta.task.attached_signal", {
+          data,
+          filter: {
+            name: this.name,
+            version: this.version,
+          },
+        });
+      }
+    });
+
+    return this;
   }
 
   /**
@@ -806,7 +920,7 @@ export default class Task extends SignalEmitter implements Graph {
   unsubscribe(...signals: string[]): this {
     signals.forEach((signal) => {
       if (this.observedSignals.has(signal)) {
-        Cadenza.broker.unsubscribe(signal, this as any);
+        Cadenza.signalBroker.unsubscribe(signal, this as any);
         this.observedSignals.delete(signal);
 
         if (this.register) {
@@ -844,6 +958,7 @@ export default class Task extends SignalEmitter implements Graph {
   detachSignals(...signals: string[]): this {
     signals.forEach((signal) => {
       this.signalsToEmitAfter.delete(signal);
+      this.emitsSignals.delete(signal);
       if (this.register) {
         signal = signal.split(":")[0];
         this.emitWithMetadata("meta.task.detached_signal", {
@@ -867,6 +982,37 @@ export default class Task extends SignalEmitter implements Graph {
   detachAllSignals(): this {
     this.detachSignals(...this.signalsToEmitAfter);
     this.signalsToEmitAfter.clear();
+    return this;
+  }
+
+  respondsTo(...inquires: string[]): this {
+    for (const intentName of inquires) {
+      this.handlesIntents.add(intentName);
+      Cadenza.inquiryBroker.observe(intentName, this);
+      const intent = Cadenza.inquiryBroker.intents.get(intentName);
+      this.inputContextSchema = intent?.input;
+      this.outputContextSchema = intent?.output;
+    }
+
+    return this;
+  }
+
+  attachIntents(...intentNames: string[]): this {
+    for (const intent of intentNames) {
+      this.inquiresIntents.add(intent);
+    }
+    return this;
+  }
+
+  detachIntents(...intentNames: string[]): this {
+    for (const intent of intentNames) {
+      this.inquiresIntents.delete(intent);
+    }
+    return this;
+  }
+
+  detachAllIntents(): this {
+    this.inquiresIntents.clear();
     return this;
   }
 
@@ -945,11 +1091,9 @@ export default class Task extends SignalEmitter implements Graph {
 
     this.predecessorTasks.forEach((pred) => pred.nextTasks.delete(this));
     this.nextTasks.forEach((next) => next.predecessorTasks.delete(this));
-    this.onFailTasks.forEach((fail) => fail.predecessorTasks.delete(this));
 
     this.nextTasks.clear();
     this.predecessorTasks.clear();
-    this.onFailTasks.clear();
 
     this.destroyed = true;
 
@@ -997,7 +1141,6 @@ export default class Task extends SignalEmitter implements Graph {
       __outputSchema: this.outputContextSchema,
       __validateOutputContext: this.validateOutputContext,
       __nextTasks: Array.from(this.nextTasks).map((t) => t.name),
-      __onFailTasks: Array.from(this.onFailTasks).map((t) => t.name),
       __previousTasks: Array.from(this.predecessorTasks).map((t) => t.name),
     };
   }

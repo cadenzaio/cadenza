@@ -5,6 +5,24 @@ import GraphRoutine from "../graph/definition/GraphRoutine";
 import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
 import { v4 as uuid } from "uuid";
+import debounce from "lodash-es/debounce";
+import { merge } from "lodash-es";
+import { sleep } from "../utils/promise";
+
+export interface EmitOptions {
+  squash?: boolean;
+  squashId?: string | null;
+  groupId?: string | null;
+  mergeFunction?:
+    | ((oldContext: AnyObject, ...newContext: AnyObject[]) => AnyObject)
+    | null;
+  debounce?: boolean;
+  throttle?: boolean;
+  delayMs?: number;
+  schedule?: boolean;
+  exactDateTime?: Date | null;
+  throttleBatch?: number;
+}
 
 /**
  * This class manages signals and observers, enabling communication across different parts of an application.
@@ -67,7 +85,12 @@ export default class SignalBroker {
   runner: GraphRunner | undefined;
   metaRunner: GraphRunner | undefined;
 
-  public clearSignalsTask: Task | undefined;
+  debouncedEmitters: Map<string, any> = new Map();
+  squashedEmitters: Map<string, any> = new Map();
+  squashedContexts: Map<string, any[]> = new Map();
+  throttleEmitters: Map<string, any> = new Map();
+  throttleQueues: Map<string, any> = new Map();
+
   public getSignalsTask: Task | undefined;
   public registerSignalTask: Task | undefined;
 
@@ -85,7 +108,7 @@ export default class SignalBroker {
     }
   > = new Map();
 
-  emitStacks: Map<string, Map<string, AnyObject>> = new Map(); // execId -> emitted signals
+  emittedSignalsRegistry: Set<string> = new Set();
 
   constructor() {
     this.addSignal("meta.signal_broker.added");
@@ -107,28 +130,13 @@ export default class SignalBroker {
    * @return {void} This method does not return a value.
    */
   init() {
-    this.clearSignalsTask = Cadenza.createDebounceMetaTask(
-      "Execute and clear queued signals",
-      () => {
-        for (const [id, signals] of this.emitStacks.entries()) {
-          signals.forEach((context, signal) => {
-            this.execute(signal, context);
-            signals.delete(signal);
-          });
-
-          this.emitStacks.delete(id);
-        }
-        return true;
-      },
-      "Executes queued signals and clears the stack",
-    )
-      .doOn("meta.process_signal_queue_requested")
-      .emits("meta.signal_broker.queue_empty");
-
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
-      const uniqueSignals = Array.from(this.signalObservers.keys()).filter(
-        (s) => !s.includes(":"),
-      );
+      const uniqueSignals = Array.from(
+        new Set([
+          ...this.signalObservers.keys(),
+          ...this.emittedSignalsRegistry,
+        ]),
+      ).filter((s) => !s.includes(":"));
 
       const processedSignals = uniqueSignals.map((signal) => ({
         signal,
@@ -138,7 +146,7 @@ export default class SignalBroker {
       }));
 
       return {
-        __signals: processedSignals,
+        signals: processedSignals,
         ...ctx,
       };
     });
@@ -146,8 +154,12 @@ export default class SignalBroker {
     this.registerSignalTask = Cadenza.createMetaTask(
       "Register signal",
       (ctx) => {
-        const { __signalName } = ctx;
-        this.signalObservers.get(__signalName)!.registered = true;
+        const { signalName } = ctx;
+        if (!this.signalObservers.has(signalName)) {
+          this.addSignal(signalName);
+        }
+
+        this.signalObservers.get(signalName)!.registered = true;
       },
     ).doOn("meta.signal.registered");
   }
@@ -161,6 +173,10 @@ export default class SignalBroker {
   observe(signal: string, routineOrTask: Task | GraphRoutine): void {
     this.addSignal(signal);
     this.signalObservers.get(signal)!.tasks.add(routineOrTask);
+  }
+
+  registerEmittedSignal(signal: string): void {
+    this.emittedSignalsRegistry.add(signal);
   }
 
   /**
@@ -184,22 +200,20 @@ export default class SignalBroker {
    *
    * @param {string} signal - The name of the signal to be emitted.
    * @param {AnyObject} context - The context to be passed along with the signal.
-   * @param {number} [timeoutMs=60000] - The delay in milliseconds before the signal is emitted. Defaults to 60,000 ms.
-   * @param {Date} [exactDateTime] - An exact date and time at which to emit the signal. If provided, this overrides the `timeoutMs`.
+   * @param options
    * @return {AbortController} An AbortController instance that can be used to cancel the scheduled signal emission.
    */
   schedule(
     signal: string,
     context: AnyObject,
-    timeoutMs: number = 60_000,
-    exactDateTime?: Date,
+    options: EmitOptions = { delayMs: 60_000 },
   ): AbortController {
     // 1. Compute the final delay
-    let delay = timeoutMs;
-    if (exactDateTime != null) {
-      delay = exactDateTime.getTime() - Date.now();
+    let delay = options.delayMs;
+    if (options.exactDateTime != null) {
+      delay = options.exactDateTime.getTime() - Date.now();
     }
-    delay = Math.max(0, timeoutMs);
+    delay = Math.max(0, delay ?? 0);
 
     // 2. Create an AbortController so the caller can cancel
     const controller = new AbortController();
@@ -227,7 +241,7 @@ export default class SignalBroker {
    * @param startDateTime  Optional absolute Date when the *first* emission after `leading` should occur.
    * @returns a handle with `clear()` to stop the loop.
    */
-  throttle(
+  interval(
     signal: string,
     context: AnyObject,
     intervalMs: number = 60_000,
@@ -281,31 +295,145 @@ export default class SignalBroker {
     };
   }
 
+  debounce(signal: string, context: any, options = { delayMs: 500 }) {
+    let debouncedEmitter = this.debouncedEmitters.get(signal);
+    if (!debouncedEmitter) {
+      this.debouncedEmitters.set(
+        signal,
+        debounce((ctx: any) => {
+          this.emit(signal, ctx);
+        }, options.delayMs ?? 300),
+      );
+
+      debouncedEmitter = this.debouncedEmitters.get(signal);
+    }
+
+    debouncedEmitter(context);
+  }
+
+  throttle(
+    signal: string,
+    context: any,
+    options: EmitOptions = { delayMs: 1000 },
+  ) {
+    let { groupId, delayMs = 300 } = options;
+    if (!groupId) {
+      groupId = signal;
+    }
+
+    if (!this.throttleQueues.has(groupId)) {
+      this.throttleQueues.set(groupId, []);
+    }
+
+    const queue = this.throttleQueues.get(groupId);
+    queue.push([signal, context]);
+
+    if (!this.throttleEmitters.has(groupId)) {
+      this.throttleEmitters.set(groupId, async () => {
+        while (queue.length > 0) {
+          let batchSize = options.throttleBatch ?? 1;
+          if (batchSize > queue.length) {
+            batchSize = queue.length;
+          }
+          for (let i = 0; i < batchSize; i++) {
+            const [nextSignal, nextContext] = queue.shift();
+            this.emit(nextSignal, nextContext); // Emit the signal
+          }
+          await sleep(delayMs); // Wait for the delay
+        }
+        // Remove the groupId from throttleEmitters when the queue is done
+        this.throttleEmitters.delete(groupId);
+        this.throttleQueues.delete(groupId);
+      });
+
+      // Start processing the queue
+      this.throttleEmitters.get(groupId)();
+    }
+  }
+
+  /**
+   * Aggregates and debounces multiple events with the same identifier to minimize redundant operations.
+   *
+   * @param {string} signal - The identifier for the event being emitted.
+   * @param {AnyObject} context - The context data associated with the event.
+   * @param {Object} [options] - Configuration options for handling the squashed event.
+   * @param {boolean} [options.squash=true] - Whether the event should be squashed.
+   * @param {string|null} [options.squashId=null] - A unique identifier for the squashed group of events. Defaults to the signal if null.
+   * @param {function|null} [options.mergeFunction=null] - A custom merge function that combines old and new contexts. If null, a default merge is used.
+   * @return {void} Does not return a value.
+   */
+  squash(
+    signal: string,
+    context: AnyObject,
+    options: EmitOptions = { squash: true },
+  ): void {
+    let { squashId, delayMs = 300 } = options;
+    if (!squashId) {
+      squashId = signal;
+    }
+
+    if (!this.squashedEmitters.has(squashId)) {
+      this.squashedEmitters.set(
+        squashId,
+        debounce(() => {
+          options.squash = false;
+          this.emit(
+            signal,
+            options.mergeFunction
+              ? options.mergeFunction(
+                  this.squashedContexts.get(squashId)![0],
+                  ...this.squashedContexts.get(squashId)!.slice(1),
+                )
+              : merge(
+                  this.squashedContexts.get(squashId)![0],
+                  ...this.squashedContexts.get(squashId)!.slice(1),
+                ),
+            options,
+          );
+          this.squashedEmitters.delete(squashId);
+          this.squashedContexts.delete(squashId);
+        }, delayMs ?? 300),
+      );
+      this.squashedContexts.set(squashId, [context]);
+    } else {
+      this.squashedContexts.get(squashId)?.push(context);
+    }
+
+    this.squashedEmitters.get(squashId)();
+  }
+
   /**
    * Emits a signal with the specified context, triggering any associated handlers for that signal.
    *
    * @param {string} signal - The name of the signal to emit.
    * @param {AnyObject} [context={}] - An optional context object containing additional information or metadata
    * associated with the signal. If the context includes a `__routineExecId`, it will be handled accordingly.
+   * @param options
    * @return {void} This method does not return a value.
    */
-  emit(signal: string, context: AnyObject = {}): void {
-    const execId = context.__routineExecId || "global"; // Assume from metadata
+  emit(
+    signal: string,
+    context: AnyObject = {},
+    options: EmitOptions = {},
+  ): void {
     delete context.__routineExecId;
+    if (options.squash) {
+      this.squash(signal, context, options);
+      return;
+    }
 
-    if (!this.emitStacks.has(execId)) this.emitStacks.set(execId, new Map());
-    const stack = this.emitStacks.get(execId)!;
-    stack.set(signal, context);
+    if (options.debounce) {
+      this.debounce(signal, context);
+      return;
+    }
+
+    if (options.schedule) {
+      this.schedule(signal, context, options);
+      return;
+    }
 
     this.addSignal(signal);
-
-    let executed = false;
-    try {
-      executed = this.execute(signal, context);
-    } finally {
-      if (executed) stack.delete(signal);
-      if (stack.size === 0) this.emitStacks.delete(execId);
-    }
+    this.execute(signal, context);
   }
 
   /**
@@ -322,16 +450,17 @@ export default class SignalBroker {
     const isSubMeta = signal.includes("sub_meta.") || context.__isSubMeta;
     const isMetric = context.__signalEmission?.isMetric;
 
+    const executionTraceId =
+      context.__signalEmission?.executionTraceId ??
+      context.__metadata?.__executionTraceId ??
+      context.__executionTraceId ??
+      uuid();
+
     if (!isSubMeta && (!isMeta || this.debug)) {
       const isNewTrace =
         !context.__signalEmission?.executionTraceId &&
         !context.__metadata?.__executionTraceId &&
         !context.__executionTraceId;
-
-      const executionTraceId =
-        context.__metadata?.__executionTraceId ??
-        context.__executionTraceId ??
-        uuid();
 
       if (isNewTrace) {
         this.emit("sub_meta.signal_broker.new_trace", {
@@ -352,12 +481,12 @@ export default class SignalBroker {
             __executionTraceId: executionTraceId,
           },
         });
-
-        context.__metadata = {
-          ...context.__metadata,
-          __executionTraceId: executionTraceId,
-        };
       }
+
+      context.__metadata = {
+        ...context.__metadata,
+        __executionTraceId: executionTraceId,
+      };
 
       const emittedAt = Date.now();
 
@@ -375,12 +504,16 @@ export default class SignalBroker {
         consumedBy: null,
         isMeta,
       };
+
+      this.emit("sub_meta.signal_broker.emitting_signal", { ...context });
     } else if (isSubMeta) {
       context.__isSubMeta = true;
-      delete context.__signalEmission;
-    } else {
-      delete context.__signalEmission;
     }
+
+    context.__metadata = {
+      ...context.__metadata,
+      __executionTraceId: executionTraceId,
+    };
 
     if (this.debug && ((!isMetric && !isSubMeta) || this.verbose)) {
       console.log(
@@ -489,7 +622,7 @@ export default class SignalBroker {
         }
       }
 
-      this.emit("meta.signal_broker.added", { __signalName: _signal });
+      this.emit("meta.signal_broker.added", { signalName: _signal });
     }
   }
 
@@ -501,8 +634,12 @@ export default class SignalBroker {
     return Array.from(this.signalObservers.keys());
   }
 
+  listEmittedSignals(): string[] {
+    return Array.from(this.emittedSignalsRegistry);
+  }
+
   reset() {
-    this.emitStacks.clear();
     this.signalObservers.clear();
+    this.emittedSignalsRegistry.clear();
   }
 }

@@ -1,6 +1,8 @@
 import Task, { TaskFunction, TaskResult } from "./Task";
 import GraphContext from "../context/GraphContext";
 import { SchemaDefinition } from "../../types/schema";
+import { AnyObject } from "../../types/global";
+import { InquiryOptions } from "../../engine/InquiryBroker";
 
 export interface DebounceOptions {
   leading?: boolean;
@@ -27,6 +29,13 @@ export default class DebounceTask extends Task {
   lastTimeout: NodeJS.Timeout | null = null;
   lastProgressCallback: ((progress: number) => void) | null = null;
   lastEmitFunction: ((signal: string, context: any) => void) | null = null;
+  lastInquireFunction:
+    | ((
+        inquiry: string,
+        context: AnyObject,
+        options: InquiryOptions,
+      ) => Promise<AnyObject>)
+    | null = null;
 
   constructor(
     name: string,
@@ -89,6 +98,7 @@ export default class DebounceTask extends Task {
       result = this.taskFunction(
         this.lastContext!.getClonedContext(),
         this.lastEmitFunction!,
+        this.lastInquireFunction!,
         this.lastProgressCallback!,
       );
     } catch (error) {
@@ -105,6 +115,12 @@ export default class DebounceTask extends Task {
         this.lastResolve(result);
       }
     }
+
+    this.lastContext = null;
+    this.lastTimeout = null;
+    this.lastProgressCallback = null;
+    this.lastEmitFunction = null;
+    this.lastInquireFunction = null;
   }
 
   /**
@@ -117,6 +133,7 @@ export default class DebounceTask extends Task {
    * @param {GraphContext} context - The execution context for the operation.
    * @param {NodeJS.Timeout} timeout - A timeout object for managing execution delays.
    * @param {Function} emit - A callback function to emit signals with a specific context.
+   * @param inquire
    * @param {Function} progressCallback - A callback function to report progress during operation execution.
    * @return {void} Does not return a value but sets internal timers and invokes provided callbacks.
    */
@@ -126,6 +143,11 @@ export default class DebounceTask extends Task {
     context: GraphContext,
     timeout: NodeJS.Timeout,
     emit: (signal: string, context: any) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
     progressCallback: (progress: number) => void,
   ): void {
     const callNow = this.leading && this.timer === null;
@@ -142,6 +164,7 @@ export default class DebounceTask extends Task {
     this.lastTimeout = timeout;
     this.lastProgressCallback = progressCallback;
     this.lastEmitFunction = emit;
+    this.lastInquireFunction = inquire;
 
     if (!callNow) {
       this.hasLaterCall = true;
@@ -184,12 +207,18 @@ export default class DebounceTask extends Task {
    *
    * @param {GraphContext} context - The context containing relevant graph data for the execution.
    * @param {function(string, any): void} emit - A function used to emit signals with associated context.
+   * @param inquire
    * @param {function(number): void} progressCallback - A callback function to report the progress of the task as a number between 0 and 1.
    * @return {Promise<TaskResult>} A promise that resolves with the task result upon completion or rejects on failure.
    */
   execute(
     context: GraphContext,
     emit: (signal: string, context: any) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
     progressCallback: (progress: number) => void,
   ): TaskResult {
     return new Promise((resolve, reject) => {
@@ -203,6 +232,7 @@ export default class DebounceTask extends Task {
         context,
         timeout,
         emit,
+        inquire,
         progressCallback,
       );
     });

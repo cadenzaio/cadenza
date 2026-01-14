@@ -1,3 +1,250 @@
+## [3.17.1](https://github.com/cadenzaio/cadenza/compare/v3.17.0...v3.17.1) (2025-12-24)
+
+
+### Bug Fixes
+
+* metric squash fixes ([6c47060](https://github.com/cadenzaio/cadenza/commit/6c470608271615ee32ca0bdc26c6366639a0be0a))
+
+# [3.17.0](https://github.com/cadenzaio/cadenza/compare/v3.16.4...v3.17.0) (2025-12-24)
+
+
+### Features
+
+* signal throttling ([6206d3b](https://github.com/cadenzaio/cadenza/commit/6206d3b37bdef4ab227ef5d43918b5901409cf1b))
+
+## [3.16.4](https://github.com/cadenzaio/cadenza/compare/v3.16.3...v3.16.4) (2025-12-24)
+
+
+### Bug Fixes
+
+* squash fix. starting on intents. ([94aea55](https://github.com/cadenzaio/cadenza/commit/94aea55f1476f42e8da6c2d7ae996b5321ee2a96))
+
+## [3.16.3](https://github.com/cadenzaio/cadenza/compare/v3.16.2...v3.16.3) (2025-12-23)
+
+
+### Bug Fixes
+
+* squash fix ([7fa687c](https://github.com/cadenzaio/cadenza/commit/7fa687c0eb81a8dbcccdff85f247aab151a06d16))
+
+## [3.16.2](https://github.com/cadenzaio/cadenza/compare/v3.16.1...v3.16.2) (2025-12-23)
+
+
+### Bug Fixes
+
+* signal registration bug ([6a156ef](https://github.com/cadenzaio/cadenza/commit/6a156ef98fdaeadbd5ae7514d993b8840a6f43db))
+
+## [3.16.1](https://github.com/cadenzaio/cadenza/compare/v3.16.0...v3.16.1) (2025-12-23)
+
+
+### Bug Fixes
+
+* added export ([d6195d8](https://github.com/cadenzaio/cadenza/commit/d6195d8b12b01178e1088a1429e3ceb189c54882))
+
+# [3.16.0](https://github.com/cadenzaio/cadenza/compare/v3.15.13...v3.16.0) (2025-12-23)
+
+
+### Bug Fixes
+
+* type bug. ([63415af](https://github.com/cadenzaio/cadenza/commit/63415af3aeecb8ef2937757d7fb937f1b770bc31))
+
+
+### Features
+
+* signal squashing for optimized signal emission. ([71cb008](https://github.com/cadenzaio/cadenza/commit/71cb00850fc34af63c15e2461c14ff29a9ef0561))
+
+## [3.15.13](https://github.com/cadenzaio/cadenza/compare/v3.15.12...v3.15.13) (2025-12-22)
+
+
+### Bug Fixes
+
+* fixed undefined return of an async generator ([b269d7b](https://github.com/cadenzaio/cadenza/commit/b269d7b5fd2097d45345d72203d33c622a26dfe0))
+
+## [3.15.12](https://github.com/cadenzaio/cadenza/compare/v3.15.11...v3.15.12) (2025-12-22)
+
+
+### Bug Fixes
+
+* added routine getter. Renamed signal throttle to interval. ([0688cec](https://github.com/cadenzaio/cadenza/commit/0688cec44d80c58c784c7726a35ac065f8aa53e5))
+
+## [3.15.11](https://github.com/cadenzaio/cadenza/compare/v3.15.10...v3.15.11) (2025-12-11)
+
+
+### Bug Fixes
+
+* task registration. ([10b4c9a](https://github.com/cadenzaio/cadenza/commit/10b4c9a63b467faf82bbf4a5fdd7a7b5a8c95bb7))
+
+## [3.15.10](https://github.com/cadenzaio/cadenza/compare/v3.15.9...v3.15.10) (2025-12-11)
+
+
+### Bug Fixes
+
+* reverted signal broker cleanup ([48fca97](https://github.com/cadenzaio/cadenza/commit/48fca976359cde50a61b2ba2c2592c332f2d0d6d))
+
+## [3.15.9](https://github.com/cadenzaio/cadenza/compare/v3.15.8...v3.15.9) (2025-12-11)
+
+
+### Bug Fixes
+
+* release fix ([d08cb36](https://github.com/cadenzaio/cadenza/commit/d08cb360bc252e2d66ab57e4f83bf000c85ec4e6))
+
+## [3.15.8](https://github.com/cadenzaio/cadenza/compare/v3.15.7...v3.15.8) (2025-12-11)
+
+
+### Bug Fixes
+
+* release fix ([ccc35da](https://github.com/cadenzaio/cadenza/commit/ccc35da98dc7e91e794f4c605c8d5acaf2bc8c3e))
+* release fix ([08b3e64](https://github.com/cadenzaio/cadenza/commit/08b3e64d28fa6e5ef2b5c24c3cccc7baf72464c8))
+
+## [3.15.7](https://github.com/cadenzaio/cadenza/compare/v3.15.6...v3.15.7) (2025-12-11)
+
+
+### Bug Fixes
+
+* cleanup ([6eba1fd](https://github.com/cadenzaio/cadenza/commit/6eba1fd3d5d9e240db4ca8cc89eb4eccfbadd31f))
+
+## [3.15.6](https://github.com/cadenzaio/cadenza/compare/v3.15.5...v3.15.6) (2025-12-11)
+
+
+### Bug Fixes
+
+* updated registration and metrics data. ([204c3d4](https://github.com/cadenzaio/cadenza/commit/204c3d493aa6eaf01fe2892562d5371018e016f2))
+* updated registration and metrics data. ([04288ba](https://github.com/cadenzaio/cadenza/commit/04288ba0ea0574cf573dff429e2a50ed73eb6c00))
+* updated release script ([3162dfe](https://github.com/cadenzaio/cadenza/commit/3162dfe7bb5ac0e023bd78f3c0aa17e4e09a8ec8))
+* updated release script ([7676e6d](https://github.com/cadenzaio/cadenza/commit/7676e6d0c4744fd7f95d8fe012937a65efde7b86))
+* updated release script ([cf70777](https://github.com/cadenzaio/cadenza/commit/cf7077755be47fec79cf81b6ffd0ae054aaba04a))
+* updated release script ([9e35a5b](https://github.com/cadenzaio/cadenza/commit/9e35a5b942047320f57949f0a84d66852cf1d380))
+* updated release script ([5ac7b02](https://github.com/cadenzaio/cadenza/commit/5ac7b02e9a19d6027aaf54bf08a6763e433250d7))
+* updated release script ([14120e7](https://github.com/cadenzaio/cadenza/commit/14120e75a9c21a3e224612d3fe84eae9deb3aa5a))
+* updated release script ([3b79a79](https://github.com/cadenzaio/cadenza/commit/3b79a7938926d7a30acbd9f4e4e95c748d740ada))
+* updated release script ([69b07f0](https://github.com/cadenzaio/cadenza/commit/69b07f06793e522aa964d263e27b605d12c8e9f5))
+* updated release script ([41bb8ae](https://github.com/cadenzaio/cadenza/commit/41bb8ae87bbfe8baed934704d65f1074b56d1bd2))
+
+## [3.15.5](https://github.com/cadenzaio/cadenza/compare/v3.15.4...v3.15.5) (2025-12-09)
+
+
+### Bug Fixes
+
+* added emitted signals to get signals task. ([134740e](https://github.com/cadenzaio/cadenza/commit/134740e14ea1226e1562fe1ac2459cbd7ef4398e))
+
+## [3.15.4](https://github.com/cadenzaio/cadenza/compare/v3.15.3...v3.15.4) (2025-12-09)
+
+
+### Bug Fixes
+
+* removed loop detection on doOn ([1e854e0](https://github.com/cadenzaio/cadenza/commit/1e854e0a561195009d4a6b0b90e2074e53c19dc6))
+
+## [3.15.3](https://github.com/cadenzaio/cadenza/compare/v3.15.2...v3.15.3) (2025-12-08)
+
+
+### Bug Fixes
+
+* removed one attached signal ([e7194d4](https://github.com/cadenzaio/cadenza/commit/e7194d422b6c08e0255a89f7d50997bee0226f3b))
+
+## [3.15.2](https://github.com/cadenzaio/cadenza/compare/v3.15.1...v3.15.2) (2025-12-06)
+
+
+### Bug Fixes
+
+* attached meta signals to tasks ([482df21](https://github.com/cadenzaio/cadenza/commit/482df21dd6f0be51ab15b7da914910d81c9ae3d4))
+
+## [3.15.1](https://github.com/cadenzaio/cadenza/compare/v3.15.0...v3.15.1) (2025-12-04)
+
+
+### Bug Fixes
+
+* signal broker memory leak. ([33802d8](https://github.com/cadenzaio/cadenza/commit/33802d866b8bb69d3775cc52e1b613c1f9f2f6eb))
+
+# [3.15.0](https://github.com/cadenzaio/cadenza/compare/v3.14.0...v3.15.0) (2025-12-04)
+
+
+### Features
+
+* removed code that belonged in the service package. ([b5040de](https://github.com/cadenzaio/cadenza/commit/b5040de31a8b05f2224639761398b7d6d95cf3cd))
+* removed code that belonged in the service package. ([1be558f](https://github.com/cadenzaio/cadenza/commit/1be558f46de4545243312be266f9bbb4db7f946f))
+
+# [3.14.0](https://github.com/cadenzaio/cadenza/compare/v3.13.3...v3.14.0) (2025-11-28)
+
+
+### Features
+
+* debounced signals. ([51514b6](https://github.com/cadenzaio/cadenza/commit/51514b60be99d11c181ae35a66c335e50f76eebb))
+
+## [3.13.3](https://github.com/cadenzaio/cadenza/compare/v3.13.2...v3.13.3) (2025-11-27)
+
+
+### Bug Fixes
+
+* Stability improvements ([410cd2f](https://github.com/cadenzaio/cadenza/commit/410cd2f4b22d574df12f34489f30f0d637458a25))
+
+## [3.13.2](https://github.com/cadenzaio/cadenza/compare/v3.13.1...v3.13.2) (2025-11-27)
+
+
+### Bug Fixes
+
+* removed unnecessary underscores ([5415566](https://github.com/cadenzaio/cadenza/commit/541556604d4f74f883184b422ea9e8c2d733a805))
+
+## [3.13.1](https://github.com/cadenzaio/cadenza/compare/v3.13.0...v3.13.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* fixed infinite loop. ([5129c92](https://github.com/cadenzaio/cadenza/commit/5129c9230a3431cbeef7f4ecdaa401d7958399fb))
+
+# [3.13.0](https://github.com/cadenzaio/cadenza/compare/v3.12.4...v3.13.0) (2025-11-27)
+
+
+### Features
+
+* Quick functions to schedule and throttle signals and to get tasks by name. ([fc899f1](https://github.com/cadenzaio/cadenza/commit/fc899f1457b2e6d3f4ba7dcbc5d9b5425c79bbcd))
+
+## [3.12.4](https://github.com/cadenzaio/cadenza/compare/v3.12.3...v3.12.4) (2025-11-21)
+
+
+### Bug Fixes
+
+* fixed another bug in signal broker. ([1cd073e](https://github.com/cadenzaio/cadenza/commit/1cd073ece4f616ceb536b1520a2f7e6abd41f405))
+
+## [3.12.3](https://github.com/cadenzaio/cadenza/compare/v3.12.2...v3.12.3) (2025-11-21)
+
+
+### Bug Fixes
+
+* fixed instability in signal broker. ([62feb50](https://github.com/cadenzaio/cadenza/commit/62feb50724d1f5a62a0ff61251ee52d2ea04f498))
+
+## [3.12.2](https://github.com/cadenzaio/cadenza/compare/v3.12.1...v3.12.2) (2025-11-21)
+
+
+### Bug Fixes
+
+* added full signal name to signal metadata. ([db648f7](https://github.com/cadenzaio/cadenza/commit/db648f78f67596ae44a79023993196392a165ecb))
+
+## [3.12.1](https://github.com/cadenzaio/cadenza/compare/v3.12.0...v3.12.1) (2025-11-20)
+
+
+### Bug Fixes
+
+* signal broker bug ([5d02622](https://github.com/cadenzaio/cadenza/commit/5d02622793e0ada458f576faee437240f2ea7350))
+
+# [3.12.0](https://github.com/cadenzaio/cadenza/compare/v3.11.0...v3.12.0) (2025-11-20)
+
+
+### Features
+
+* now signal emission is emitting its own signal for faster recording and avoiding race error with the consumption. ([38eca3a](https://github.com/cadenzaio/cadenza/commit/38eca3aa5529adb6d3b3a6738cf81b43233f05ea))
+
+# [3.11.0](https://github.com/cadenzaio/cadenza/compare/v3.10.0...v3.11.0) (2025-11-20)
+
+
+### Bug Fixes
+
+* removed docs ([de5ec98](https://github.com/cadenzaio/cadenza/commit/de5ec98ad21891dcb28cca2fb9d94045d7d63cff))
+
+
+### Features
+
+* execution trace ca now be started from the signal broker. This allows for better signal emission and consumption records. ([00bbbda](https://github.com/cadenzaio/cadenza/commit/00bbbda62050b94d2115e96533b1085f42503c56))
+* improved signal records. ([36e6ae3](https://github.com/cadenzaio/cadenza/commit/36e6ae3521d71d13429323d961953c9b1b05af0b))
+
 # [3.10.0](https://github.com/cadenzaio/cadenza/compare/v3.9.2...v3.10.0) (2025-11-11)
 
 
