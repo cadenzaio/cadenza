@@ -1,3 +1,10 @@
+# [3.18.0](https://github.com/cadenzaio/cadenza/compare/v3.17.1...v3.18.0) (2026-01-14)
+
+
+### Features
+
+* Implemented inquiry and intent. ([2868a20](https://github.com/cadenzaio/cadenza/commit/2868a2066cb8d9501d910620712ea28942b275fb))
+
 ## [3.17.1](https://github.com/cadenzaio/cadenza/compare/v3.17.0...v3.17.1) (2025-12-24)
 
 
