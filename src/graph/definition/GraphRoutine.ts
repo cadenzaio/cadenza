@@ -1,5 +1,4 @@
 import Task from "./Task";
-import Cadenza from "../../Cadenza";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 
 /**
@@ -93,8 +92,7 @@ export default class GraphRoutine extends SignalEmitter {
    */
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
-      if (this.observedSignals.has(signal)) return;
-      Cadenza.broker.observe(signal, this as any);
+      this.tasks.forEach((task) => task.doOn(signal));
       this.observedSignals.add(signal);
     });
     return this;
@@ -109,7 +107,7 @@ export default class GraphRoutine extends SignalEmitter {
    */
   unsubscribeAll(): this {
     this.observedSignals.forEach((signal) =>
-      Cadenza.broker.unsubscribe(signal, this as any),
+      this.tasks.forEach((task) => task.unsubscribe(signal)),
     );
     this.observedSignals.clear();
     return this;
@@ -123,10 +121,8 @@ export default class GraphRoutine extends SignalEmitter {
    */
   unsubscribe(...signals: string[]): this {
     signals.forEach((signal) => {
-      if (this.observedSignals.has(signal)) {
-        Cadenza.broker.unsubscribe(signal, this as any);
-        this.observedSignals.delete(signal);
-      }
+      this.tasks.forEach((task) => task.unsubscribe(signal));
+      this.observedSignals.delete(signal);
     });
     return this;
   }

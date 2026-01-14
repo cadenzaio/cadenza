@@ -10,6 +10,8 @@ import { AnyObject } from "../../types/global";
 import { sleep } from "../../utils/promise";
 import { formatTimestamp } from "../../utils/tools";
 import { EmitOptions } from "../../engine/SignalBroker";
+import Cadenza from "../../Cadenza";
+import { InquiryOptions } from "../../engine/InquiryBroker";
 
 /**
  * Represents a node in a graph structure used for executing tasks.
@@ -398,7 +400,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
 
     if (this.graphDone()) {
       const context = this.context.getFullContext();
-      if (context.__isDeputy)
+      if (context.__isDeputy || context.__isInquiry)
         this.emitWithMetadata(
           `meta.node.graph_completed:${this.routineExecId}`,
           context,
@@ -526,6 +528,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
       const result = this.task.execute(
         this.context,
         this.emitWithMetadata.bind(this),
+        this.inquire.bind(this),
         this.onProgress.bind(this),
         { nodeId: this.id, routineExecId: this.routineExecId },
       );
@@ -546,6 +549,14 @@ export default class GraphNode extends SignalEmitter implements Graph {
         return this.result;
       });
     }
+  }
+
+  inquire(inquiry: string, context: AnyObject, options: InquiryOptions) {
+    return Cadenza.inquire(
+      inquiry,
+      { ...context, __executionTraceId: this.executionTraceId },
+      options,
+    );
   }
 
   /**

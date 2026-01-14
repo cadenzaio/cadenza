@@ -14,7 +14,7 @@ export interface EmitOptions {
   squashId?: string | null;
   groupId?: string | null;
   mergeFunction?:
-    | ((oldContext: AnyObject, newContext: AnyObject) => AnyObject)
+    | ((oldContext: AnyObject, ...newContext: AnyObject[]) => AnyObject)
     | null;
   debounce?: boolean;
   throttle?: boolean;
@@ -87,7 +87,7 @@ export default class SignalBroker {
 
   debouncedEmitters: Map<string, any> = new Map();
   squashedEmitters: Map<string, any> = new Map();
-  squashedContexts: Map<string, any> = new Map();
+  squashedContexts: Map<string, any[]> = new Map();
   throttleEmitters: Map<string, any> = new Map();
   throttleQueues: Map<string, any> = new Map();
 
@@ -377,19 +377,26 @@ export default class SignalBroker {
         squashId,
         debounce(() => {
           options.squash = false;
-          this.emit(signal, this.squashedContexts.get(squashId), options);
+          this.emit(
+            signal,
+            options.mergeFunction
+              ? options.mergeFunction(
+                  this.squashedContexts.get(squashId)![0],
+                  ...this.squashedContexts.get(squashId)!.slice(1),
+                )
+              : merge(
+                  this.squashedContexts.get(squashId)![0],
+                  ...this.squashedContexts.get(squashId)!.slice(1),
+                ),
+            options,
+          );
           this.squashedEmitters.delete(squashId);
           this.squashedContexts.delete(squashId);
         }, delayMs ?? 300),
       );
-      this.squashedContexts.set(squashId, context);
+      this.squashedContexts.set(squashId, [context]);
     } else {
-      this.squashedContexts.set(
-        squashId,
-        options.mergeFunction
-          ? options.mergeFunction(this.squashedContexts.get(squashId), context)
-          : merge(this.squashedContexts.get(squashId), context),
-      );
+      this.squashedContexts.get(squashId)?.push(context);
     }
 
     this.squashedEmitters.get(squashId)();

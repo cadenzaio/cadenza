@@ -1,6 +1,7 @@
 import Task, { TaskFunction, ThrottleTagGetter } from "./Task";
 import { SchemaDefinition } from "../../types/schema";
 import { AnyObject } from "../../types/global";
+import { InquiryOptions } from "../../engine/InquiryBroker";
 
 export type EphemeralTaskOptions = {
   once?: boolean;
@@ -74,6 +75,7 @@ export default class EphemeralTask extends Task {
    *
    * @param {any} context - The execution context, carrying necessary parameters or states for the operation.
    * @param {function(string, AnyObject): void} emit - A function to emit signals with a string identifier and associated context.
+   * @param inquire
    * @param {function(number): void} progressCallback - A callback function to report the progress of the execution as a numerical value.
    * @param {{ nodeId: string, routineExecId: string }} nodeData - An object containing details about the node ID and routine execution ID.
    * @return {any} The result of the execution, returned from the base implementation or processed internally.
@@ -81,10 +83,21 @@ export default class EphemeralTask extends Task {
   public execute(
     context: any,
     emit: (signal: string, context: AnyObject) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
     progressCallback: (progress: number) => void,
     nodeData: { nodeId: string; routineExecId: string },
   ) {
-    const result = super.execute(context, emit, progressCallback, nodeData);
+    const result = super.execute(
+      context,
+      emit,
+      inquire,
+      progressCallback,
+      nodeData,
+    );
 
     if (this.once || this.condition(result)) {
       this.destroy();

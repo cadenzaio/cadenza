@@ -7,10 +7,16 @@ import { AnyObject } from "../../types/global";
 import { SchemaDefinition } from "../../types/schema";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 import Cadenza from "../../Cadenza";
+import { InquiryOptions } from "../../engine/InquiryBroker";
 
 export type TaskFunction = (
   context: AnyObject,
   emit: (signal: string, context: AnyObject) => void,
+  inquire: (
+    inquiry: string,
+    context: AnyObject,
+    options: InquiryOptions,
+  ) => Promise<AnyObject>,
   progressCallback: (progress: number) => void,
 ) => TaskResult;
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
@@ -64,7 +70,8 @@ export default class Task extends SignalEmitter implements Graph {
   signalsToEmitOnFail: Set<string> = new Set();
   observedSignals: Set<string> = new Set();
 
-  intents: Set<string> = new Set();
+  handlesIntents: Set<string> = new Set();
+  inquiresIntents: Set<string> = new Set();
 
   readonly taskFunction: TaskFunction;
 
@@ -194,7 +201,8 @@ export default class Task extends SignalEmitter implements Graph {
             observed: Array.from(this.observedSignals),
           },
           intents: {
-            handles: Array.from(this.intents),
+            handles: Array.from(this.handlesIntents),
+            inquires: Array.from(this.inquiresIntents),
           },
         },
         taskInstance: this,
@@ -548,6 +556,7 @@ export default class Task extends SignalEmitter implements Graph {
    *
    * @param {GraphContext} context The execution context which provides data and functions necessary for the task.
    * @param {function(string, AnyObject): void} emit A function to emit signals and communicate intermediate results or states.
+   * @param {function(string, AnyObject, InquiryOptions): Promise<AnyObject>} inquire A function to inquire something from another task.
    * @param {function(number): void} progressCallback A callback function used to report task progress as a percentage (0 to 100).
    * @param {{ nodeId: string; routineExecId: string }} nodeData An object containing identifiers related to the node and execution routine.
    * @return {TaskResult} The result of the executed task.
@@ -555,12 +564,18 @@ export default class Task extends SignalEmitter implements Graph {
   public execute(
     context: GraphContext,
     emit: (signal: string, context: AnyObject) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
     progressCallback: (progress: number) => void,
     nodeData: { nodeId: string; routineExecId: string },
   ): TaskResult {
     return this.taskFunction(
       this.isMeta ? context.getClonedFullContext() : context.getClonedContext(),
       emit,
+      inquire,
       progressCallback,
     );
   }
@@ -813,7 +828,7 @@ export default class Task extends SignalEmitter implements Graph {
   doOn(...signals: string[]): this {
     signals.forEach((signal) => {
       if (this.observedSignals.has(signal)) return;
-      Cadenza.broker.observe(signal, this as any);
+      Cadenza.signalBroker.observe(signal, this as any);
       this.observedSignals.add(signal);
       if (this.register) {
         this.emitWithMetadata("meta.task.observed_signal", {
@@ -870,7 +885,7 @@ export default class Task extends SignalEmitter implements Graph {
   attachSignal(...signals: string[]): Task {
     signals.forEach((signal) => {
       this.emitsSignals.add(signal);
-      Cadenza.broker.registerEmittedSignal(signal);
+      Cadenza.signalBroker.registerEmittedSignal(signal);
       if (this.register) {
         const data: any = {
           signals: {
@@ -905,7 +920,7 @@ export default class Task extends SignalEmitter implements Graph {
   unsubscribe(...signals: string[]): this {
     signals.forEach((signal) => {
       if (this.observedSignals.has(signal)) {
-        Cadenza.broker.unsubscribe(signal, this as any);
+        Cadenza.signalBroker.unsubscribe(signal, this as any);
         this.observedSignals.delete(signal);
 
         if (this.register) {
@@ -970,8 +985,34 @@ export default class Task extends SignalEmitter implements Graph {
     return this;
   }
 
-  handlesIntent(intent: string): this {
-    this.intents.add(intent);
+  respondsTo(...inquires: string[]): this {
+    for (const intentName of inquires) {
+      this.handlesIntents.add(intentName);
+      Cadenza.inquiryBroker.observe(intentName, this);
+      const intent = Cadenza.inquiryBroker.intents.get(intentName);
+      this.inputContextSchema = intent?.input;
+      this.outputContextSchema = intent?.output;
+    }
+
+    return this;
+  }
+
+  attachIntents(...intentNames: string[]): this {
+    for (const intent of intentNames) {
+      this.inquiresIntents.add(intent);
+    }
+    return this;
+  }
+
+  detachIntents(...intentNames: string[]): this {
+    for (const intent of intentNames) {
+      this.inquiresIntents.delete(intent);
+    }
+    return this;
+  }
+
+  detachAllIntents(): this {
+    this.inquiresIntents.clear();
     return this;
   }
 

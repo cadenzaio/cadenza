@@ -11,6 +11,7 @@ import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
 import GraphStandardRun from "./engine/strategy/GraphStandardRun";
 import { SchemaDefinition } from "./types/schema";
 import { AnyObject } from "./types/global";
+import InquiryBroker, { InquiryOptions, Intent } from "./engine/InquiryBroker";
 
 export interface TaskOptions {
   concurrency?: number;
@@ -39,7 +40,8 @@ export type CadenzaMode = "dev" | "debug" | "verbose" | "production";
  * utility methods to create, register, and manage various task types.
  */
 export default class Cadenza {
-  public static broker: SignalBroker;
+  public static signalBroker: SignalBroker;
+  public static inquiryBroker: InquiryBroker;
   public static runner: GraphRunner;
   public static metaRunner: GraphRunner;
   public static registry: GraphRegistry;
@@ -57,16 +59,19 @@ export default class Cadenza {
     if (this.isBootstrapped) return;
     this.isBootstrapped = true;
 
-    // 1. SignalBroker (empty, for observations)
-    this.broker = SignalBroker.instance;
+    // 1. Brokers (empty, for observations)
+    this.signalBroker = SignalBroker.instance;
+    this.inquiryBroker = InquiryBroker.instance;
 
     // 2. Runners (now init broker with them)
     this.runner = new GraphRunner();
     this.metaRunner = new GraphRunner(true);
-    this.broker.bootstrap(this.runner, this.metaRunner);
+    this.signalBroker.bootstrap(this.runner, this.metaRunner);
+    this.inquiryBroker.bootstrap(this.runner, this.metaRunner);
 
     if (this.mode === "debug" || this.mode === "dev") {
-      this.broker.setDebug(true);
+      this.signalBroker.setDebug(true);
+      this.inquiryBroker.setDebug(true);
       this.runner.setDebug(true);
       this.metaRunner.setDebug(true);
     }
@@ -74,7 +79,8 @@ export default class Cadenza {
     // 3. GraphRegistry (seed observes on broker)
     this.registry = GraphRegistry.instance;
 
-    this.broker.init();
+    this.signalBroker.init();
+    this.inquiryBroker.init();
   }
 
   /**
@@ -105,20 +111,20 @@ export default class Cadenza {
     this.bootstrap();
 
     if (mode === "debug" || mode === "dev") {
-      this.broker.setDebug(true);
+      this.signalBroker.setDebug(true);
       this.runner.setDebug(true);
     }
 
     if (mode === "verbose") {
-      this.broker.setDebug(true);
-      this.broker.setVerbose(true);
+      this.signalBroker.setDebug(true);
+      this.signalBroker.setVerbose(true);
       this.runner.setDebug(true);
       this.runner.setVerbose(true);
     }
 
     if (mode === "production") {
-      this.broker.setDebug(false);
-      this.broker.setVerbose(false);
+      this.signalBroker.setDebug(false);
+      this.signalBroker.setVerbose(false);
       this.runner.setDebug(false);
       this.runner.setVerbose(false);
     }
@@ -183,7 +189,7 @@ export default class Cadenza {
     data: AnyObject = {},
     options: EmitOptions = {},
   ) {
-    this.broker?.emit(event, data, options);
+    this.signalBroker?.emit(event, data, options);
   }
 
   public static schedule(
@@ -192,7 +198,7 @@ export default class Cadenza {
     delayMs: number,
     exactDateTime?: Date,
   ) {
-    this.broker?.schedule(taskName, context, { delayMs, exactDateTime });
+    this.signalBroker?.schedule(taskName, context, { delayMs, exactDateTime });
   }
 
   public static interval(
@@ -202,7 +208,7 @@ export default class Cadenza {
     leading = false,
     startDateTime?: Date,
   ) {
-    this.broker?.interval(
+    this.signalBroker?.interval(
       taskName,
       context,
       intervalMs,
@@ -212,7 +218,7 @@ export default class Cadenza {
   }
 
   public static debounce(signalName: string, context: any, delayMs: number) {
-    this.broker?.debounce(signalName, context, { delayMs });
+    this.signalBroker?.debounce(signalName, context, { delayMs });
   }
 
   public static get(taskName: string): Task | undefined {
@@ -221,6 +227,19 @@ export default class Cadenza {
 
   public static getRoutine(routineName: string): GraphRoutine | undefined {
     return this.registry?.routines.get(routineName);
+  }
+
+  public static defineIntent(intent: Intent): Intent {
+    this.inquiryBroker?.intents.set(intent.name, intent);
+    return intent;
+  }
+
+  public static async inquire(
+    inquiry: string,
+    context: AnyObject,
+    options?: InquiryOptions,
+  ): Promise<any> {
+    return this.inquiryBroker?.inquire(inquiry, context, options);
   }
 
   /**
@@ -831,7 +850,7 @@ export default class Cadenza {
   }
 
   static reset() {
-    this.broker?.reset();
+    this.signalBroker?.reset();
     this.registry?.reset();
     this.isBootstrapped = false;
   }

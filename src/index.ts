@@ -8,7 +8,6 @@ import EphemeralTask, {
   EphemeralTaskOptions,
 } from "./graph/definition/EphemeralTask";
 import GraphRoutine from "./graph/definition/GraphRoutine";
-import SignalTask from "./graph/definition/SignalTask";
 import Task, {
   TaskFunction,
   TaskResult,
@@ -43,7 +42,6 @@ export {
   GraphRoutine,
   DebounceTask,
   EphemeralTask,
-  SignalTask,
   SignalEmitter,
   GraphContext,
   GraphRegistry,
