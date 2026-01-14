@@ -1,3 +1,10 @@
+## [3.18.1](https://github.com/cadenzaio/cadenza/compare/v3.18.0...v3.18.1) (2026-01-14)
+
+
+### Bug Fixes
+
+* added index exports ([aedf570](https://github.com/cadenzaio/cadenza/commit/aedf570ffadcf1fe2fbc2c600978d70275b9911a))
+
 # [3.18.0](https://github.com/cadenzaio/cadenza/compare/v3.17.1...v3.18.0) (2026-01-14)
 
 
