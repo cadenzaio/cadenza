@@ -1,3 +1,10 @@
+## [3.18.2](https://github.com/cadenzaio/cadenza/compare/v3.18.1...v3.18.2) (2026-01-15)
+
+
+### Bug Fixes
+
+* intent improvements. ([42109db](https://github.com/cadenzaio/cadenza/commit/42109db14f6995f794ba017aafd425a2f83c7d28))
+
 ## [3.18.1](https://github.com/cadenzaio/cadenza/compare/v3.18.0...v3.18.1) (2026-01-14)
 
 
