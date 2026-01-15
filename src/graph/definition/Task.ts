@@ -45,9 +45,9 @@ export default class Task extends SignalEmitter implements Graph {
   readonly isEphemeral: boolean = false;
   readonly isDebounce: boolean = false;
 
-  inputContextSchema: SchemaDefinition | undefined = undefined;
+  inputContextSchema: SchemaDefinition = { type: "object" };
   validateInputContext: boolean = false;
-  outputContextSchema: SchemaDefinition | undefined = undefined;
+  outputContextSchema: SchemaDefinition = { type: "object" };
   validateOutputContext: boolean = false;
 
   readonly retryCount: number = 0;
@@ -110,9 +110,9 @@ export default class Task extends SignalEmitter implements Graph {
     isSubMeta: boolean = false,
     isHidden: boolean = false,
     getTagCallback: ThrottleTagGetter | undefined = undefined,
-    inputSchema: SchemaDefinition | undefined = undefined,
+    inputSchema: SchemaDefinition = { type: "object" },
     validateInputContext: boolean = false,
-    outputSchema: SchemaDefinition | undefined = undefined,
+    outputSchema: SchemaDefinition = { type: "object" },
     validateOutputContext: boolean = false,
     retryCount: number = 0,
     retryDelay: number = 0,
@@ -990,8 +990,12 @@ export default class Task extends SignalEmitter implements Graph {
       this.handlesIntents.add(intentName);
       Cadenza.inquiryBroker.observe(intentName, this);
       const intent = Cadenza.inquiryBroker.intents.get(intentName);
-      this.inputContextSchema = intent?.input;
-      this.outputContextSchema = intent?.output;
+      if (intent?.input) {
+        this.inputContextSchema = intent.input;
+      }
+      if (intent?.output) {
+        this.outputContextSchema = intent.output;
+      }
     }
 
     return this;

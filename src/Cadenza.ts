@@ -230,7 +230,7 @@ export default class Cadenza {
   }
 
   public static defineIntent(intent: Intent): Intent {
-    this.inquiryBroker?.intents.set(intent.name, intent);
+    this.inquiryBroker?.addIntent(intent);
     return intent;
   }
 

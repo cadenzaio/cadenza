@@ -130,11 +130,9 @@ export default class InquiryBroker extends SignalEmitter {
       this.addIntent({
         name: inquiry,
         description: "",
-        input: undefined,
-        output: undefined,
+        input: { type: "object" },
+        output: { type: "object" },
       });
-
-      this.emit("meta.inquiry_broker.added", { inquiryName: inquiry });
     }
   }
 
@@ -142,15 +140,18 @@ export default class InquiryBroker extends SignalEmitter {
     if (!this.intents.has(intent.name)) {
       this.validateInquiryName(intent.name);
       this.intents.set(intent.name, intent);
+      this.emit("meta.inquiry_broker.added", { data: { ...intent } });
     } else {
       const currentIntent = this.intents.get(intent.name)!;
       if (currentIntent.description !== intent.description) {
         currentIntent.description = intent.description;
       }
       if (intent.input && currentIntent.input !== intent.input) {
+        // TODO: deep compare
         currentIntent.input = intent.input;
       }
       if (intent.output && currentIntent.output !== intent.output) {
+        // TODO: deep compare
         currentIntent.output = intent.output;
       }
 
@@ -175,6 +176,7 @@ export default class InquiryBroker extends SignalEmitter {
     }
 
     return new Promise((resolve) => {
+      this.emit("meta.inquiry_broker.inquire", {});
       let joinedContext: any = {};
       const pendingTasks = Array.from(tasks).map((task) => task.name);
 
