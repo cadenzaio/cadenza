@@ -1,3 +1,10 @@
+# [3.19.0](https://github.com/cadenzaio/cadenza/compare/v3.18.2...v3.19.0) (2026-01-19)
+
+
+### Features
+
+* Added more robust throttle engine and signal broker. Now there are dynamic flush strategies for squashing. ([949539a](https://github.com/cadenzaio/cadenza/commit/949539aa794fcf305b4f289d8e2490bd68ef4bda))
+
 ## [3.18.2](https://github.com/cadenzaio/cadenza/compare/v3.18.1...v3.18.2) (2026-01-15)
 
 
