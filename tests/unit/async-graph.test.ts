@@ -337,7 +337,7 @@ describe("Async Graph", () => {
     Cadenza.emit("signal.foo", { bar: "foo" }, { squash: true, delayMs: 10 });
     Cadenza.emit("signal.foo", { baz: "boo" }, { squash: true, delayMs: 10 });
 
-    await sleep(20);
+    await sleep(1000);
     expect(counter).toBe(1);
     expect(squashedContext).toHaveProperty("foo", "bar");
     expect(squashedContext).toHaveProperty("bar", "foo");
@@ -352,6 +352,7 @@ describe("Async Graph", () => {
       squashedContext = ctx;
       return true;
     }).doOn("signal.foo");
+
     Cadenza.emit(
       "signal.foo",
       { foo: "bar" },
@@ -378,7 +379,9 @@ describe("Async Graph", () => {
       { squash: true, delayMs: 10, squashId: "foo" },
     );
 
-    await sleep(30);
+    await sleep(1000);
+
+    console.log("squashedContext", squashedContext);
     expect(squashedContext).toHaveProperty("foo", "bar");
     expect(squashedContext).toHaveProperty("bar", "foo");
     expect(squashedContext).toHaveProperty("baz", "boo");

@@ -2,12 +2,11 @@ import GraphRunner from "./GraphRunner";
 import { AnyObject, ThrottleHandle } from "../types/global";
 import Task from "../graph/definition/Task";
 import GraphRoutine from "../graph/definition/GraphRoutine";
-import Cadenza from "../Cadenza";
 import { formatTimestamp } from "../utils/tools";
 import { v4 as uuid } from "uuid";
 import debounce from "lodash-es/debounce";
-import { merge } from "lodash-es";
 import { sleep } from "../utils/promise";
+import Cadenza from "../Cadenza";
 
 export interface EmitOptions {
   squash?: boolean;
@@ -22,6 +21,14 @@ export interface EmitOptions {
   schedule?: boolean;
   exactDateTime?: Date | null;
   throttleBatch?: number;
+  flushStrategy?: string; // New: choose which flush interval bucket to use
+}
+
+type FlushStrategyName = string;
+
+interface FlushStrategy {
+  intervalMs: number;
+  maxBatchSize: number;
 }
 
 /**
@@ -49,6 +56,51 @@ export default class SignalBroker {
     this.verbose = value;
   }
 
+  runner: GraphRunner | undefined;
+  metaRunner: GraphRunner | undefined;
+
+  throttleEmitters: Map<string, any> = new Map();
+  throttleQueues: Map<string, any> = new Map();
+
+  public getSignalsTask: Task | undefined;
+  public registerSignalTask: Task | undefined;
+
+  // TODO: Signals should be a class with a the observers, registered flag and other data.
+  signalObservers: Map<
+    string,
+    {
+      fn: (
+        runner: GraphRunner,
+        tasks: (Task | GraphRoutine)[],
+        context: AnyObject,
+      ) => void;
+      tasks: Set<Task | GraphRoutine>;
+      registered: boolean;
+    }
+  > = new Map();
+
+  emittedSignalsRegistry: Set<string> = new Set();
+
+  // ── Flush Strategy Management ───────────────────────────────────────
+  private flushStrategies = new Map<FlushStrategyName, FlushStrategy>();
+  private strategyData = new Map<
+    FlushStrategyName,
+    Map<string, { signal: string; contexts: AnyObject[] }>
+  >();
+  private strategyTimers = new Map<FlushStrategyName, NodeJS.Timeout | null>();
+  private isStrategyFlushing = new Map<FlushStrategyName, boolean>();
+
+  private readonly defaultStrategyName = "default";
+
+  constructor() {
+    this.addSignal("meta.signal_broker.added");
+    // Register default strategy
+    this.setFlushStrategy(this.defaultStrategyName, {
+      intervalMs: 350,
+      maxBatchSize: 80,
+    });
+  }
+
   /**
    * Validates the provided signal name string to ensure it adheres to specific formatting rules.
    * Throws an error if any of the validation checks fail.
@@ -58,7 +110,7 @@ export default class SignalBroker {
    * @throws {Error} - Throws an error if the signal name is longer than 100 characters, contains spaces,
    *                   contains backslashes, or contains uppercase letters in restricted parts of the name.
    */
-  validateSignalName(signalName: string) {
+  validateSignalName(signalName: string): void {
     if (signalName.length > 100) {
       throw new Error(
         `Signal name must be less than 100 characters: ${signalName}`,
@@ -82,38 +134,6 @@ export default class SignalBroker {
     }
   }
 
-  runner: GraphRunner | undefined;
-  metaRunner: GraphRunner | undefined;
-
-  debouncedEmitters: Map<string, any> = new Map();
-  squashedEmitters: Map<string, any> = new Map();
-  squashedContexts: Map<string, any[]> = new Map();
-  throttleEmitters: Map<string, any> = new Map();
-  throttleQueues: Map<string, any> = new Map();
-
-  public getSignalsTask: Task | undefined;
-  public registerSignalTask: Task | undefined;
-
-  // TODO: Signals should be a class with a the observers, registered flag and other data.
-  signalObservers: Map<
-    string,
-    {
-      fn: (
-        runner: GraphRunner,
-        tasks: (Task | GraphRoutine)[],
-        context: AnyObject,
-      ) => void;
-      tasks: Set<Task | GraphRoutine>;
-      registered: boolean;
-    }
-  > = new Map();
-
-  emittedSignalsRegistry: Set<string> = new Set();
-
-  constructor() {
-    this.addSignal("meta.signal_broker.added");
-  }
-
   /**
    * Initializes with runners.
    * @param runner Standard runner for user signals.
@@ -129,7 +149,7 @@ export default class SignalBroker {
    *
    * @return {void} This method does not return a value.
    */
-  init() {
+  init(): void {
     this.getSignalsTask = Cadenza.createMetaTask("Get signals", (ctx) => {
       const uniqueSignals = Array.from(
         new Set([
@@ -164,71 +184,324 @@ export default class SignalBroker {
     ).doOn("meta.signal.registered");
   }
 
-  /**
-   * Observes a signal with a routine/task.
-   * @param signal The signal (e.g., 'domain.action', 'domain.*' for wildcards).
-   * @param routineOrTask The observer.
-   * @edge Duplicates ignored; supports wildcards for broad listening.
-   */
-  observe(signal: string, routineOrTask: Task | GraphRoutine): void {
-    this.addSignal(signal);
-    this.signalObservers.get(signal)!.tasks.add(routineOrTask);
-  }
+  setFlushStrategy(
+    name: FlushStrategyName,
+    config: { intervalMs: number; maxBatchSize?: number },
+  ): void {
+    if (config.intervalMs < 50) {
+      throw new Error("intervalMs must be >= 50ms for performance reasons");
+    }
 
-  registerEmittedSignal(signal: string): void {
-    this.emittedSignalsRegistry.add(signal);
-  }
+    this.flushStrategies.set(name, {
+      intervalMs: config.intervalMs,
+      maxBatchSize: config.maxBatchSize ?? 80,
+    });
 
-  /**
-   * Unsubscribes a routine/task from a signal.
-   * @param signal The signal.
-   * @param routineOrTask The observer.
-   * @edge Removes all instances if duplicate; deletes if empty.
-   */
-  unsubscribe(signal: string, routineOrTask: Task | GraphRoutine): void {
-    const obs = this.signalObservers.get(signal);
-    if (obs) {
-      obs.tasks.delete(routineOrTask);
-      if (obs.tasks.size === 0) {
-        this.signalObservers.delete(signal);
-      }
+    if (!this.strategyData.has(name)) {
+      this.strategyData.set(name, new Map());
+      this.strategyTimers.set(name, null);
+      this.isStrategyFlushing.set(name, false);
     }
   }
 
-  /**
-   * Schedules a signal to be emitted after a specified delay or at an exact date and time.
-   *
-   * @param {string} signal - The name of the signal to be emitted.
-   * @param {AnyObject} context - The context to be passed along with the signal.
-   * @param options
-   * @return {AbortController} An AbortController instance that can be used to cancel the scheduled signal emission.
-   */
+  updateFlushStrategy(name: FlushStrategyName, config: FlushStrategy): void {
+    if (!this.flushStrategies.get(name)) {
+      return this.setFlushStrategy(name, config);
+    }
+
+    this.flushStrategies.set(name, config);
+  }
+
+  removeFlushStrategy(name: FlushStrategyName): void {
+    if (name === this.defaultStrategyName) {
+      throw new Error("Cannot remove default strategy");
+    }
+    const timer = this.strategyTimers.get(name);
+    if (timer) clearTimeout(timer);
+    this.strategyTimers.delete(name);
+    this.strategyData.delete(name);
+    this.isStrategyFlushing.delete(name);
+    this.flushStrategies.delete(name);
+  }
+
+  getFlushStrategies(): Record<FlushStrategyName, FlushStrategy> {
+    return Object.fromEntries(this.flushStrategies);
+  }
+
+  // ── Squash (Multi-strategy) ─────────────────────────────────────────
+  private readonly MAX_FLUSH_DURATION_MS = 120;
+
+  squash(
+    signal: string,
+    context: AnyObject,
+    options: EmitOptions = { squash: true },
+  ): void {
+    if (!options.squash) {
+      this.emit(signal, context, options);
+      return;
+    }
+
+    const strategyName = options.flushStrategy ?? this.defaultStrategyName;
+    const strategy = this.flushStrategies.get(strategyName);
+
+    if (!strategy) {
+      console.warn(
+        `Unknown flush strategy '${strategyName}', falling back to default`,
+      );
+      return this.squash(signal, context, {
+        ...options,
+        flushStrategy: this.defaultStrategyName,
+      });
+    }
+
+    const squashId = options.squashId ?? signal;
+
+    let groups = this.strategyData.get(strategyName)!;
+    let data = groups.get(squashId);
+
+    if (!data) {
+      data = { signal, contexts: [] };
+      groups.set(squashId, data);
+    }
+
+    data.contexts.push(context);
+
+    if (data.contexts.length >= strategy.maxBatchSize) {
+      this.flushGroup(strategyName, squashId, options);
+      return;
+    }
+
+    if (
+      !this.strategyTimers.get(strategyName) &&
+      !this.isStrategyFlushing.get(strategyName)
+    ) {
+      this.strategyTimers.set(
+        strategyName,
+        setTimeout(() => this.flushStrategy(strategyName), strategy.intervalMs),
+      );
+    }
+  }
+
+  private flushGroup(
+    strategyName: FlushStrategyName,
+    squashId: string,
+    options: EmitOptions,
+  ): void {
+    const groups = this.strategyData.get(strategyName);
+    if (!groups) return;
+
+    const data = groups.get(squashId);
+    if (!data || data.contexts.length === 0) return;
+
+    const start = performance.now();
+
+    const merged = options.mergeFunction
+      ? options.mergeFunction(data.contexts[0], ...data.contexts.slice(1))
+      : Object.assign({}, ...data.contexts);
+
+    groups.delete(squashId);
+
+    this.emit(data.signal, merged, { ...options, squash: false });
+
+    const duration = performance.now() - start;
+    if (duration > this.MAX_FLUSH_DURATION_MS) {
+      console.warn(
+        `Squash flush for ${data.signal} in group ${squashId} took ${duration.toFixed(1)}ms`,
+      );
+    }
+  }
+
+  private flushStrategy(strategyName: FlushStrategyName): void {
+    this.strategyTimers.set(strategyName, null);
+    this.isStrategyFlushing.set(strategyName, true);
+
+    const groups = this.strategyData.get(strategyName);
+    if (!groups || groups.size === 0) {
+      this.isStrategyFlushing.set(strategyName, false);
+      return;
+    }
+
+    const keys = Array.from(groups.keys());
+
+    for (const squashId of keys) {
+      if (groups.has(squashId)) {
+        this.flushGroup(strategyName, squashId, {});
+      }
+    }
+
+    this.isStrategyFlushing.set(strategyName, false);
+
+    if (groups.size > 0) {
+      const strategy = this.flushStrategies.get(strategyName)!;
+      this.strategyTimers.set(
+        strategyName,
+        setTimeout(() => this.flushStrategy(strategyName), strategy.intervalMs),
+      );
+    }
+  }
+
+  public clearSquashState(): void {
+    for (const [name, timer] of this.strategyTimers.entries()) {
+      if (timer) clearTimeout(timer);
+    }
+    this.strategyTimers.clear();
+    this.strategyData.clear();
+    this.isStrategyFlushing.clear();
+  }
+
+  // ── Schedule (Bucketed) ─────────────────────────────────────────────
+  private scheduledBuckets = new Map<
+    number,
+    Array<{ signal: string; context: AnyObject }>
+  >();
+  private scheduleTimer: NodeJS.Timeout | null = null;
+
   schedule(
     signal: string,
     context: AnyObject,
     options: EmitOptions = { delayMs: 60_000 },
   ): AbortController {
-    // 1. Compute the final delay
-    let delay = options.delayMs;
-    if (options.exactDateTime != null) {
+    let delay = options.delayMs ?? 0;
+    if (options.exactDateTime) {
       delay = options.exactDateTime.getTime() - Date.now();
     }
-    delay = Math.max(0, delay ?? 0);
+    delay = Math.max(0, delay);
 
-    // 2. Create an AbortController so the caller can cancel
+    // Bucket by 100ms granularity
+    const bucketKey = Math.ceil(delay / 100) * 100;
+
+    let bucket = this.scheduledBuckets.get(bucketKey);
+    if (!bucket) {
+      bucket = [];
+      this.scheduledBuckets.set(bucketKey, bucket);
+    }
+
+    bucket.push({ signal, context });
+
     const controller = new AbortController();
-    const { signal: signalController } = controller;
 
-    const tick = () => this.emit(signal, context);
+    if (!this.scheduleTimer) {
+      this.scheduleTimer = setTimeout(() => this.flushScheduled(), 50);
+    }
 
-    const timerId = setTimeout(() => {
-      if (!signalController.aborted) tick();
-    }, delay);
+    return controller;
+  }
 
-    // 3. Cleanup on abort
-    signalController.addEventListener("abort", () => clearTimeout(timerId));
+  private flushScheduled(): void {
+    this.scheduleTimer = null;
 
-    return controller; // caller can do `const ac = obj.schedule(...); ac.abort();`
+    const now = Date.now();
+    const toProcess: [number, Array<{ signal: string; context: AnyObject }>][] =
+      [];
+
+    for (const [bucketKey, items] of this.scheduledBuckets.entries()) {
+      const bucketTime = bucketKey;
+      if (now >= bucketTime - 150) {
+        // tolerance
+        toProcess.push([bucketKey, items]);
+      }
+    }
+
+    for (const [key, items] of toProcess) {
+      this.scheduledBuckets.delete(key);
+      for (const item of items) {
+        this.emit(item.signal, item.context);
+      }
+    }
+
+    if (this.scheduledBuckets.size > 0) {
+      this.scheduleTimer = setTimeout(() => this.flushScheduled(), 50);
+    }
+  }
+
+  // ── Debounce (with cap) ─────────────────────────────────────────────
+  private debouncedEmitters = new Map<
+    string,
+    {
+      debouncedFn: ReturnType<typeof debounce>;
+      idleTimeout: NodeJS.Timeout | null;
+    }
+  >();
+
+  private readonly MAX_DEBOUNCERS = 5000;
+
+  debounce(signal: string, context: any, options = { delayMs: 500 }) {
+    if (this.debouncedEmitters.size > this.MAX_DEBOUNCERS) {
+      console.warn("Max debouncers reached - evicting oldest");
+      const oldestKey = this.debouncedEmitters.keys().next().value;
+      if (oldestKey) {
+        const entry = this.debouncedEmitters.get(oldestKey)!;
+        entry.debouncedFn.flush();
+        this.debouncedEmitters.delete(oldestKey);
+      }
+    }
+
+    const delay = options.delayMs ?? 300;
+    const key = signal;
+
+    let entry = this.debouncedEmitters.get(key);
+
+    if (!entry) {
+      const debouncedFn = debounce(
+        (ctx: any) => {
+          this.emit(signal, ctx);
+          entry!.idleTimeout = setTimeout(() => {
+            this.debouncedEmitters.delete(key);
+          }, delay * 4);
+        },
+        delay,
+        { leading: false, trailing: true },
+      );
+
+      entry = { debouncedFn, idleTimeout: null };
+      this.debouncedEmitters.set(key, entry);
+    }
+
+    if (entry.idleTimeout) {
+      clearTimeout(entry.idleTimeout);
+      entry.idleTimeout = null;
+    }
+
+    entry.debouncedFn(context);
+  }
+
+  // ── Existing throttle, interval, etc. remain unchanged ──────────────
+  throttle(
+    signal: string,
+    context: any,
+    options: EmitOptions = { delayMs: 1000 },
+  ) {
+    let { groupId, delayMs = 300 } = options;
+    if (!groupId) {
+      groupId = signal;
+    }
+
+    if (!this.throttleQueues.has(groupId)) {
+      this.throttleQueues.set(groupId, []);
+    }
+
+    const queue = this.throttleQueues.get(groupId);
+    queue.push([signal, context]);
+
+    if (!this.throttleEmitters.has(groupId)) {
+      this.throttleEmitters.set(groupId, async () => {
+        while (queue.length > 0) {
+          let batchSize = options.throttleBatch ?? 1;
+          if (batchSize > queue.length) {
+            batchSize = queue.length;
+          }
+          for (let i = 0; i < batchSize; i++) {
+            const [nextSignal, nextContext] = queue.shift();
+            this.emit(nextSignal, nextContext);
+          }
+          await sleep(delayMs);
+        }
+        this.throttleEmitters.delete(groupId);
+        this.throttleQueues.delete(groupId);
+      });
+
+      this.throttleEmitters.get(groupId)!();
+    }
   }
 
   /**
@@ -293,113 +566,6 @@ export default class SignalBroker {
         if (timer !== null) clearTimeout(timer);
       },
     };
-  }
-
-  debounce(signal: string, context: any, options = { delayMs: 500 }) {
-    let debouncedEmitter = this.debouncedEmitters.get(signal);
-    if (!debouncedEmitter) {
-      this.debouncedEmitters.set(
-        signal,
-        debounce((ctx: any) => {
-          this.emit(signal, ctx);
-        }, options.delayMs ?? 300),
-      );
-
-      debouncedEmitter = this.debouncedEmitters.get(signal);
-    }
-
-    debouncedEmitter(context);
-  }
-
-  throttle(
-    signal: string,
-    context: any,
-    options: EmitOptions = { delayMs: 1000 },
-  ) {
-    let { groupId, delayMs = 300 } = options;
-    if (!groupId) {
-      groupId = signal;
-    }
-
-    if (!this.throttleQueues.has(groupId)) {
-      this.throttleQueues.set(groupId, []);
-    }
-
-    const queue = this.throttleQueues.get(groupId);
-    queue.push([signal, context]);
-
-    if (!this.throttleEmitters.has(groupId)) {
-      this.throttleEmitters.set(groupId, async () => {
-        while (queue.length > 0) {
-          let batchSize = options.throttleBatch ?? 1;
-          if (batchSize > queue.length) {
-            batchSize = queue.length;
-          }
-          for (let i = 0; i < batchSize; i++) {
-            const [nextSignal, nextContext] = queue.shift();
-            this.emit(nextSignal, nextContext); // Emit the signal
-          }
-          await sleep(delayMs); // Wait for the delay
-        }
-        // Remove the groupId from throttleEmitters when the queue is done
-        this.throttleEmitters.delete(groupId);
-        this.throttleQueues.delete(groupId);
-      });
-
-      // Start processing the queue
-      this.throttleEmitters.get(groupId)();
-    }
-  }
-
-  /**
-   * Aggregates and debounces multiple events with the same identifier to minimize redundant operations.
-   *
-   * @param {string} signal - The identifier for the event being emitted.
-   * @param {AnyObject} context - The context data associated with the event.
-   * @param {Object} [options] - Configuration options for handling the squashed event.
-   * @param {boolean} [options.squash=true] - Whether the event should be squashed.
-   * @param {string|null} [options.squashId=null] - A unique identifier for the squashed group of events. Defaults to the signal if null.
-   * @param {function|null} [options.mergeFunction=null] - A custom merge function that combines old and new contexts. If null, a default merge is used.
-   * @return {void} Does not return a value.
-   */
-  squash(
-    signal: string,
-    context: AnyObject,
-    options: EmitOptions = { squash: true },
-  ): void {
-    let { squashId, delayMs = 300 } = options;
-    if (!squashId) {
-      squashId = signal;
-    }
-
-    if (!this.squashedEmitters.has(squashId)) {
-      this.squashedEmitters.set(
-        squashId,
-        debounce(() => {
-          options.squash = false;
-          this.emit(
-            signal,
-            options.mergeFunction
-              ? options.mergeFunction(
-                  this.squashedContexts.get(squashId)![0],
-                  ...this.squashedContexts.get(squashId)!.slice(1),
-                )
-              : merge(
-                  this.squashedContexts.get(squashId)![0],
-                  ...this.squashedContexts.get(squashId)!.slice(1),
-                ),
-            options,
-          );
-          this.squashedEmitters.delete(squashId);
-          this.squashedContexts.delete(squashId);
-        }, delayMs ?? 300),
-      );
-      this.squashedContexts.set(squashId, [context]);
-    } else {
-      this.squashedContexts.get(squashId)?.push(context);
-    }
-
-    this.squashedEmitters.get(squashId)();
   }
 
   /**
@@ -627,6 +793,37 @@ export default class SignalBroker {
   }
 
   /**
+   * Observes a signal with a routine/task.
+   * @param signal The signal (e.g., 'domain.action', 'domain.*' for wildcards).
+   * @param routineOrTask The observer.
+   * @edge Duplicates ignored; supports wildcards for broad listening.
+   */
+  observe(signal: string, routineOrTask: Task | GraphRoutine): void {
+    this.addSignal(signal);
+    this.signalObservers.get(signal)!.tasks.add(routineOrTask);
+  }
+
+  registerEmittedSignal(signal: string): void {
+    this.emittedSignalsRegistry.add(signal);
+  }
+
+  /**
+   * Unsubscribes a routine/task from a signal.
+   * @param signal The signal.
+   * @param routineOrTask The observer.
+   * @edge Removes all instances if duplicate; deletes if empty.
+   */
+  unsubscribe(signal: string, routineOrTask: Task | GraphRoutine): void {
+    const obs = this.signalObservers.get(signal);
+    if (obs) {
+      obs.tasks.delete(routineOrTask);
+      if (obs.tasks.size === 0) {
+        this.signalObservers.delete(signal);
+      }
+    }
+  }
+
+  /**
    * Lists all observed signals.
    * @returns Array of signals.
    */
@@ -641,5 +838,10 @@ export default class SignalBroker {
   reset() {
     this.signalObservers.clear();
     this.emittedSignalsRegistry.clear();
+  }
+
+  public shutdown(): void {
+    this.clearSquashState();
+    this.reset();
   }
 }

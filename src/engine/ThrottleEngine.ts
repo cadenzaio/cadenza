@@ -17,19 +17,38 @@ export default class ThrottleEngine {
     return this.instance_;
   }
 
-  queues: { [tag: string]: [ProcessFunction, GraphNode][] } = {};
-  runningCounts: { [tag: string]: number } = {};
-  maxConcurrencyPerTag: { [tag: string]: number } = {};
+  private tagState = new Map<
+    string,
+    {
+      queue: [ProcessFunction, GraphNode, number][];
+      runningCount: number;
+      maxConcurrency: number;
+    }
+  >();
 
-  functionIdToPromiseResolve: {
-    [functionInstanceId: string]: (value: GraphNode[]) => void;
-  } = {};
+  private nextId = 0;
+
+  private pendingResolves = new Map<number, (value: GraphNode[]) => void>();
+
+  private getTagState(tag: string) {
+    let state = this.tagState.get(tag);
+    if (!state) {
+      state = {
+        queue: [],
+        runningCount: 0,
+        maxConcurrency: 1,
+      };
+      this.tagState.set(tag, state);
+    }
+    return state;
+  }
 
   /**
    * Set a custom concurrency limit for a specific tag
    */
   setConcurrencyLimit(tag: string, limit: number) {
-    this.maxConcurrencyPerTag[tag] = limit;
+    const state = this.getTagState(tag);
+    state.maxConcurrency = limit;
   }
 
   /**
@@ -46,17 +65,14 @@ export default class ThrottleEngine {
     node: GraphNode,
     tag: string = "default",
   ): Promise<GraphNode[]> {
-    const functionPromise = new Promise((resolve) => {
-      this.functionIdToPromiseResolve[node.id] = resolve as (
-        value: GraphNode[],
-      ) => void;
-    }) as Promise<GraphNode[]>;
+    const state = this.getTagState(tag);
 
-    this.queues[tag] ??= [];
-    this.queues[tag].push([fn, node]);
+    const id = this.nextId++;
+    const functionPromise = new Promise<GraphNode[]>((resolve) => {
+      this.pendingResolves.set(id, resolve);
+    });
 
-    // Default to 1 if not set
-    this.maxConcurrencyPerTag[tag] ??= 1;
+    state.queue.push([fn, node, id]);
 
     this.processQueue(tag);
 
@@ -70,45 +86,53 @@ export default class ThrottleEngine {
    * @return {void} Does not return a value; it processes tasks asynchronously and manages state internally.
    */
   processQueue(tag: string) {
-    const maxAllowed = this.maxConcurrencyPerTag[tag];
+    const tagData = this.tagState.get(tag);
+    if (!tagData) return;
 
-    while (
-      (this.queues[tag]?.length ?? 0) > 0 &&
-      (this.runningCounts[tag] ?? 0) < maxAllowed
-    ) {
-      this.runningCounts[tag] = (this.runningCounts[tag] || 0) + 1;
-      const item = this.queues[tag].shift()!;
-      this.process(item).then(() => {
-        this.runningCounts[tag]--;
-        this.processQueue(tag); // Re-check queue
-      });
-    }
+    const maxAllowed = tagData.maxConcurrency;
 
-    // Clean up if done
-    if (
-      (this.queues[tag]?.length ?? 0) === 0 &&
-      this.runningCounts[tag] === 0
-    ) {
-      delete this.queues[tag];
-      delete this.runningCounts[tag];
-    }
+    const processNext = () => {
+      while (tagData.queue.length > 0 && tagData.runningCount < maxAllowed) {
+        tagData.runningCount++;
+        const item = tagData.queue.shift()!;
+        this.process(item)
+          .catch(() => []) // Handle errors gracefully
+          .finally(() => {
+            tagData.runningCount--;
+            processNext(); // Continue processing
+          });
+      }
+
+      // Clean up processing tags if finished, but keep tagState for persistence
+      if (tagData.queue.length === 0 && tagData.runningCount === 0) {
+        // Optionally, add idle timeout here if needed in future
+      }
+    };
+
+    processNext();
   }
 
   /**
    * Processes a given item consisting of a function and a graph node.
    *
-   * @param {Array} item - An array where the first element is a processing function and the second element is a graph node.
+   * @param {Array} item - An array where the first element is a processing function, the second element is a graph node, and the third is the unique ID.
    * @param {Function} item[0] - The function to process the graph node.
    * @param {GraphNode} item[1] - The graph node to be processed.
+   * @param {number} item[2] - The unique ID for promise resolution.
    * @return {Promise<void>} A promise that resolves when the processing and cleanup are complete.
    */
-  async process(item: [ProcessFunction, GraphNode]) {
+  async process(item: [ProcessFunction, GraphNode, number]) {
     const fn = item[0];
     const node = item[1];
+    const id = item[2];
 
-    const context = await fn(node);
-
-    this.functionIdToPromiseResolve[node.id](context);
-    delete this.functionIdToPromiseResolve[node.id];
+    try {
+      const context = await fn(node);
+      this.pendingResolves.get(id)?.(context);
+    } catch (e) {
+      this.pendingResolves.get(id)?.([]);
+    } finally {
+      this.pendingResolves.delete(id);
+    }
   }
 }
