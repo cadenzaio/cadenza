@@ -1,3 +1,10 @@
+## [3.19.2](https://github.com/cadenzaio/cadenza/compare/v3.19.1...v3.19.2) (2026-01-20)
+
+
+### Bug Fixes
+
+* faster destroy of tasks. ([50ebdfd](https://github.com/cadenzaio/cadenza/commit/50ebdfd5dd2bcd50ec7085cc32ecbecc986b5a2c))
+
 ## [3.19.1](https://github.com/cadenzaio/cadenza/compare/v3.19.0...v3.19.1) (2026-01-20)
 
 
