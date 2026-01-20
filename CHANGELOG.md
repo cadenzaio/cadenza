@@ -1,3 +1,10 @@
+## [3.19.1](https://github.com/cadenzaio/cadenza/compare/v3.19.0...v3.19.1) (2026-01-20)
+
+
+### Bug Fixes
+
+* re-added merge to squash ([30908c4](https://github.com/cadenzaio/cadenza/commit/30908c40915bb6f04d5a7f82394de3a3a2ac2e84))
+
 # [3.19.0](https://github.com/cadenzaio/cadenza/compare/v3.18.2...v3.19.0) (2026-01-19)
 
 
