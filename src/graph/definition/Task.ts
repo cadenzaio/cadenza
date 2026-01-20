@@ -1102,6 +1102,7 @@ export default class Task extends SignalEmitter implements Graph {
     this.destroyed = true;
 
     if (this.register) {
+      Cadenza.registry.tasks.delete(this.name);
       this.emitMetricsWithMetadata("meta.task.destroyed", {
         data: { deleted: true },
         filter: { name: this.name, version: this.version },
