@@ -7,6 +7,7 @@ import { v4 as uuid } from "uuid";
 import debounce from "lodash-es/debounce";
 import { sleep } from "../utils/promise";
 import Cadenza from "../Cadenza";
+import merge from "lodash-es/merge";
 
 export interface EmitOptions {
   squash?: boolean;
@@ -297,7 +298,7 @@ export default class SignalBroker {
 
     const merged = options.mergeFunction
       ? options.mergeFunction(data.contexts[0], ...data.contexts.slice(1))
-      : Object.assign({}, ...data.contexts);
+      : merge({}, ...data.contexts);
 
     groups.delete(squashId);
 

@@ -395,7 +395,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
         },
         filter: { uuid: this.id },
       },
-      { squash: true, squashId: this.id, delayMs: 0 },
+      { squash: true, squashId: this.id },
     );
 
     if (this.graphDone()) {
@@ -420,7 +420,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
           },
           filter: { uuid: this.routineExecId },
         },
-        { squash: true, squashId: this.routineExecId, delayMs: 0 },
+        { squash: true, squashId: this.routineExecId },
       );
     }
 
