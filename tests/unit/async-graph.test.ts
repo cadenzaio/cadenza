@@ -388,6 +388,20 @@ describe("Async Graph", () => {
     expect(counter).toBe(1);
   });
 
+  it("should schedule signals correctly", async () => {
+    let taskExecuted = false;
+    Cadenza.createTask("taskBla", (_) => {
+      console.log("taskBla executed");
+      taskExecuted = true;
+    }).doOn("signal.fool");
+
+    Cadenza.schedule("signal.fool", {}, 1000);
+    await sleep(500);
+    expect(taskExecuted).toBe(false);
+    await sleep(600);
+    expect(taskExecuted).toBe(true);
+  });
+
   it("should create an intent and perform and inquiry", async () => {
     Cadenza.defineIntent({
       name: "testInquiry",

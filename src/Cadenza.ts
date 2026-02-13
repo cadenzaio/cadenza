@@ -193,12 +193,15 @@ export default class Cadenza {
   }
 
   public static schedule(
-    taskName: string,
+    signalName: string,
     context: AnyObject,
     delayMs: number,
     exactDateTime?: Date,
   ) {
-    this.signalBroker?.schedule(taskName, context, { delayMs, exactDateTime });
+    this.signalBroker?.schedule(signalName, context, {
+      delayMs,
+      exactDateTime,
+    });
   }
 
   public static interval(

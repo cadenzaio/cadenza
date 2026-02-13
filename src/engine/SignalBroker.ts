@@ -102,6 +102,41 @@ export default class SignalBroker {
     });
   }
 
+  // Dor debugging
+  public logMemoryFootprint(label = "current") {
+    console.log(`[${label}] SignalBroker state sizes:`);
+    console.log(`  • signalObservers entries: ${this.signalObservers.size}`);
+    console.log(
+      `  • emittedSignalsRegistry size: ${this.emittedSignalsRegistry.size}`,
+    );
+
+    let totalSquashContexts = 0;
+    let totalSquashGroups = 0;
+    for (const groups of this.strategyData.values()) {
+      totalSquashGroups += groups.size;
+      for (const data of groups.values()) {
+        totalSquashContexts += data.contexts.length;
+      }
+    }
+    console.log(`  • Active squash groups: ${totalSquashGroups}`);
+    console.log(`  • Total queued squash contexts: ${totalSquashContexts}`);
+
+    let totalDebouncers = this.debouncedEmitters.size;
+    console.log(`  • Active debouncers: ${totalDebouncers}`);
+
+    let totalThrottleQueues = 0;
+    for (const q of this.throttleQueues.values()) {
+      totalThrottleQueues += q.length;
+    }
+    console.log(`  • Total items in throttle queues: ${totalThrottleQueues}`);
+
+    let totalScheduled = 0;
+    for (const bucket of this.scheduledBuckets.values()) {
+      totalScheduled += bucket.length;
+    }
+    console.log(`  • Pending scheduled items: ${totalScheduled}`);
+  }
+
   /**
    * Validates the provided signal name string to ensure it adheres to specific formatting rules.
    * Throws an error if any of the validation checks fail.
@@ -368,8 +403,9 @@ export default class SignalBroker {
     }
     delay = Math.max(0, delay);
 
-    // Bucket by 100ms granularity
-    const bucketKey = Math.ceil(delay / 100) * 100;
+    // Bucket by 100ms granularity, but based on an absolute due time
+    const dueAt = Date.now() + delay;
+    const bucketKey = Math.ceil(dueAt / 100) * 100;
 
     let bucket = this.scheduledBuckets.get(bucketKey);
     if (!bucket) {
@@ -396,7 +432,7 @@ export default class SignalBroker {
       [];
 
     for (const [bucketKey, items] of this.scheduledBuckets.entries()) {
-      const bucketTime = bucketKey;
+      const bucketTime = bucketKey; // bucketKey is now an absolute due timestamp
       if (now >= bucketTime - 150) {
         // tolerance
         toProcess.push([bucketKey, items]);
