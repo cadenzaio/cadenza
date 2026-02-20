@@ -1,3 +1,10 @@
+## [3.19.4](https://github.com/cadenzaio/cadenza/compare/v3.19.3...v3.19.4) (2026-02-20)
+
+
+### Bug Fixes
+
+* Extended schema validation. ([2996824](https://github.com/cadenzaio/cadenza/commit/29968246e364f7e26286ae9df224af35cafb8ed5))
+
 ## [3.19.3](https://github.com/cadenzaio/cadenza/compare/v3.19.2...v3.19.3) (2026-02-13)
 
 
