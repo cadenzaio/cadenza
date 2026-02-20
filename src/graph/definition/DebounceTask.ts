@@ -1,6 +1,6 @@
 import Task, { TaskFunction, TaskResult } from "./Task";
 import GraphContext from "../context/GraphContext";
-import { SchemaDefinition } from "../../types/schema";
+import { Schema } from "../../types/schema";
 import { AnyObject } from "../../types/global";
 import { InquiryOptions } from "../../engine/InquiryBroker";
 
@@ -52,9 +52,9 @@ export default class DebounceTask extends Task {
     isMeta: boolean = false,
     isSubMeta: boolean = false,
     isHidden: boolean = false,
-    inputSchema: SchemaDefinition | undefined = undefined,
+    inputSchema: Schema | undefined = undefined,
     validateInputSchema: boolean = false,
-    outputSchema: SchemaDefinition | undefined = undefined,
+    outputSchema: Schema | undefined = undefined,
     validateOutputSchema: boolean = false,
   ) {
     super(

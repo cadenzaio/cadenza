@@ -25,9 +25,11 @@ export type SchemaConstraints = {
 export type SchemaDefinition = {
   type: SchemaType;
   required?: string[]; // For objects
-  properties?: { [key: string]: SchemaDefinition }; // For objects
-  items?: SchemaDefinition; // For arrays
+  properties?: { [key: string]: Schema }; // For objects
+  items?: Schema; // For arrays
   constraints?: SchemaConstraints;
   description?: string; // Optional for docs
   strict?: boolean; // Optional for strict mode
 };
+
+export type Schema = SchemaDefinition | SchemaDefinition[];

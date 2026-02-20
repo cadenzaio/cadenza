@@ -300,7 +300,9 @@ describe("Async Graph", () => {
         return true;
       },
       "",
-      { retryCount: 5 },
+      {
+        retryCount: 5,
+      },
     );
 
     task1.then(task2);

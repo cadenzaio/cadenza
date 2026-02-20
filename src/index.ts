@@ -20,6 +20,7 @@ import { AnyObject } from "./types/global";
 import {
   SchemaConstraints,
   SchemaDefinition,
+  Schema,
   SchemaType,
 } from "./types/schema";
 
@@ -29,6 +30,7 @@ export type {
   TaskOptions,
   AnyObject,
   SchemaDefinition,
+  Schema,
   SchemaConstraints,
   SchemaType,
   ThrottleTagGetter,

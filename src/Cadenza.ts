@@ -9,7 +9,7 @@ import EphemeralTask, {
 import GraphRoutine from "./graph/definition/GraphRoutine";
 import GraphAsyncRun from "./engine/strategy/GraphAsyncRun";
 import GraphStandardRun from "./engine/strategy/GraphStandardRun";
-import { SchemaDefinition } from "./types/schema";
+import { Schema } from "./types/schema";
 import { AnyObject } from "./types/global";
 import InquiryBroker, { InquiryOptions, Intent } from "./engine/InquiryBroker";
 
@@ -22,9 +22,9 @@ export interface TaskOptions {
   isSubMeta?: boolean;
   isHidden?: boolean;
   getTagCallback?: ThrottleTagGetter;
-  inputSchema?: SchemaDefinition;
+  inputSchema?: Schema;
   validateInputContext?: boolean;
-  outputSchema?: SchemaDefinition;
+  outputSchema?: Schema;
   validateOutputContext?: boolean;
   retryCount?: number;
   retryDelay?: number;

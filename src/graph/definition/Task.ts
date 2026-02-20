@@ -4,7 +4,7 @@ import GraphVisitor from "../../interfaces/GraphVisitor";
 import TaskIterator from "../iterators/TaskIterator";
 import Graph from "../../interfaces/Graph";
 import { AnyObject } from "../../types/global";
-import { SchemaDefinition } from "../../types/schema";
+import { Schema, SchemaDefinition } from "../../types/schema";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 import Cadenza from "../../Cadenza";
 import { InquiryOptions } from "../../engine/InquiryBroker";
@@ -45,9 +45,9 @@ export default class Task extends SignalEmitter implements Graph {
   readonly isEphemeral: boolean = false;
   readonly isDebounce: boolean = false;
 
-  inputContextSchema: SchemaDefinition = { type: "object" };
+  inputContextSchema: Schema = { type: "object" };
   validateInputContext: boolean = false;
-  outputContextSchema: SchemaDefinition = { type: "object" };
+  outputContextSchema: Schema = { type: "object" };
   validateOutputContext: boolean = false;
 
   readonly retryCount: number = 0;
@@ -89,9 +89,9 @@ export default class Task extends SignalEmitter implements Graph {
    * @param {boolean} [isSubMeta=false] - Indicates if the task is a sub-meta-task.
    * @param {boolean} [isHidden=false] - Determines if the task is hidden and not exposed publicly.
    * @param {ThrottleTagGetter} [getTagCallback=undefined] - A callback to generate a throttle tag for the task.
-   * @param {SchemaDefinition} [inputSchema=undefined] - The input schema for validating the task's input context.
+   * @param {Schema} [inputSchema=undefined] - The input schema for validating the task's input context.
    * @param {boolean} [validateInputContext=false] - Specifies if the input context should be validated against the input schema.
-   * @param {SchemaDefinition} [outputSchema=undefined] - The output schema for validating the task's output context.
+   * @param {Schema} [outputSchema=undefined] - The output schema for validating the task's output context.
    * @param {boolean} [validateOutputContext=false] - Specifies if the output context should be validated against the output schema.
    * @param {number} [retryCount=0] - The number of retry attempts allowed for the task in case of failure.
    * @param {number} [retryDelay=0] - The initial delay (in milliseconds) between retry attempts.
@@ -110,9 +110,9 @@ export default class Task extends SignalEmitter implements Graph {
     isSubMeta: boolean = false,
     isHidden: boolean = false,
     getTagCallback: ThrottleTagGetter | undefined = undefined,
-    inputSchema: SchemaDefinition = { type: "object" },
+    inputSchema: Schema = { type: "object" },
     validateInputContext: boolean = false,
-    outputSchema: SchemaDefinition = { type: "object" },
+    outputSchema: Schema = { type: "object" },
     validateOutputContext: boolean = false,
     retryCount: number = 0,
     retryDelay: number = 0,
@@ -280,11 +280,11 @@ export default class Task extends SignalEmitter implements Graph {
     this.progressWeight = weight;
   }
 
-  public setInputContextSchema(schema: SchemaDefinition): void {
+  public setInputContextSchema(schema: Schema): void {
     this.inputContextSchema = schema;
   }
 
-  public setOutputContextSchema(schema: SchemaDefinition): void {
+  public setOutputContextSchema(schema: Schema): void {
     this.outputContextSchema = schema;
   }
 
@@ -344,19 +344,35 @@ export default class Task extends SignalEmitter implements Graph {
    * Validates a data object against a specified schema definition and returns validation results.
    *
    * @param {any} data - The target object to validate against the schema.
-   * @param {SchemaDefinition | undefined} schema - The schema definition describing the expected structure and constraints of the data.
+   * @param {Schema | undefined} schema - The schema definition describing the expected structure and constraints of the data.
    * @param {string} [path="context"] - The base path or context for traversing the data, used in generating error messages.
    * @return {{ valid: boolean, errors: Record<string, string> }} - An object containing a validity flag (`valid`)
    * and a map (`errors`) of validation error messages keyed by property paths.
    */
   validateSchema(
     data: any,
-    schema: SchemaDefinition | undefined,
+    schema: Schema | undefined,
     path: string = "context",
   ): { valid: boolean; errors: Record<string, string> } {
     const errors: Record<string, string> = {};
 
-    if (!schema || typeof schema !== "object") return { valid: true, errors };
+    if (!schema || (typeof schema !== "object" && !Array.isArray(schema)))
+      return { valid: true, errors };
+
+    if (Array.isArray(schema)) {
+      for (const s of schema) {
+        const subValidation = this.validateSchema(data, s, path);
+        if (!subValidation.valid) {
+          Object.assign(errors, subValidation.errors);
+        }
+
+        if (subValidation.valid) {
+          return { valid: true, errors: {} };
+        }
+      }
+
+      return { valid: false, errors };
+    }
 
     // Check required fields
     const required = schema.required || [];
@@ -371,115 +387,12 @@ export default class Task extends SignalEmitter implements Graph {
     for (const [key, value] of Object.entries(data)) {
       if (key in properties) {
         const prop = properties[key];
-        const propType = prop.type;
-
-        if (propType === "any") {
-          continue;
-        }
-
-        if ((value === undefined || value === null) && !prop.strict) {
-          continue;
-        }
-
-        if (propType === "string" && typeof value !== "string") {
-          errors[`${path}.${key}`] =
-            `Expected 'string' for '${key}', got '${typeof value}'`;
-        } else if (propType === "number" && typeof value !== "number") {
-          errors[`${path}.${key}`] =
-            `Expected 'number' for '${key}', got '${typeof value}'`;
-        } else if (propType === "boolean" && typeof value !== "boolean") {
-          errors[`${path}.${key}`] =
-            `Expected 'boolean' for '${key}', got '${typeof value}'`;
-        } else if (propType === "array" && !Array.isArray(value)) {
-          errors[`${path}.${key}`] =
-            `Expected 'array' for '${key}', got '${typeof value}'`;
-        } else if (
-          propType === "object" &&
-          (typeof value !== "object" || value === null || Array.isArray(value))
-        ) {
-          errors[`${path}.${key}`] =
-            `Expected 'object' for '${key}', got '${typeof value}'`;
-        } else if (propType === "array" && prop.items) {
-          if (Array.isArray(value)) {
-            value.forEach((item, index) => {
-              const subValidation = this.validateSchema(
-                item,
-                prop.items,
-                `${path}.${key}[${index}]`,
-              );
-              if (!subValidation.valid) {
-                Object.assign(errors, subValidation.errors);
-              }
-            });
+        if (Array.isArray(prop)) {
+          for (const p of prop) {
+            Object.assign(errors, this.validateProp(p, key, value, path));
           }
-        } else if (
-          propType === "object" &&
-          !Array.isArray(value) &&
-          value !== null
-        ) {
-          const subValidation = this.validateSchema(
-            value,
-            prop,
-            `${path}.${key}`,
-          );
-          if (!subValidation.valid) {
-            Object.assign(errors, subValidation.errors);
-          }
-        }
-
-        // Check constraints (extended as discussed)
-        const constraints = prop.constraints || {};
-        if (typeof value === "string") {
-          if (constraints.minLength && value.length < constraints.minLength) {
-            errors[`${path}.${key}`] =
-              `String '${key}' shorter than minLength ${constraints.minLength}`;
-          }
-          if (constraints.maxLength && value.length > constraints.maxLength) {
-            errors[`${path}.${key}`] =
-              `String '${key}' exceeds maxLength ${constraints.maxLength}`;
-          }
-          if (
-            constraints.pattern &&
-            !new RegExp(constraints.pattern).test(value)
-          ) {
-            errors[`${path}.${key}`] =
-              `String '${key}' does not match pattern ${constraints.pattern}`;
-          }
-        } else if (typeof value === "number") {
-          if (constraints.min && value < constraints.min) {
-            errors[`${path}.${key}`] =
-              `Number '${key}' below min ${constraints.min}`;
-          }
-          if (constraints.max && value > constraints.max) {
-            errors[`${path}.${key}`] =
-              `Number '${key}' exceeds max ${constraints.max}`;
-          }
-          if (constraints.multipleOf && value % constraints.multipleOf !== 0) {
-            errors[`${path}.${key}`] =
-              `Number '${key}' not multiple of ${constraints.multipleOf}`;
-          }
-        } else if (constraints.enum && !constraints.enum.includes(value)) {
-          errors[`${path}.${key}`] =
-            `Value '${value}' for '${key}' not in enum ${JSON.stringify(constraints.enum)}`;
-        } else if (constraints.format) {
-          const formats = {
-            email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-            url: /^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$/,
-            "date-time":
-              /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/,
-            uuid: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
-            custom: /.*/, // Placeholder; override with prop.constraints.pattern if present
-          } as any;
-          const regex =
-            formats[constraints.format] ||
-            new RegExp(constraints.pattern || ".*");
-          if (typeof value === "string" && !regex.test(value)) {
-            errors[`${path}.${key}`] =
-              `Value '${value}' for '${key}' does not match format '${constraints.format}'`;
-          }
-        } else if (constraints.oneOf && !constraints.oneOf.includes(value)) {
-          errors[`${path}.${key}`] =
-            `Value '${value}' for '${key}' not in oneOf ${JSON.stringify(constraints.oneOf)}`;
+        } else {
+          Object.assign(errors, this.validateProp(prop, key, value, path));
         }
       } else if (schema.strict) {
         errors[`${path}.${key}`] = `Key '${key}' is not allowed`;
@@ -489,7 +402,119 @@ export default class Task extends SignalEmitter implements Graph {
     if (Object.keys(errors).length > 0) {
       return { valid: false, errors };
     }
+
     return { valid: true, errors: {} };
+  }
+
+  validateProp(
+    prop: SchemaDefinition,
+    key: string,
+    value?: any,
+    path: string = "context",
+  ): Record<string, string> {
+    const propType = prop.type;
+    const errors: Record<string, string> = {};
+
+    if (propType === "any") {
+      return errors;
+    }
+
+    if ((value === undefined || value === null) && !prop.strict) {
+      return errors;
+    }
+
+    if (propType === "string" && typeof value !== "string") {
+      errors[`${path}.${key}`] =
+        `Expected 'string' for '${key}', got '${typeof value}'`;
+    } else if (propType === "number" && typeof value !== "number") {
+      errors[`${path}.${key}`] =
+        `Expected 'number' for '${key}', got '${typeof value}'`;
+    } else if (propType === "boolean" && typeof value !== "boolean") {
+      errors[`${path}.${key}`] =
+        `Expected 'boolean' for '${key}', got '${typeof value}'`;
+    } else if (propType === "array" && !Array.isArray(value)) {
+      errors[`${path}.${key}`] =
+        `Expected 'array' for '${key}', got '${typeof value}'`;
+    } else if (
+      propType === "object" &&
+      (typeof value !== "object" || value === null || Array.isArray(value))
+    ) {
+      errors[`${path}.${key}`] =
+        `Expected 'object' for '${key}', got '${typeof value}'`;
+    } else if (propType === "array" && prop.items) {
+      value.forEach((item: any, index: number) => {
+        const subValidation = this.validateSchema(
+          item,
+          prop.items,
+          `${path}.${key}[${index}]`,
+        );
+        if (!subValidation.valid) {
+          Object.assign(errors, subValidation.errors);
+        }
+      });
+    } else if (
+      propType === "object" &&
+      !Array.isArray(value) &&
+      value !== null
+    ) {
+      const subValidation = this.validateSchema(value, prop, `${path}.${key}`);
+      if (!subValidation.valid) {
+        Object.assign(errors, subValidation.errors);
+      }
+    }
+
+    // Check constraints (extended as discussed)
+    const constraints = prop.constraints || {};
+    if (typeof value === "string") {
+      if (constraints.minLength && value.length < constraints.minLength) {
+        errors[`${path}.${key}`] =
+          `String '${key}' shorter than minLength ${constraints.minLength}`;
+      }
+      if (constraints.maxLength && value.length > constraints.maxLength) {
+        errors[`${path}.${key}`] =
+          `String '${key}' exceeds maxLength ${constraints.maxLength}`;
+      }
+      if (constraints.pattern && !new RegExp(constraints.pattern).test(value)) {
+        errors[`${path}.${key}`] =
+          `String '${key}' does not match pattern ${constraints.pattern}`;
+      }
+    } else if (typeof value === "number") {
+      if (constraints.min && value < constraints.min) {
+        errors[`${path}.${key}`] =
+          `Number '${key}' below min ${constraints.min}`;
+      }
+      if (constraints.max && value > constraints.max) {
+        errors[`${path}.${key}`] =
+          `Number '${key}' exceeds max ${constraints.max}`;
+      }
+      if (constraints.multipleOf && value % constraints.multipleOf !== 0) {
+        errors[`${path}.${key}`] =
+          `Number '${key}' not multiple of ${constraints.multipleOf}`;
+      }
+    } else if (constraints.enum && !constraints.enum.includes(value)) {
+      errors[`${path}.${key}`] =
+        `Value '${value}' for '${key}' not in enum ${JSON.stringify(constraints.enum)}`;
+    } else if (constraints.format) {
+      const formats = {
+        email: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+        url: /^(https?|ftp):\/\/[^\s/$.?#].[^\s]*$/,
+        "date-time":
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/,
+        uuid: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/,
+        custom: /.*/, // Placeholder; override with prop.constraints.pattern if present
+      } as any;
+      const regex =
+        formats[constraints.format] || new RegExp(constraints.pattern || ".*");
+      if (typeof value === "string" && !regex.test(value)) {
+        errors[`${path}.${key}`] =
+          `Value '${value}' for '${key}' does not match format '${constraints.format}'`;
+      }
+    } else if (constraints.oneOf && !constraints.oneOf.includes(value)) {
+      errors[`${path}.${key}`] =
+        `Value '${value}' for '${key}' not in oneOf ${JSON.stringify(constraints.oneOf)}`;
+    }
+
+    return errors;
   }
 
   /**

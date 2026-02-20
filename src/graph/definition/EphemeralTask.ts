@@ -1,5 +1,5 @@
 import Task, { TaskFunction, ThrottleTagGetter } from "./Task";
-import { SchemaDefinition } from "../../types/schema";
+import { Schema } from "../../types/schema";
 import { AnyObject } from "../../types/global";
 import { InquiryOptions } from "../../engine/InquiryBroker";
 
@@ -36,9 +36,9 @@ export default class EphemeralTask extends Task {
     isSubMeta: boolean = false,
     isHidden: boolean = false,
     getTagCallback: ThrottleTagGetter | undefined = undefined,
-    inputSchema: SchemaDefinition | undefined = undefined,
+    inputSchema: Schema | undefined = undefined,
     validateInputContext: boolean = false,
-    outputSchema: SchemaDefinition | undefined = undefined,
+    outputSchema: Schema | undefined = undefined,
     validateOutputContext: boolean = false,
     retryCount: number = 0,
     retryDelay: number = 0,
