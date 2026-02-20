@@ -1,3 +1,10 @@
+## [3.19.3](https://github.com/cadenzaio/cadenza/compare/v3.19.2...v3.19.3) (2026-02-13)
+
+
+### Bug Fixes
+
+* Fixed scheduling bug. ([e41197e](https://github.com/cadenzaio/cadenza/commit/e41197e7074cc47c8e5a1f955b44a424d49cd367))
+
 ## [3.19.2](https://github.com/cadenzaio/cadenza/compare/v3.19.1...v3.19.2) (2026-01-20)
 
 
