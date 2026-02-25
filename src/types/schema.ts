@@ -18,7 +18,6 @@ export type SchemaConstraints = {
   multipleOf?: number;
   format?: "email" | "url" | "date-time" | "uuid" | "custom";
   oneOf?: any[];
-  // Add more as needed (e.g., exclusiveMin, allOf)
 };
 
 // Recursive schema definition for nested structures
