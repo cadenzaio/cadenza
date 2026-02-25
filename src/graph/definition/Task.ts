@@ -192,8 +192,8 @@ export default class Task extends SignalEmitter implements Graph {
           isSubMeta: this.isSubMeta,
           validateInputContext: this.validateInputContext,
           validateOutputContext: this.validateOutputContext,
-          // inputContextSchemaId: this.inputContextSchema,
-          // outputContextSchemaId: this.outputContextSchema,
+          inputContextSchemaId: this.inputContextSchema,
+          outputContextSchemaId: this.outputContextSchema,
           signals: {
             emits: Array.from(this.emitsSignals),
             signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
@@ -388,9 +388,18 @@ export default class Task extends SignalEmitter implements Graph {
       if (key in properties) {
         const prop = properties[key];
         if (Array.isArray(prop)) {
+          let propErrors: Record<string, string> = {};
           for (const p of prop) {
-            Object.assign(errors, this.validateProp(p, key, value, path));
+            const pe = this.validateProp(p, key, value, path);
+            if (Object.keys(pe).length > 0) {
+              Object.assign(propErrors, pe);
+            } else {
+              propErrors = {};
+              break;
+            }
           }
+
+          Object.assign(errors, propErrors);
         } else {
           Object.assign(errors, this.validateProp(prop, key, value, path));
         }
@@ -443,13 +452,23 @@ export default class Task extends SignalEmitter implements Graph {
         `Expected 'object' for '${key}', got '${typeof value}'`;
     } else if (propType === "array" && prop.items) {
       value.forEach((item: any, index: number) => {
-        const subValidation = this.validateSchema(
-          item,
-          prop.items,
-          `${path}.${key}[${index}]`,
-        );
-        if (!subValidation.valid) {
-          Object.assign(errors, subValidation.errors);
+        if (Array.isArray(prop.items)) {
+          for (const p of prop.items) {
+            Object.assign(
+              errors,
+              this.validateProp(p, key, item, `${path}.${key}[${index}]`),
+            );
+          }
+        } else {
+          Object.assign(
+            errors,
+            this.validateProp(
+              prop.items as SchemaDefinition,
+              key,
+              item,
+              `${path}.${key}[${index}]`,
+            ),
+          );
         }
       });
     } else if (
