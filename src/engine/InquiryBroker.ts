@@ -127,12 +127,14 @@ export default class InquiryBroker extends SignalEmitter {
         registered: false,
       });
 
-      this.addIntent({
-        name: inquiry,
-        description: "",
-        input: { type: "object" },
-        output: { type: "object" },
-      });
+      if (!this.intents.has(inquiry)) {
+        this.addIntent({
+          name: inquiry,
+          description: "",
+          input: { type: "object" },
+          output: { type: "object" },
+        });
+      }
     }
   }
 

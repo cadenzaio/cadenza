@@ -192,8 +192,8 @@ export default class Task extends SignalEmitter implements Graph {
           isSubMeta: this.isSubMeta,
           validateInputContext: this.validateInputContext,
           validateOutputContext: this.validateOutputContext,
-          inputContextSchemaId: this.inputContextSchema,
-          outputContextSchemaId: this.outputContextSchema,
+          inputContextSchema: this.inputContextSchema,
+          outputContextSchema: this.outputContextSchema,
           signals: {
             emits: Array.from(this.emitsSignals),
             signalsToEmitAfter: Array.from(this.signalsToEmitAfter),
@@ -340,6 +340,78 @@ export default class Task extends SignalEmitter implements Graph {
     this.emitMetrics(signal, data);
   }
 
+  private isSchemaDefinition(schema: Schema | undefined): schema is SchemaDefinition {
+    return !!schema && typeof schema === "object" && "type" in schema;
+  }
+
+  private isDefaultAnyObjectSchema(schema: SchemaDefinition): boolean {
+    return (
+      schema.type === "object" &&
+      !schema.strict &&
+      !schema.properties &&
+      !schema.required?.length &&
+      !schema.items &&
+      !schema.constraints &&
+      !schema.description
+    );
+  }
+
+  private mergeSchemaVariant(
+    currentSchema: Schema,
+    schemaKey: string,
+    variant: SchemaDefinition,
+  ): Schema {
+    const schemaMap: Record<string, SchemaDefinition> = {};
+    if (this.isSchemaDefinition(currentSchema)) {
+      if (!this.isDefaultAnyObjectSchema(currentSchema)) {
+        schemaMap.default = currentSchema;
+      }
+    } else if (currentSchema && typeof currentSchema === "object") {
+      Object.assign(schemaMap, currentSchema);
+    }
+
+    schemaMap[schemaKey] = variant;
+    return schemaMap;
+  }
+
+  private validateValueAgainstSchema(
+    schema: Schema,
+    key: string,
+    value: any,
+    path: string = "context",
+  ): Record<string, string> {
+    if (this.isSchemaDefinition(schema)) {
+      return this.validateProp(schema, key, value, path);
+    }
+
+    const errors: Record<string, string> = {};
+    let checkedSchemas = 0;
+    for (const candidate of Object.values(schema)) {
+      if (!candidate || typeof candidate !== "object") {
+        continue;
+      }
+
+      checkedSchemas += 1;
+      const candidateErrors = this.validateValueAgainstSchema(
+        candidate as Schema,
+        key,
+        value,
+        path,
+      );
+      if (Object.keys(candidateErrors).length === 0) {
+        return {};
+      }
+
+      Object.assign(errors, candidateErrors);
+    }
+
+    if (checkedSchemas === 0) {
+      return {};
+    }
+
+    return errors;
+  }
+
   /**
    * Validates a data object against a specified schema definition and returns validation results.
    *
@@ -356,11 +428,18 @@ export default class Task extends SignalEmitter implements Graph {
   ): { valid: boolean; errors: Record<string, string> } {
     const errors: Record<string, string> = {};
 
-    if (!schema || (typeof schema !== "object" && !Array.isArray(schema)))
+    if (!schema || typeof schema !== "object") {
       return { valid: true, errors };
+    }
 
-    if (Array.isArray(schema)) {
-      for (const s of schema) {
+    if (!this.isSchemaDefinition(schema)) {
+      let checkedSchemas = 0;
+      for (const s of Object.values(schema)) {
+        if (!s || typeof s !== "object") {
+          continue;
+        }
+
+        checkedSchemas += 1;
         const subValidation = this.validateSchema(data, s, path);
         if (!subValidation.valid) {
           Object.assign(errors, subValidation.errors);
@@ -371,6 +450,18 @@ export default class Task extends SignalEmitter implements Graph {
         }
       }
 
+      if (checkedSchemas === 0) {
+        return { valid: true, errors };
+      }
+
+      return { valid: false, errors };
+    }
+
+    if (
+      schema.type === "object" &&
+      (typeof data !== "object" || data === null || Array.isArray(data))
+    ) {
+      errors[path] = `Expected 'object' for '${path}', got '${typeof data}'`;
       return { valid: false, errors };
     }
 
@@ -387,22 +478,10 @@ export default class Task extends SignalEmitter implements Graph {
     for (const [key, value] of Object.entries(data)) {
       if (key in properties) {
         const prop = properties[key];
-        if (Array.isArray(prop)) {
-          let propErrors: Record<string, string> = {};
-          for (const p of prop) {
-            const pe = this.validateProp(p, key, value, path);
-            if (Object.keys(pe).length > 0) {
-              Object.assign(propErrors, pe);
-            } else {
-              propErrors = {};
-              break;
-            }
-          }
-
-          Object.assign(errors, propErrors);
-        } else {
-          Object.assign(errors, this.validateProp(prop, key, value, path));
-        }
+        Object.assign(
+          errors,
+          this.validateValueAgainstSchema(prop, key, value, path),
+        );
       } else if (schema.strict) {
         errors[`${path}.${key}`] = `Key '${key}' is not allowed`;
       }
@@ -452,23 +531,13 @@ export default class Task extends SignalEmitter implements Graph {
         `Expected 'object' for '${key}', got '${typeof value}'`;
     } else if (propType === "array" && prop.items) {
       value.forEach((item: any, index: number) => {
-        if (Array.isArray(prop.items)) {
-          for (const p of prop.items) {
-            Object.assign(
-              errors,
-              this.validateProp(p, key, item, `${path}.${key}[${index}]`),
-            );
-          }
-        } else {
-          Object.assign(
-            errors,
-            this.validateProp(
-              prop.items as SchemaDefinition,
-              key,
-              item,
-              `${path}.${key}[${index}]`,
-            ),
-          );
+        const validation = this.validateSchema(
+          item,
+          prop.items as Schema,
+          `${path}.${key}[${index}]`,
+        );
+        if (!validation.valid) {
+          Object.assign(errors, validation.errors);
         }
       });
     } else if (
@@ -1035,10 +1104,18 @@ export default class Task extends SignalEmitter implements Graph {
       Cadenza.inquiryBroker.observe(intentName, this);
       const intent = Cadenza.inquiryBroker.intents.get(intentName);
       if (intent?.input) {
-        this.inputContextSchema = intent.input;
+        this.inputContextSchema = this.mergeSchemaVariant(
+          this.inputContextSchema,
+          intentName,
+          intent.input,
+        );
       }
       if (intent?.output) {
-        this.outputContextSchema = intent.output;
+        this.outputContextSchema = this.mergeSchemaVariant(
+          this.outputContextSchema,
+          intentName,
+          intent.output,
+        );
       }
     }
 

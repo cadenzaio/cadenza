@@ -7,6 +7,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsup",
+    "prepare": "npm run build",
     "docs": "typedoc --out docs"
   },
   "main": "dist/index.js",

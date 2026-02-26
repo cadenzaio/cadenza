@@ -31,4 +31,5 @@ export type SchemaDefinition = {
   strict?: boolean; // Optional for strict mode
 };
 
-export type Schema = SchemaDefinition | SchemaDefinition[];
+export type SchemaMap = Record<string, SchemaDefinition>;
+export type Schema = SchemaDefinition | SchemaMap;

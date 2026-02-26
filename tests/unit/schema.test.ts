@@ -175,4 +175,99 @@ describe("Task schema", () => {
       "Node error: {\"context.bar\":\"Expected 'string' for 'bar', got 'number'\"}",
     );
   });
+
+  it("should validate against schema map variants", () => {
+    const task = Cadenza.createTask(
+      "schema map task",
+      (context) => context,
+      "Schema map validation",
+      {
+        inputSchema: {
+          "intent-alpha": {
+            type: "object",
+            properties: {
+              alpha: { type: "string" },
+            },
+            required: ["alpha"],
+          },
+          "intent-beta": {
+            type: "object",
+            properties: {
+              beta: { type: "number" },
+            },
+            required: ["beta"],
+          },
+        },
+        validateInputContext: true,
+      },
+    );
+
+    expect(task.validateInput({ alpha: "ok" })).toBe(true);
+    expect(task.validateInput({ beta: 1 })).toBe(true);
+    expect(task.validateInput({ beta: "1" })).toHaveProperty("errored", true);
+  });
+
+  it("should merge multiple intent schemas on respondsTo", () => {
+    Cadenza.defineIntent({
+      name: "intent-schema-alpha",
+      input: {
+        type: "object",
+        properties: {
+          alpha: { type: "string" },
+        },
+        required: ["alpha"],
+      },
+      output: {
+        type: "object",
+        properties: {
+          alphaResult: { type: "string" },
+        },
+      },
+    });
+    Cadenza.defineIntent({
+      name: "intent-schema-beta",
+      input: {
+        type: "object",
+        properties: {
+          beta: { type: "number" },
+        },
+        required: ["beta"],
+      },
+      output: {
+        type: "object",
+        properties: {
+          betaResult: { type: "number" },
+        },
+      },
+    });
+
+    const task = Cadenza.createTask(
+      "responds to schema map task",
+      (context) => context,
+      "RespondsTo schema merge",
+      {
+        validateInputContext: true,
+      },
+    ).respondsTo("intent-schema-alpha", "intent-schema-beta");
+
+    expect(task.inputContextSchema).toMatchObject({
+      "intent-schema-alpha": {
+        type: "object",
+      },
+      "intent-schema-beta": {
+        type: "object",
+      },
+    });
+    expect(task.outputContextSchema).toMatchObject({
+      "intent-schema-alpha": {
+        type: "object",
+      },
+      "intent-schema-beta": {
+        type: "object",
+      },
+    });
+    expect(task.validateInput({ alpha: "ok" })).toBe(true);
+    expect(task.validateInput({ beta: 2 })).toBe(true);
+    expect(task.validateInput({ gamma: true })).toHaveProperty("errored", true);
+  });
 });
