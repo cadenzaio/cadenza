@@ -15,7 +15,9 @@ export interface Intent {
 }
 
 export interface InquiryOptions {
-  timeout: number;
+  timeout?: number;
+  rejectOnTimeout?: boolean;
+  includePendingTasks?: boolean;
 }
 
 export default class InquiryBroker extends SignalEmitter {
@@ -168,53 +170,97 @@ export default class InquiryBroker extends SignalEmitter {
   inquire(
     inquiry: string,
     context: AnyObject,
-    options: InquiryOptions = {
-      timeout: 0,
-    },
+    options: InquiryOptions = {},
   ): Promise<AnyObject> {
     const tasks = this.inquiryObservers.get(inquiry)?.tasks;
-    if (!tasks) {
+    if (!tasks || tasks.size === 0) {
       return Promise.resolve({});
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       this.emit("meta.inquiry_broker.inquire", {});
       let joinedContext: any = {};
-      const pendingTasks = Array.from(tasks).map((task) => task.name);
+      const taskCount = tasks.size;
+      const pendingTaskNamesByInquiryId = new Map<string, string>();
+      const timeoutMs = Number(options.timeout ?? 0);
+      const normalizedTimeoutMs =
+        Number.isFinite(timeoutMs) && timeoutMs > 0
+          ? Math.trunc(timeoutMs)
+          : 0;
+      const rejectOnTimeout = options.rejectOnTimeout === true;
+      const includePendingTasks = options.includePendingTasks !== false;
 
       const resolveTasks: Task[] = [];
       let timeoutId: NodeJS.Timeout | undefined;
+      let settled = false;
 
-      if (options.timeout > 0) {
+      const cleanup = () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = undefined;
+        }
+
+        for (const resolveTask of resolveTasks) {
+          resolveTask.destroy();
+        }
+      };
+
+      const finalize = (resultContext: AnyObject, isTimeout = false) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+
+        if (isTimeout && rejectOnTimeout) {
+          reject(resultContext);
+          return;
+        }
+
+        resolve(resultContext);
+      };
+
+      if (normalizedTimeoutMs > 0) {
         timeoutId = setTimeout(() => {
-          for (const resolveTask of resolveTasks) {
-            resolveTask.destroy();
-          }
-
-          resolve({
+          const pendingTasks = Array.from(pendingTaskNamesByInquiryId.values());
+          const timeoutContext: AnyObject = {
+            ...joinedContext,
             __error: "Inquire timeout",
             errored: true,
-            pendingTasks,
-            ...joinedContext,
-          });
-        }, options.timeout);
+            timedOut: true,
+            __inquiryMeta: {
+              inquiry,
+              timedOut: true,
+              timeout: normalizedTimeoutMs,
+              totalTasks: taskCount,
+              completedTasks: taskCount - pendingTasks.length,
+              pendingTasks,
+            },
+          };
+
+          if (includePendingTasks) {
+            timeoutContext.pendingTasks = pendingTasks;
+          }
+
+          finalize(timeoutContext, true);
+        }, normalizedTimeoutMs);
       }
 
       for (const task of tasks) {
         const inquiryId = uuid();
+        pendingTaskNamesByInquiryId.set(inquiryId, task.name);
         resolveTasks.push(
           Cadenza.createEphemeralMetaTask(
             `Resolve inquiry for ${inquiry}`,
             (ctx) => {
-              joinedContext = { ...joinedContext, ...ctx };
-              pendingTasks.splice(pendingTasks.indexOf(task.name), 1);
-              if (pendingTasks.length === 0) {
-                resolve(joinedContext);
+              if (settled) {
+                return;
               }
 
-              if (timeoutId) {
-                clearTimeout(timeoutId);
-                timeoutId = undefined;
+              joinedContext = { ...joinedContext, ...ctx };
+              pendingTaskNamesByInquiryId.delete(inquiryId);
+              if (pendingTaskNamesByInquiryId.size === 0) {
+                finalize(joinedContext);
               }
             },
             "",
@@ -240,5 +286,10 @@ export default class InquiryBroker extends SignalEmitter {
         }
       }
     });
+  }
+
+  reset() {
+    this.inquiryObservers.clear();
+    this.intents.clear();
   }
 }

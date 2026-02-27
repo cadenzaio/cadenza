@@ -383,6 +383,21 @@ export default class SignalBroker {
     this.strategyTimers.clear();
     this.strategyData.clear();
     this.isStrategyFlushing.clear();
+
+    // Keep configured strategies valid after reset/shutdown.
+    for (const [name] of this.flushStrategies.entries()) {
+      this.strategyData.set(name, new Map());
+      this.strategyTimers.set(name, null);
+      this.isStrategyFlushing.set(name, false);
+    }
+  }
+
+  private clearScheduledState(): void {
+    if (this.scheduleTimer) {
+      clearTimeout(this.scheduleTimer);
+      this.scheduleTimer = null;
+    }
+    this.scheduledBuckets.clear();
   }
 
   // ── Schedule (Bucketed) ─────────────────────────────────────────────
@@ -461,6 +476,24 @@ export default class SignalBroker {
   >();
 
   private readonly MAX_DEBOUNCERS = 5000;
+
+  private clearDebounceState(): void {
+    for (const entry of this.debouncedEmitters.values()) {
+      entry.debouncedFn.cancel();
+      if (entry.idleTimeout) {
+        clearTimeout(entry.idleTimeout);
+      }
+    }
+    this.debouncedEmitters.clear();
+  }
+
+  private clearThrottleState(): void {
+    for (const queue of this.throttleQueues.values()) {
+      queue.length = 0;
+    }
+    this.throttleQueues.clear();
+    this.throttleEmitters.clear();
+  }
 
   debounce(signal: string, context: any, options = { delayMs: 500 }) {
     if (this.debouncedEmitters.size > this.MAX_DEBOUNCERS) {
@@ -873,12 +906,15 @@ export default class SignalBroker {
   }
 
   reset() {
+    this.clearSquashState();
+    this.clearScheduledState();
+    this.clearDebounceState();
+    this.clearThrottleState();
     this.signalObservers.clear();
     this.emittedSignalsRegistry.clear();
   }
 
   public shutdown(): void {
-    this.clearSquashState();
     this.reset();
   }
 }

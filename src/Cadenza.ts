@@ -854,6 +854,7 @@ export default class Cadenza {
 
   static reset() {
     this.signalBroker?.reset();
+    this.inquiryBroker?.reset();
     this.registry?.reset();
     this.isBootstrapped = false;
   }

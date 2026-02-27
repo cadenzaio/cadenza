@@ -1212,6 +1212,10 @@ export default class Task extends SignalEmitter implements Graph {
    */
   public destroy(): void {
     this.unsubscribeAll();
+    for (const intentName of this.handlesIntents) {
+      Cadenza.inquiryBroker?.unsubscribe(intentName, this);
+    }
+    this.handlesIntents.clear();
     this.detachAllSignals();
 
     this.predecessorTasks.forEach((pred) => pred.nextTasks.delete(this));
