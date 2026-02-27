@@ -1,3 +1,10 @@
+# [3.20.0](https://github.com/cadenzaio/cadenza/compare/v3.19.5...v3.20.0) (2026-02-27)
+
+
+### Features
+
+* **schema:** support map-based schema variants for intents ([40e4060](https://github.com/cadenzaio/cadenza/commit/40e4060c74994045319bc4c66a03626cad4b05d3))
+
 ## [3.19.5](https://github.com/cadenzaio/cadenza/compare/v3.19.4...v3.19.5) (2026-02-25)
 
 
