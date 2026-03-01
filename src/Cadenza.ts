@@ -12,6 +12,16 @@ import GraphStandardRun from "./engine/strategy/GraphStandardRun";
 import { Schema } from "./types/schema";
 import { AnyObject } from "./types/global";
 import InquiryBroker, { InquiryOptions, Intent } from "./engine/InquiryBroker";
+import Actor, {
+  ActorDefinition,
+  ActorDefinitionFactoryOptions,
+  ActorFactoryOptions,
+  ActorInitContext,
+  ActorInitHandler,
+  ActorInitResult,
+  ActorSpec,
+  getActorTaskRuntimeMetadata,
+} from "./actors/Actor";
 
 export interface TaskOptions {
   concurrency?: number;
@@ -45,6 +55,7 @@ export default class Cadenza {
   public static runner: GraphRunner;
   public static metaRunner: GraphRunner;
   public static registry: GraphRegistry;
+  private static taskCache: Map<string, Task> = new Map();
   static isBootstrapped = false;
   static mode: CadenzaMode = "production";
 
@@ -145,6 +156,158 @@ export default class Cadenza {
     // Further uniqueness check delegated to GraphRegistry.register*
   }
 
+  private static resolveTaskOptionsForActorTask(
+    func: TaskFunction,
+    options: TaskOptions = {},
+  ): TaskOptions {
+    const metadata = getActorTaskRuntimeMetadata(func);
+    if (!metadata?.forceMeta) {
+      return options;
+    }
+
+    if (options.isMeta) {
+      return options;
+    }
+
+    return {
+      ...options,
+      isMeta: true,
+    };
+  }
+
+  private static applyActorInitResult<
+    D extends Record<string, any>,
+    R = AnyObject,
+  >(
+    context: ActorInitContext<D, R>,
+    result: unknown,
+  ): void {
+    if (result === undefined) {
+      return;
+    }
+
+    if (
+      typeof result === "object" &&
+      result !== null &&
+      ("durableState" in result || "runtimeState" in result || "state" in result)
+    ) {
+      const normalizedResult = result as ActorInitResult<D, R>;
+      if (normalizedResult.state !== undefined) {
+        context.setState(normalizedResult.state);
+      }
+      if (normalizedResult.durableState !== undefined) {
+        context.setDurableState(normalizedResult.durableState);
+      }
+      if (normalizedResult.runtimeState !== undefined) {
+        context.setRuntimeState(normalizedResult.runtimeState);
+      }
+      return;
+    }
+
+    context.setState(result as D);
+  }
+
+  private static createActorInitHandlerFromDefinition<
+    D extends Record<string, any>,
+    R = AnyObject,
+  >(
+    definition: ActorDefinition<D, R>,
+    options: ActorDefinitionFactoryOptions<D, R>,
+  ): ActorInitHandler<D, R> | undefined {
+    const runtimeFactoryToken = definition.state?.runtime?.factoryToken;
+    const initHandlerToken = definition.lifecycle?.initHandlerToken;
+    const initTaskName = definition.lifecycle?.initTaskName;
+    const initRoutineName = definition.lifecycle?.initRoutineName;
+
+    if (
+      !runtimeFactoryToken &&
+      !initHandlerToken &&
+      !initTaskName &&
+      !initRoutineName
+    ) {
+      return undefined;
+    }
+
+    return async (context) => {
+      if (runtimeFactoryToken) {
+        const runtimeFactory = options.runtimeFactories?.[runtimeFactoryToken];
+        if (!runtimeFactory) {
+          throw new Error(
+            `Actor "${definition.name}" requires runtimeFactory token "${runtimeFactoryToken}"`,
+          );
+        }
+
+        const runtimeState = await runtimeFactory({
+          definition,
+          actor: {
+            name: context.actor.name,
+            key: context.actor.key,
+            kind: context.actor.kind,
+          },
+          input: context.input,
+          config: definition.state?.runtime?.factoryConfig,
+        });
+        context.setRuntimeState(runtimeState);
+      }
+
+      if (initHandlerToken) {
+        const initHandler = options.initHandlers?.[initHandlerToken];
+        if (!initHandler) {
+          throw new Error(
+            `Actor "${definition.name}" requires initHandler token "${initHandlerToken}"`,
+          );
+        }
+
+        const initHandlerResult = await initHandler(context);
+        this.applyActorInitResult(context, initHandlerResult);
+      }
+
+      if (initTaskName) {
+        const initTask = this.get(initTaskName);
+        if (!initTask) {
+          throw new Error(
+            `Actor "${definition.name}" initTask "${initTaskName}" is not registered`,
+          );
+        }
+
+        const initTaskResult = await initTask.taskFunction(
+          {
+            ...context.input,
+            __actorInit: {
+              actor: context.actor,
+              options: context.options,
+              durableBaseState: context.durableBaseState,
+              runtimeBaseState: context.runtimeBaseState,
+            },
+          },
+          () => undefined,
+          async () => ({}),
+          () => undefined,
+        );
+        this.applyActorInitResult(context, initTaskResult);
+      }
+
+      if (initRoutineName) {
+        const initRoutine = this.getRoutine(initRoutineName);
+        if (!initRoutine) {
+          throw new Error(
+            `Actor "${definition.name}" initRoutine "${initRoutineName}" is not registered`,
+          );
+        }
+
+        this.run(initRoutine, {
+          ...context.input,
+          __actorInit: {
+            actor: context.actor,
+            options: context.options,
+            durableBaseState: context.durableBaseState,
+            runtimeBaseState: context.runtimeBaseState,
+          },
+        });
+      }
+    };
+  }
+
   /**
    * Executes the specified task or GraphRoutine with the given context using an internal runner.
    *
@@ -225,7 +388,7 @@ export default class Cadenza {
   }
 
   public static get(taskName: string): Task | undefined {
-    return this.registry?.tasks.get(taskName);
+    return this.registry?.tasks.get(taskName) ?? this.taskCache.get(taskName);
   }
 
   public static getRoutine(routineName: string): GraphRoutine | undefined {
@@ -243,6 +406,61 @@ export default class Cadenza {
     options?: InquiryOptions,
   ): Promise<any> {
     return this.inquiryBroker?.inquire(inquiry, context, options);
+  }
+
+  public static createActor<
+    D extends Record<string, any> = AnyObject,
+    R = AnyObject,
+  >(
+    spec: ActorSpec<D, R>,
+    options: ActorFactoryOptions = {},
+  ): Actor<D, R> {
+    this.bootstrap();
+    return new Actor<D, R>(spec, options as ActorFactoryOptions<D, R>);
+  }
+
+  public static createActorFromDefinition<
+    D extends Record<string, any> = AnyObject,
+    R = AnyObject,
+  >(
+    definition: ActorDefinition<D, R>,
+    options: ActorDefinitionFactoryOptions<D, R> = {},
+  ): Actor<D, R> {
+    this.bootstrap();
+
+    if (!definition.description || !definition.description.trim()) {
+      throw new Error(
+        `Actor definition "${definition.name}" requires a non-empty description`,
+      );
+    }
+
+    const spec: ActorSpec<D, R> = {
+      name: definition.name,
+      description: definition.description,
+      defaultKey: definition.defaultKey,
+      kind: definition.kind,
+      loadPolicy: definition.loadPolicy,
+      writeContract: definition.writeContract,
+      consistencyProfile: definition.consistencyProfile,
+      retry: definition.retry,
+      idempotency: definition.idempotency,
+      session: definition.session,
+      runtimeReadGuard: definition.runtimeReadGuard,
+      key: definition.key,
+      state: definition.state,
+      lifecycle: definition.lifecycle,
+      taskBindings: definition.tasks,
+      initialDurableState: definition.state?.durable?.initialState,
+      initialRuntimeState: definition.state?.runtime?.initialState,
+      init: this.createActorInitHandlerFromDefinition(definition, options),
+    };
+
+    const actorOptions: ActorFactoryOptions<D, R> = {
+      isMeta: options.isMeta,
+      definitionSource: definition,
+    };
+
+    return new Actor<D, R>(spec, actorOptions);
   }
 
   /**
@@ -326,6 +544,11 @@ export default class Cadenza {
     this.bootstrap();
     this.validateName(name);
 
+    const actorResolvedOptions = this.resolveTaskOptionsForActorTask(
+      func,
+      options,
+    );
+
     options = {
       concurrency: 0,
       timeout: 0,
@@ -343,10 +566,10 @@ export default class Cadenza {
       retryDelay: 0,
       retryDelayMax: 0,
       retryDelayFactor: 1,
-      ...options,
+      ...actorResolvedOptions,
     };
 
-    return new Task(
+    const createdTask = new Task(
       name,
       func,
       description,
@@ -367,6 +590,8 @@ export default class Cadenza {
       options.retryDelayMax,
       options.retryDelayFactor,
     );
+    this.taskCache.set(name, createdTask);
+    return createdTask;
   }
 
   /**
@@ -582,6 +807,11 @@ export default class Cadenza {
     this.bootstrap();
     this.validateName(name);
 
+    const actorResolvedOptions = this.resolveTaskOptionsForActorTask(
+      func,
+      options,
+    );
+
     options = {
       concurrency: 0,
       timeout: 0,
@@ -597,10 +827,10 @@ export default class Cadenza {
       validateInputContext: false,
       outputSchema: undefined,
       validateOutputContext: false,
-      ...options,
+      ...actorResolvedOptions,
     };
 
-    return new DebounceTask(
+    const createdTask = new DebounceTask(
       name,
       func,
       description,
@@ -620,6 +850,8 @@ export default class Cadenza {
       options.outputSchema,
       options.validateOutputContext,
     );
+    this.taskCache.set(name, createdTask);
+    return createdTask;
   }
 
   /**
@@ -719,6 +951,11 @@ export default class Cadenza {
     this.bootstrap();
     this.validateName(name);
 
+    const actorResolvedOptions = this.resolveTaskOptionsForActorTask(
+      func,
+      options,
+    );
+
     options = {
       concurrency: 0,
       timeout: 0,
@@ -738,10 +975,10 @@ export default class Cadenza {
       retryDelay: 0,
       retryDelayMax: 0,
       retryDelayFactor: 1,
-      ...options,
+      ...actorResolvedOptions,
     };
 
-    return new EphemeralTask(
+    const createdTask = new EphemeralTask(
       name,
       func,
       description,
@@ -764,6 +1001,8 @@ export default class Cadenza {
       options.retryDelayMax,
       options.retryDelayFactor,
     );
+    this.taskCache.set(name, createdTask);
+    return createdTask;
   }
 
   /**
@@ -856,6 +1095,7 @@ export default class Cadenza {
     this.signalBroker?.reset();
     this.inquiryBroker?.reset();
     this.registry?.reset();
+    this.taskCache.clear();
     this.isBootstrapped = false;
   }
 }
