@@ -1,3 +1,15 @@
+# [3.21.0](https://github.com/cadenzaio/cadenza/compare/v3.20.0...v3.21.0) (2026-03-01)
+
+
+### Bug Fixes
+
+* **core:** harden inquiry timeout lifecycle and runtime cleanup ([693f04e](https://github.com/cadenzaio/cadenza/commit/693f04e4a1ef5f2dd26ed05acdd1c4b6698750bc))
+
+
+### Features
+
+* **core:** add Actor framework with state, lifecycle, and task management ([db97170](https://github.com/cadenzaio/cadenza/commit/db97170668e46980ea6c110bd060e8bc80b0d35b))
+
 # [3.20.0](https://github.com/cadenzaio/cadenza/compare/v3.19.5...v3.20.0) (2026-02-27)
 
 
