@@ -16,6 +16,10 @@ async function invokeTask(task: TaskFunction, context: AnyObject = {}) {
   return task(context, noopEmit, noopInquire, noopProgress);
 }
 
+async function nextTick() {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+}
+
 describe("Actor runtime", () => {
   beforeEach(() => {
     Cadenza.reset();
@@ -646,5 +650,77 @@ describe("Actor runtime", () => {
     const task = actor.task(({ state }) => state, { mode: "read" });
 
     await expect(invokeTask(task)).rejects.toThrow("requires idempotencyKey");
+  });
+
+  it("registers actors in Cadenza actor cache and clears them on reset", () => {
+    const actor = Cadenza.createActor({
+      name: "CachedActor",
+      description: "Actor cache test",
+      defaultKey: "default",
+      initState: { count: 0 },
+    });
+
+    expect(Cadenza.getActor("CachedActor")).toBe(actor);
+    expect(
+      Cadenza.getAllActors().some((registered) => registered.spec.name === "CachedActor"),
+    ).toBe(true);
+
+    Cadenza.reset();
+    expect(Cadenza.getActor("CachedActor")).toBeUndefined();
+    expect(Cadenza.getAllActors()).toHaveLength(0);
+  });
+
+  it("emits actor metadata and actor-task association metadata", async () => {
+    let createdActorPayload: AnyObject | undefined;
+    let actorTaskAssociationPayload: AnyObject | undefined;
+
+    Cadenza.createMetaTask("Capture actor created payload", (ctx) => {
+      createdActorPayload = ctx;
+      return true;
+    }).doOn("meta.actor.created");
+
+    Cadenza.createMetaTask("Capture actor task association payload", (ctx) => {
+      actorTaskAssociationPayload = ctx;
+      return true;
+    }).doOn("meta.actor.task_associated");
+
+    const actor = Cadenza.createActor({
+      name: "SignalActor",
+      description: "Actor metadata emission test",
+      defaultKey: "signal-default",
+      state: {
+        durable: {
+          initState: () => ({ count: 1 }),
+        },
+      },
+    });
+
+    Cadenza.createTask(
+      "Signal Actor Task",
+      actor.task(({ state }) => state, { mode: "write" }),
+      "Actor task association test",
+    );
+
+    await nextTick();
+
+    expect(createdActorPayload?.data).toMatchObject({
+      name: "SignalActor",
+      description: "Actor metadata emission test",
+      default_key: "signal-default",
+      is_meta: false,
+      version: 1,
+    });
+    expect(
+      createdActorPayload?.data?.state_definition?.durable?.initState,
+    ).toBeUndefined();
+
+    expect(actorTaskAssociationPayload?.data).toMatchObject({
+      actor_name: "SignalActor",
+      task_name: "Signal Actor Task",
+      task_version: 1,
+      mode: "write",
+      description: "Actor task association test",
+      is_meta: false,
+    });
   });
 });

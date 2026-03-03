@@ -52,6 +52,7 @@ export default class Cadenza {
   public static metaRunner: GraphRunner;
   public static registry: GraphRegistry;
   private static taskCache: Map<string, Task> = new Map();
+  private static actorCache: Map<string, Actor<any, any>> = new Map();
   static isBootstrapped = false;
   static mode: CadenzaMode = "production";
 
@@ -171,6 +172,10 @@ export default class Cadenza {
     };
   }
 
+  private static registerActor(actor: Actor<any, any>): void {
+    this.actorCache.set(actor.spec.name, actor);
+  }
+
   /**
    * Executes the specified task or GraphRoutine with the given context using an internal runner.
    *
@@ -254,6 +259,20 @@ export default class Cadenza {
     return this.registry?.tasks.get(taskName) ?? this.taskCache.get(taskName);
   }
 
+  public static getActor<
+    D extends Record<string, any> = AnyObject,
+    R = AnyObject,
+  >(actorName: string): Actor<D, R> | undefined {
+    return this.actorCache.get(actorName) as Actor<D, R> | undefined;
+  }
+
+  public static getAllActors<
+    D extends Record<string, any> = AnyObject,
+    R = AnyObject,
+  >(): Actor<D, R>[] {
+    return Array.from(this.actorCache.values()) as Actor<D, R>[];
+  }
+
   public static getRoutine(routineName: string): GraphRoutine | undefined {
     return this.registry?.routines.get(routineName);
   }
@@ -280,12 +299,11 @@ export default class Cadenza {
   public static createActor<
     D extends Record<string, any> = AnyObject,
     R = AnyObject,
-  >(
-    spec: ActorSpec<D, R>,
-    options: ActorFactoryOptions = {},
-  ): Actor<D, R> {
+  >(spec: ActorSpec<D, R>, options: ActorFactoryOptions = {}): Actor<D, R> {
     this.bootstrap();
-    return new Actor<D, R>(spec, options as ActorFactoryOptions<D, R>);
+    const actor = new Actor<D, R>(spec, options as ActorFactoryOptions<D, R>);
+    this.registerActor(actor);
+    return actor;
   }
 
   /**
@@ -327,7 +345,9 @@ export default class Cadenza {
       initState:
         definition.state?.durable?.initState ??
         (
-          definition.state?.durable as { initialState?: D | (() => D) } | undefined
+          definition.state?.durable as
+            | { initialState?: D | (() => D) }
+            | undefined
         )?.initialState,
     };
 
@@ -336,7 +356,7 @@ export default class Cadenza {
       definitionSource: definition,
     };
 
-    return new Actor<D, R>(spec, actorOptions);
+    return this.createActor(spec, actorOptions);
   }
 
   /**
@@ -972,6 +992,7 @@ export default class Cadenza {
     this.inquiryBroker?.reset();
     this.registry?.reset();
     this.taskCache.clear();
+    this.actorCache.clear();
     this.isBootstrapped = false;
   }
 }

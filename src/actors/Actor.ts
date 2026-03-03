@@ -1,5 +1,6 @@
 import { AnyObject } from "../types/global";
 import { InquiryOptions } from "../engine/InquiryBroker";
+import Cadenza from "../Cadenza";
 import type { TaskFunction, TaskResult } from "../graph/definition/Task";
 
 /**
@@ -378,6 +379,37 @@ function cloneForIdempotency<T>(value: T): T {
   }
 }
 
+function sanitizeActorMetadataValue(value: unknown): unknown {
+  if (value === null) {
+    return null;
+  }
+  if (value === undefined || typeof value === "function") {
+    return undefined;
+  }
+  if (Array.isArray(value)) {
+    const items: unknown[] = [];
+    for (const item of value) {
+      const sanitizedItem = sanitizeActorMetadataValue(item);
+      if (sanitizedItem !== undefined) {
+        items.push(sanitizedItem);
+      }
+    }
+    return items;
+  }
+  if (typeof value === "object") {
+    const output: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value)) {
+      const sanitizedNestedValue = sanitizeActorMetadataValue(nestedValue);
+      if (sanitizedNestedValue !== undefined) {
+        output[key] = sanitizedNestedValue;
+      }
+    }
+    return output;
+  }
+
+  return value;
+}
+
 function isObject(value: unknown): value is Record<string, any> {
   return value !== null && typeof value === "object";
 }
@@ -499,6 +531,8 @@ export default class Actor<
     if ((this.spec.loadPolicy ?? "eager") === "eager") {
       this.ensureStateRecord(this.spec.defaultKey);
     }
+
+    this.emitActorCreatedSignal();
   }
 
   /**
@@ -1079,5 +1113,39 @@ export default class Actor<
     }
 
     return record;
+  }
+
+  private emitActorCreatedSignal(): void {
+    Cadenza.signalBroker.registerEmittedSignal("meta.actor.created");
+
+    const definition = sanitizeActorMetadataValue(
+      this.toDefinition(),
+    ) as Record<string, unknown>;
+    const stateDefinition =
+      definition.state && typeof definition.state === "object"
+        ? definition.state
+        : {};
+
+    Cadenza.emit("meta.actor.created", {
+      data: {
+        name: definition.name ?? this.spec.name,
+        description: definition.description ?? "",
+        default_key: definition.defaultKey ?? this.spec.defaultKey,
+        load_policy: definition.loadPolicy ?? this.spec.loadPolicy ?? "eager",
+        write_contract:
+          definition.writeContract ?? this.spec.writeContract ?? "overwrite",
+        runtime_read_guard:
+          definition.runtimeReadGuard ?? this.spec.runtimeReadGuard ?? "none",
+        consistency_profile:
+          definition.consistencyProfile ?? this.spec.consistencyProfile ?? null,
+        key_definition: definition.key ?? null,
+        state_definition: stateDefinition,
+        retry_policy: definition.retry ?? {},
+        idempotency_policy: definition.idempotency ?? {},
+        session_policy: definition.session ?? {},
+        is_meta: this.kind === "meta",
+        version: 1,
+      },
+    });
   }
 }

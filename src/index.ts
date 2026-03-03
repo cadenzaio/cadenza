@@ -12,6 +12,7 @@ import GraphRoutine from "./graph/definition/GraphRoutine";
 import Actor, {
   type ActorDefinition,
   type ActorConsistencyProfileName,
+  type ActorTaskRuntimeMetadata,
   type ActorKeyDefinition,
   type ActorFactoryOptions,
   type ActorInvocationOptions,
@@ -31,6 +32,7 @@ import Actor, {
   type IdempotencyPolicy,
   type RetryPolicy,
   type SessionPolicy,
+  getActorTaskRuntimeMetadata,
 } from "./actors/Actor";
 import Task, {
   TaskFunction,
@@ -66,6 +68,7 @@ export type {
   ActorTaskBindingOptions,
   ActorTaskContext,
   ActorTaskHandler,
+  ActorTaskRuntimeMetadata,
   ActorStateReducer,
   RetryPolicy,
   IdempotencyPolicy,
@@ -91,6 +94,7 @@ export {
   GraphRoutine,
   DebounceTask,
   EphemeralTask,
+  getActorTaskRuntimeMetadata,
   SignalEmitter,
   GraphContext,
   GraphRegistry,

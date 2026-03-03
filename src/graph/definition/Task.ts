@@ -8,6 +8,7 @@ import { Schema, SchemaDefinition } from "../../types/schema";
 import SignalEmitter from "../../interfaces/SignalEmitter";
 import Cadenza from "../../Cadenza";
 import { InquiryOptions } from "../../engine/InquiryBroker";
+import { getActorTaskRuntimeMetadata } from "../../actors/Actor";
 
 export type TaskFunction = (
   context: AnyObject,
@@ -146,6 +147,7 @@ export default class Task extends SignalEmitter implements Graph {
 
     this.attachSignal(
       "meta.task.created",
+      "meta.actor.task_associated",
       "meta.task.destroyed",
       "meta.task.output_validation_failed",
       "meta.task.input_validation_failed",
@@ -208,6 +210,23 @@ export default class Task extends SignalEmitter implements Graph {
         taskInstance: this,
         __isSubMeta: this.isSubMeta,
       });
+
+      const actorTaskMetadata = getActorTaskRuntimeMetadata(this.taskFunction);
+      if (actorTaskMetadata) {
+        this.emitWithMetadata("meta.actor.task_associated", {
+          data: {
+            actor_name: actorTaskMetadata.actorName,
+            actor_version: 1,
+            task_name: this.name,
+            task_version: this.version,
+            mode: actorTaskMetadata.mode,
+            description: this.description ?? "",
+            is_meta:
+              actorTaskMetadata.actorKind === "meta" || this.isMeta === true,
+          },
+          __isSubMeta: this.isSubMeta,
+        });
+      }
     }
   }
 
