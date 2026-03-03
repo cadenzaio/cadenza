@@ -1,3 +1,11 @@
+# [3.22.0](https://github.com/cadenzaio/cadenza/compare/v3.21.0...v3.22.0) (2026-03-03)
+
+
+### Features
+
+* **actors:** simplify and unify `initState` handling for actors; remove legacy init lifecycle components ([36ab4b7](https://github.com/cadenzaio/cadenza/commit/36ab4b7b614be7bf762543120ac9a298c82c9dff))
+* **actors:** simplify and unify `initState` handling for actors; remove legacy init lifecycle components ([6a12432](https://github.com/cadenzaio/cadenza/commit/6a124326e994f99e638e25639b3b7284e8b00d44))
+
 # [3.21.0](https://github.com/cadenzaio/cadenza/compare/v3.20.0...v3.21.0) (2026-03-01)
 
 
