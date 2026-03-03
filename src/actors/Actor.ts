@@ -2,22 +2,61 @@ import { AnyObject } from "../types/global";
 import { InquiryOptions } from "../engine/InquiryBroker";
 import type { TaskFunction, TaskResult } from "../graph/definition/Task";
 
+/**
+ * Determines when an actor key should be materialized in memory.
+ * - `eager`: creates the default key record immediately.
+ * - `lazy`: creates key records on first access.
+ */
 export type ActorLoadPolicy = "eager" | "lazy";
+
+/**
+ * Defines how durable writes should be interpreted by actor tasks.
+ * - `overwrite`: replace full durable state.
+ * - `patch`: shallow-merge object fields.
+ * - `reducer`: allow reducer-return handlers.
+ */
 export type ActorWriteContract = "overwrite" | "patch" | "reducer";
+
+/**
+ * Declares the intent of an actor task.
+ * - `read`: no state writes allowed.
+ * - `write`: durable/runtime writes allowed.
+ * - `meta`: write semantics with forced meta task registration.
+ */
 export type ActorTaskMode = "read" | "write" | "meta";
+
+/**
+ * Actor classification.
+ * Meta actors are internal/framework-level actors and force bound tasks to meta.
+ */
 export type ActorKind = "standard" | "meta";
+
+/**
+ * Optional runtime read protection policy.
+ */
 export type ActorRuntimeReadGuard = "none" | "freeze-shallow";
+
+/**
+ * Consistency profile hint used primarily by distributed/service extensions.
+ */
 export type ActorConsistencyProfileName =
   | "strict"
   | "balanced"
   | "cached"
   | "async";
 
+/**
+ * Per-invocation actor options accepted via `context.__actorOptions`.
+ * Only key targeting and idempotency are overridable at invocation level.
+ */
 export interface ActorInvocationOptions {
   actorKey?: string;
   idempotencyKey?: string;
 }
 
+/**
+ * Session expiry/touch behavior for actor keys.
+ */
 export interface SessionPolicy {
   enabled?: boolean;
   idleTtlMs?: number;
@@ -25,6 +64,9 @@ export interface SessionPolicy {
   extendIdleTtlOnRead?: boolean;
 }
 
+/**
+ * Task retry policy metadata for actor definitions/specs.
+ */
 export interface RetryPolicy {
   attempts?: number;
   delayMs?: number;
@@ -32,6 +74,9 @@ export interface RetryPolicy {
   factor?: number;
 }
 
+/**
+ * Idempotency policy for actor task execution.
+ */
 export interface IdempotencyPolicy {
   enabled?: boolean;
   mode?: "required" | "optional";
@@ -39,22 +84,38 @@ export interface IdempotencyPolicy {
   ttlMs?: number;
 }
 
+/**
+ * Declarative actor-key resolution configuration.
+ */
 export type ActorKeyDefinition =
   | { source: "path"; path: string }
   | { source: "field"; field: string }
   | { source: "template"; template: string };
 
+/**
+ * Serializable metadata describing a task bound to an actor.
+ */
 export interface ActorTaskBindingDefinition {
   taskName: string;
   mode?: ActorTaskMode;
   description?: string;
 }
 
+/**
+ * Declarative state schema/configuration for an actor.
+ *
+ * Durable state uses `initState` for bootstrap defaults.
+ * Runtime state is intentionally task-driven (no actor-level init lifecycle hook).
+ */
 export interface ActorStateDefinition<
   D extends Record<string, any>,
   R = AnyObject,
 > {
   durable?: {
+    /**
+     * Initial durable state. Prefer static values for simple cases.
+     * Function form is intended for advanced computed initialization.
+     */
     initState?: D | (() => D);
     schema?: AnyObject;
     description?: string;
@@ -65,6 +126,9 @@ export interface ActorStateDefinition<
   };
 }
 
+/**
+ * Serializable actor definition used for persistence/round-tripping.
+ */
 export interface ActorDefinition<
   D extends Record<string, any>,
   R = AnyObject,
@@ -85,6 +149,9 @@ export interface ActorDefinition<
   tasks?: ActorTaskBindingDefinition[];
 }
 
+/**
+ * Runtime actor specification used by `Cadenza.createActor(...)`.
+ */
 export interface ActorSpec<
   D extends Record<string, any>,
   R = AnyObject,
@@ -92,6 +159,9 @@ export interface ActorSpec<
   name: string;
   description?: string;
   state?: ActorStateDefinition<D, R>;
+  /**
+   * Shortcut durable bootstrap state when `state.durable.initState` is not supplied.
+   */
   initState?: D | (() => D);
   defaultKey: string;
   key?: ActorKeyDefinition;
@@ -107,6 +177,9 @@ export interface ActorSpec<
   taskBindings?: ActorTaskBindingDefinition[];
 }
 
+/**
+ * Optional actor creation flags.
+ */
 export interface ActorFactoryOptions<
   D extends Record<string, any> = Record<string, any>,
   R = AnyObject,
@@ -115,16 +188,25 @@ export interface ActorFactoryOptions<
   definitionSource?: ActorDefinition<D, R>;
 }
 
+/**
+ * Optional per-binding behavior when wrapping actor handlers.
+ */
 export interface ActorTaskBindingOptions {
   mode?: ActorTaskMode;
   touchSession?: boolean;
 }
 
+/**
+ * Reducer function used for state transitions.
+ */
 export type ActorStateReducer<S> = (
   state: S,
   input: AnyObject,
 ) => S;
 
+/**
+ * Fully resolved invocation options used during actor task execution.
+ */
 export interface ActorResolvedInvocationOptions {
   actorKey?: string;
   loadPolicy: ActorLoadPolicy;
@@ -134,6 +216,9 @@ export interface ActorResolvedInvocationOptions {
   touchSession: boolean;
 }
 
+/**
+ * Durable/runtime mutator helpers exposed to actor handlers.
+ */
 export interface ActorStateMutators<
   D extends Record<string, any>,
   R = AnyObject,
@@ -146,6 +231,9 @@ export interface ActorStateMutators<
   reduceRuntime: (reducer: ActorStateReducer<R>) => void;
 }
 
+/**
+ * Combined actor state snapshot and mutators exposed to handlers.
+ */
 export interface ActorStateStore<
   D extends Record<string, any>,
   R = AnyObject,
@@ -157,10 +245,16 @@ export interface ActorStateStore<
   runtimeVersion: number;
 }
 
+/**
+ * Context injected into `actor.task(...)` handlers.
+ */
 export interface ActorTaskContext<
   D extends Record<string, any>,
   R = AnyObject,
 > {
+  /**
+   * Durable state alias retained for backwards ergonomics.
+   */
   state: D;
   durableState: D;
   runtimeState: R;
@@ -193,6 +287,9 @@ export interface ActorTaskContext<
   ) => Promise<AnyObject>;
 }
 
+/**
+ * Handler signature used by `actor.task(...)`.
+ */
 export type ActorTaskHandler<
   D extends Record<string, any>,
   R = AnyObject,
@@ -234,6 +331,9 @@ interface IdempotencyRecord {
   updatedAt: number;
 }
 
+/**
+ * Metadata attached to wrapped actor task functions.
+ */
 export interface ActorTaskRuntimeMetadata {
   actorName: string;
   actorDescription?: string;
@@ -346,12 +446,22 @@ function freezeForReadGuard<T>(value: T): T {
   return Object.freeze(clone) as T;
 }
 
+/**
+ * Reads actor metadata from a wrapped task function if available.
+ */
 export function getActorTaskRuntimeMetadata(
   taskFunction: TaskFunction,
 ): ActorTaskRuntimeMetadata | undefined {
   return (taskFunction as ActorTaskFunction)[ACTOR_TASK_METADATA];
 }
 
+/**
+ * In-memory actor runtime.
+ *
+ * Actors keep durable and runtime state per resolved actor key.
+ * Durable defaults are loaded from `initState`.
+ * Runtime state is intentionally initialized/updated by normal actor write tasks.
+ */
 export default class Actor<
   D extends Record<string, any> = AnyObject,
   R = AnyObject,
@@ -365,6 +475,9 @@ export default class Actor<
   private readonly idempotencyByKey: Map<string, IdempotencyRecord> = new Map();
   private nextTaskBindingIndex = 0;
 
+  /**
+   * Creates an actor instance and optionally materializes the default key.
+   */
   constructor(spec: ActorSpec<D, R>, options: ActorFactoryOptions<D, R> = {}) {
     if (!spec.name || typeof spec.name !== "string") {
       throw new Error("Actor name must be a non-empty string");
@@ -388,6 +501,9 @@ export default class Actor<
     }
   }
 
+  /**
+   * Wraps an actor-aware handler into a standard Cadenza task function.
+   */
   public task(
     handler: ActorTaskHandler<D, R>,
     bindingOptions: ActorTaskBindingOptions = {},
@@ -603,34 +719,55 @@ export default class Actor<
     return wrapped;
   }
 
+  /**
+   * Returns durable state snapshot for the resolved key.
+   */
   public getState(actorKey?: string): D {
     return this.getDurableState(actorKey);
   }
 
+  /**
+   * Returns durable state snapshot for the resolved key.
+   */
   public getDurableState(actorKey?: string): D {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
     return cloneForDurableState(this.ensureStateRecord(key).durableState);
   }
 
+  /**
+   * Returns runtime state reference for the resolved key.
+   */
   public getRuntimeState(actorKey?: string): R {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
     return this.ensureStateRecord(key).runtimeState;
   }
 
+  /**
+   * Alias of `getDurableVersion`.
+   */
   public getVersion(actorKey?: string): number {
     return this.getDurableVersion(actorKey);
   }
 
+  /**
+   * Returns durable state version for the resolved key.
+   */
   public getDurableVersion(actorKey?: string): number {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
     return this.ensureStateRecord(key).version;
   }
 
+  /**
+   * Returns runtime state version for the resolved key.
+   */
   public getRuntimeVersion(actorKey?: string): number {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
     return this.ensureStateRecord(key).runtimeVersion;
   }
 
+  /**
+   * Exports this actor as a serializable definition.
+   */
   public toDefinition(): ActorDefinition<D, R> {
     if (this.sourceDefinition) {
       return cloneForIdempotency(this.sourceDefinition) as ActorDefinition<D, R>;
@@ -666,6 +803,9 @@ export default class Actor<
     };
   }
 
+  /**
+   * Resets one actor key or all keys.
+   */
   public reset(actorKey?: string): void {
     if (actorKey === undefined) {
       this.stateByKey.clear();
@@ -770,6 +910,7 @@ export default class Actor<
   }
 
   private resolveInitialDurableState(): D {
+    // Backwards-compat: accept legacy `state.durable.initialState` when loading old definitions.
     const legacyDefinitionInitialState = (
       this.spec.state?.durable as { initialState?: D | (() => D) } | undefined
     )?.initialState;
@@ -790,6 +931,7 @@ export default class Actor<
   }
 
   private resolveInitialRuntimeState(): R {
+    // Runtime state is task-driven; no implicit actor-level runtime initialization occurs.
     return undefined as R;
   }
 

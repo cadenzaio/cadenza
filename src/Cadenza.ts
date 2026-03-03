@@ -271,6 +271,12 @@ export default class Cadenza {
     return this.inquiryBroker?.inquire(inquiry, context, options);
   }
 
+  /**
+   * Creates an in-memory actor runtime instance.
+   *
+   * Actors are not graph nodes. Use `actor.task(...)` to produce standard tasks that
+   * participate in the graph like any other task.
+   */
   public static createActor<
     D extends Record<string, any> = AnyObject,
     R = AnyObject,
@@ -282,6 +288,12 @@ export default class Cadenza {
     return new Actor<D, R>(spec, options as ActorFactoryOptions<D, R>);
   }
 
+  /**
+   * Creates an actor from a serializable actor definition.
+   *
+   * Durable bootstrap state is resolved from `state.durable.initState`.
+   * For backwards compatibility, legacy `state.durable.initialState` is also accepted.
+   */
   public static createActorFromDefinition<
     D extends Record<string, any> = AnyObject,
     R = AnyObject,
