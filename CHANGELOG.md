@@ -1,3 +1,10 @@
+# [3.23.0](https://github.com/cadenzaio/cadenza/compare/v3.22.0...v3.23.0) (2026-03-03)
+
+
+### Features
+
+* **actors:** add actor metadata handling and signal association for task integration ([4a4c196](https://github.com/cadenzaio/cadenza/commit/4a4c196fd4f4af12f4876b5e1293edc5fe93b830))
+
 # [3.22.0](https://github.com/cadenzaio/cadenza/compare/v3.21.0...v3.22.0) (2026-03-03)
 
 
