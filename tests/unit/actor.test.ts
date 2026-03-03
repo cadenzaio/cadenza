@@ -27,7 +27,7 @@ describe("Actor runtime", () => {
       name: "CounterActor",
       description: "Tracks durable counter values",
       defaultKey: "counter",
-      initialState: { count: 0 },
+      initState: { count: 0 },
       loadPolicy: "eager",
       writeContract: "overwrite",
     });
@@ -54,7 +54,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "IdentityActor",
       defaultKey: "default-identity",
-      initialState: { touched: true },
+      initState: { touched: true },
       keyResolver: (input) => input.userId,
     });
 
@@ -84,19 +84,19 @@ describe("Actor runtime", () => {
       name: "FieldKeyActor",
       defaultKey: "fallback-field",
       key: { source: "field", field: "userId" },
-      initialState: { value: 1 },
+      initState: { value: 1 },
     });
     const pathActor = Cadenza.createActor({
       name: "PathKeyActor",
       defaultKey: "fallback-path",
       key: { source: "path", path: "user.id" },
-      initialState: { value: 1 },
+      initState: { value: 1 },
     });
     const templateActor = Cadenza.createActor({
       name: "TemplateKeyActor",
       defaultKey: "fallback-template",
       key: { source: "template", template: "tenant:{tenantId}:user:{user.id}" },
-      initialState: { value: 1 },
+      initState: { value: 1 },
     });
 
     const fieldKeyTask = fieldActor.task(({ actor }) => actor.key);
@@ -112,62 +112,40 @@ describe("Actor runtime", () => {
     ).resolves.toBe("tenant:t1:user:u3");
   });
 
-  it("creates actors from definitions with runtime factories, init handlers, and init tasks", async () => {
-    Cadenza.createTask(
-      "Definition.InitTask",
-      (ctx) => ({
-        durableState: {
-          ...(ctx.__actorInit?.durableBaseState ?? {}),
-          seededByInitTask: true,
-        },
-      }),
-      "Seeds actor durable state from init task",
-    );
-    expect(Cadenza.get("Definition.InitTask")).toBeDefined();
-
+  it("creates actors from definitions with durable initState and task-driven runtime setup", async () => {
     const actor = Cadenza.createActorFromDefinition<
-      { count: number; seededByHandler: boolean; seededByInitTask?: boolean },
-      { runtimeToken: string; createdFrom: string }
-    >(
-      {
-        name: "DefinitionActor",
-        description: "DB-native actor definition for tests",
-        defaultKey: "def-default",
-        loadPolicy: "lazy",
-        key: { source: "field", field: "entityId" },
-        state: {
-          durable: {
-            initialState: { count: 0, seededByHandler: false },
-          },
-          runtime: {
-            initialState: { runtimeToken: "initial", createdFrom: "initial" },
-            factoryToken: "runtime_factory",
-            factoryConfig: {
-              mode: "test",
-            },
-          },
+      { count: number; seeded: boolean },
+      { runtimeToken: string } | undefined
+    >({
+      name: "DefinitionActor",
+      description: "DB-native actor definition for tests",
+      defaultKey: "def-default",
+      loadPolicy: "lazy",
+      key: { source: "field", field: "entityId" },
+      state: {
+        durable: {
+          initState: { count: 0, seeded: true },
         },
-        lifecycle: {
-          initHandlerToken: "init_handler",
-          initTaskName: "Definition.InitTask",
+        runtime: {
+          description: "Runtime state is initialized by write tasks",
         },
       },
-      {
-        runtimeFactories: {
-          runtime_factory: ({ input, config }) => ({
-            runtimeToken: String(input.runtimeToken ?? "runtime-default"),
-            createdFrom: String(config?.mode ?? "unknown"),
-          }),
+      tasks: [
+        {
+          taskName: "DefinitionActor.Read",
+          mode: "read",
+          description: "Reads actor durable and runtime state",
         },
-        initHandlers: {
-          init_handler: ({ setDurableState, durableBaseState }) => {
-            setDurableState({
-              ...durableBaseState,
-              seededByHandler: true,
-            });
-          },
-        },
+      ],
+    });
+
+    const initRuntimeTask = actor.task(
+      ({ input, setRuntimeState }) => {
+        setRuntimeState({
+          runtimeToken: String(input.runtimeToken ?? "runtime-default"),
+        });
       },
+      { mode: "write" },
     );
 
     const readTask = actor.task(
@@ -179,21 +157,23 @@ describe("Actor runtime", () => {
       { mode: "read" },
     );
 
-    const result = await invokeTask(readTask, {
+    await invokeTask(initRuntimeTask, {
       entityId: "e-1",
       runtimeToken: "runtime-1",
+    });
+
+    const result = await invokeTask(readTask, {
+      entityId: "e-1",
     });
 
     expect(result).toEqual({
       key: "e-1",
       durableState: {
         count: 0,
-        seededByHandler: false,
-        seededByInitTask: true,
+        seeded: true,
       },
       runtimeState: {
         runtimeToken: "runtime-1",
-        createdFrom: "test",
       },
     });
   });
@@ -203,7 +183,7 @@ describe("Actor runtime", () => {
       name: "InvocationPolicyActor",
       defaultKey: "invocation-default",
       writeContract: "overwrite",
-      initialState: { count: 0 },
+      initState: { count: 0 },
     });
 
     const writeTask = actor.task(
@@ -233,7 +213,7 @@ describe("Actor runtime", () => {
       defaultKey: "roundtrip",
       state: {
         durable: {
-          initialState: {
+          initState: {
             value: 1,
           },
         },
@@ -259,7 +239,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "PatchActor",
       defaultKey: "patch",
-      initialState: {
+      initState: {
         profile: {
           name: "Alice",
           city: "Stockholm",
@@ -290,34 +270,48 @@ describe("Actor runtime", () => {
     });
   });
 
-  it("keeps durable and runtime state split, with runtime set in init", async () => {
+  it("keeps durable and runtime state split, with runtime initialized by write tasks", async () => {
     const actor = Cadenza.createActor<
       { userId: string | null },
-      { token: string; connected: boolean }
+      { token: string; connected: boolean } | undefined
     >({
       name: "SessionActor",
       defaultKey: "primary",
       loadPolicy: "lazy",
-      initialDurableState: { userId: null },
-      initialRuntimeState: () => ({ token: "none", connected: false }),
-      init: ({ input, setRuntimeState }) => {
-        setRuntimeState((runtime) => ({
-          ...runtime,
-          token: String(input.token ?? "none"),
-        }));
-      },
+      initState: { userId: null },
     });
+
+    const initializeRuntimeTask = actor.task(
+      ({ input, runtimeState, setRuntimeState }) => {
+        if (runtimeState) {
+          return;
+        }
+
+        setRuntimeState({
+          token: String(input.token ?? "none"),
+          connected: false,
+        });
+      },
+      { mode: "write" },
+    );
 
     const readTask = actor.task(
       ({ durableState, runtimeState }) => ({
         userId: durableState.userId,
-        token: runtimeState.token,
+        token: runtimeState?.token ?? "none",
       }),
       { mode: "read" },
     );
 
+    await invokeTask(initializeRuntimeTask, { token: "abc" });
     const first = await invokeTask(readTask, { token: "abc" });
     const second = await invokeTask(readTask, { token: "zzz" });
+    await invokeTask(initializeRuntimeTask, {
+      token: "secondary-token",
+      __actorOptions: {
+        actorKey: "secondary",
+      },
+    });
     const third = await invokeTask(readTask, {
       token: "secondary-token",
       __actorOptions: {
@@ -345,22 +339,34 @@ describe("Actor runtime", () => {
 
     const actor = Cadenza.createActor<
       { state: string },
-      { client: RuntimeClient }
+      { client: RuntimeClient } | undefined
     >({
       name: "RuntimeObjectActor",
       defaultKey: "default",
-      initialState: { state: "ok" },
-      initialRuntimeState: () => ({ client: new RuntimeClient() }),
+      initState: { state: "ok" },
     });
+
+    const initRuntimeTask = actor.task(
+      ({ runtimeState, setRuntimeState }) => {
+        if (!runtimeState) {
+          setRuntimeState({ client: new RuntimeClient() });
+        }
+      },
+      { mode: "write" },
+    );
 
     const useClientTask = actor.task(
       ({ runtimeState }) => {
+        if (!runtimeState) {
+          throw new Error("Runtime state not initialized");
+        }
         runtimeState.client.connect();
         return runtimeState.client.connected;
       },
       { mode: "read" },
     );
 
+    await invokeTask(initRuntimeTask);
     const first = await invokeTask(useClientTask);
     const second = await invokeTask(useClientTask);
 
@@ -370,21 +376,34 @@ describe("Actor runtime", () => {
   });
 
   it("supports optional freeze-shallow runtime read guard", async () => {
-    const actor = Cadenza.createActor<{ value: number }, { cacheHits: number }>({
+    const actor = Cadenza.createActor<
+      { value: number },
+      { cacheHits: number } | undefined
+    >({
       name: "RuntimeReadGuardActor",
       defaultKey: "runtime-read-guard",
-      initialState: { value: 1 },
-      initialRuntimeState: { cacheHits: 0 },
+      initState: { value: 1 },
       runtimeReadGuard: "freeze-shallow",
     });
 
+    const initRuntimeTask = actor.task(
+      ({ setRuntimeState }) => {
+        setRuntimeState({ cacheHits: 0 });
+      },
+      { mode: "write" },
+    );
+
     const illegalMutationTask = actor.task(
       ({ runtimeState }) => {
+        if (!runtimeState) {
+          throw new Error("Runtime state not initialized");
+        }
         runtimeState.cacheHits += 1;
       },
       { mode: "read" },
     );
 
+    await invokeTask(initRuntimeTask);
     await expect(invokeTask(illegalMutationTask)).rejects.toThrow();
     expect(actor.getRuntimeState()).toEqual({ cacheHits: 0 });
   });
@@ -393,8 +412,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "ReadModeActor",
       defaultKey: "default",
-      initialState: { count: 0 },
-      initialRuntimeState: { cacheHits: 0 },
+      initState: { count: 0 },
     });
 
     const illegalDurableWrite = actor.task(
@@ -424,7 +442,7 @@ describe("Actor runtime", () => {
       {
         name: "ActorSyncMeta",
         defaultKey: "runtime",
-        initialState: { status: "idle" },
+        initState: { status: "idle" },
       },
       { isMeta: true },
     );
@@ -432,7 +450,7 @@ describe("Actor runtime", () => {
     const standardActor = Cadenza.createActor({
       name: "StandardActor",
       defaultKey: "default",
-      initialState: { value: 1 },
+      initState: { value: 1 },
     });
 
     const taskFromMetaActor = Cadenza.createTask(
@@ -448,28 +466,41 @@ describe("Actor runtime", () => {
     expect(taskFromMetaMode.isMeta).toBe(true);
   });
 
-  it("supports async init and runs it once per actor key", async () => {
-    let initCalls = 0;
+  it("initializes runtime state per actor key via explicit write tasks", async () => {
+    let runtimeInitCalls = 0;
     const actor = Cadenza.createActor({
       name: "SocketClientActor",
       defaultKey: "primary",
       loadPolicy: "lazy",
-      initialState: { clientId: "uninitialized" },
-      init: async ({ input }) => {
-        initCalls += 1;
+      initState: { clientId: "uninitialized" },
+    });
+
+    const initRuntimeTask = actor.task(
+      async ({ input, setRuntimeState }) => {
+        runtimeInitCalls += 1;
         await Promise.resolve();
-        return {
+        setRuntimeState({
           clientId: (input.clientId as string | undefined) ?? "default-client",
-        };
+        });
+      },
+      { mode: "write" },
+    );
+
+    const readRuntimeTask = actor.task(({ runtimeState }) => runtimeState, {
+      mode: "read",
+    });
+
+    await invokeTask(initRuntimeTask, { clientId: "client-a" });
+    await invokeTask(initRuntimeTask, {
+      clientId: "client-c",
+      __actorOptions: {
+        actorKey: "secondary",
       },
     });
 
-    const readStateTask = actor.task(({ state }) => state, { mode: "read" });
-
-    const first = await invokeTask(readStateTask, { clientId: "client-a" });
-    const second = await invokeTask(readStateTask, { clientId: "client-b" });
-    const third = await invokeTask(readStateTask, {
-      clientId: "client-c",
+    const first = await invokeTask(readRuntimeTask);
+    const second = await invokeTask(readRuntimeTask);
+    const third = await invokeTask(readRuntimeTask, {
       __actorOptions: {
         actorKey: "secondary",
       },
@@ -478,32 +509,21 @@ describe("Actor runtime", () => {
     expect(first).toEqual({ clientId: "client-a" });
     expect(second).toEqual({ clientId: "client-a" });
     expect(third).toEqual({ clientId: "client-c" });
-    expect(initCalls).toBe(2);
+    expect(runtimeInitCalls).toBe(2);
   });
 
-  it("retries actor init on next invocation after init failure", async () => {
-    let initAttempts = 0;
+  it("does not auto-initialize runtime state without explicit writes", async () => {
     const actor = Cadenza.createActor({
       name: "FlakyInitActor",
       defaultKey: "primary",
-      initialState: { ready: false },
-      init: ({ setState }) => {
-        initAttempts += 1;
-        if (initAttempts === 1) {
-          throw new Error("init failed");
-        }
-
-        setState({ ready: true });
-      },
+      initState: { ready: false },
     });
 
-    const readStateTask = actor.task(({ state }) => state, { mode: "read" });
+    const readRuntimeTask = actor.task(({ runtimeState }) => runtimeState, {
+      mode: "read",
+    });
 
-    await expect(invokeTask(readStateTask)).rejects.toThrow("init failed");
-    const second = await invokeTask(readStateTask);
-
-    expect(second).toEqual({ ready: true });
-    expect(initAttempts).toBe(2);
+    await expect(invokeTask(readRuntimeTask)).resolves.toBeUndefined();
   });
 
   it("keeps idempotency disabled by default", async () => {
@@ -511,7 +531,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "DefaultIdempotencyActor",
       defaultKey: "idempotency",
-      initialState: { count: 0 },
+      initState: { count: 0 },
     });
 
     const incrementTask = actor.task(
@@ -540,7 +560,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "EnabledIdempotencyActor",
       defaultKey: "idempotency",
-      initialState: { count: 0 },
+      initState: { count: 0 },
       idempotency: {
         enabled: true,
         mode: "required",
@@ -575,7 +595,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "FailedDuplicateActor",
       defaultKey: "idempotency",
-      initialState: { count: 0 },
+      initState: { count: 0 },
       idempotency: {
         enabled: true,
       },
@@ -614,7 +634,7 @@ describe("Actor runtime", () => {
     const actor = Cadenza.createActor({
       name: "RequiredIdempotencyActor",
       defaultKey: "idempotency",
-      initialState: { count: 0 },
+      initState: { count: 0 },
       idempotency: {
         enabled: true,
         mode: "required",

@@ -55,23 +55,14 @@ export interface ActorStateDefinition<
   R = AnyObject,
 > {
   durable?: {
-    initialState?: D | (() => D);
+    initState?: D | (() => D);
     schema?: AnyObject;
     description?: string;
   };
   runtime?: {
-    initialState?: R | (() => R);
     schema?: AnyObject;
     description?: string;
-    factoryToken?: string;
-    factoryConfig?: AnyObject;
   };
-}
-
-export interface ActorLifecycleDefinition {
-  initTaskName?: string;
-  initRoutineName?: string;
-  initHandlerToken?: string;
 }
 
 export interface ActorDefinition<
@@ -91,7 +82,6 @@ export interface ActorDefinition<
   runtimeReadGuard?: ActorRuntimeReadGuard;
   key?: ActorKeyDefinition;
   state?: ActorStateDefinition<D, R>;
-  lifecycle?: ActorLifecycleDefinition;
   tasks?: ActorTaskBindingDefinition[];
 }
 
@@ -102,11 +92,8 @@ export interface ActorSpec<
   name: string;
   description?: string;
   state?: ActorStateDefinition<D, R>;
-  initialState?: D | (() => D);
-  initialDurableState?: D | (() => D);
-  initialRuntimeState?: R | (() => R);
+  initState?: D | (() => D);
   defaultKey: string;
-  init?: ActorInitHandler<D, R>;
   key?: ActorKeyDefinition;
   keyResolver?: (input: Record<string, any>) => string | undefined;
   loadPolicy?: ActorLoadPolicy;
@@ -118,7 +105,6 @@ export interface ActorSpec<
   consistencyProfile?: ActorConsistencyProfileName;
   runtimeReadGuard?: ActorRuntimeReadGuard;
   taskBindings?: ActorTaskBindingDefinition[];
-  lifecycle?: ActorLifecycleDefinition;
 }
 
 export interface ActorFactoryOptions<
@@ -171,14 +157,6 @@ export interface ActorStateStore<
   runtimeVersion: number;
 }
 
-export interface ActorInitStateStore<
-  D extends Record<string, any>,
-  R = AnyObject,
-> extends ActorStateMutators<D, R> {
-  durable: D;
-  runtime: R;
-}
-
 export interface ActorTaskContext<
   D extends Record<string, any>,
   R = AnyObject,
@@ -224,83 +202,6 @@ export type ActorTaskHandler<
   | TaskResult
   | ActorStateReducer<D>
   | Promise<TaskResult | ActorStateReducer<D>>;
-
-export interface ActorInitResult<
-  D extends Record<string, any>,
-  R = AnyObject,
-> {
-  state?: D;
-  durableState?: D;
-  runtimeState?: R;
-}
-
-export interface ActorInitContext<
-  D extends Record<string, any>,
-  R = AnyObject,
-> {
-  baseState: D;
-  durableBaseState: D;
-  runtimeBaseState: R;
-  store: ActorInitStateStore<D, R>;
-  input: AnyObject;
-  actor: {
-    name: string;
-    description?: string;
-    key: string;
-    kind: ActorKind;
-  };
-  options: ActorResolvedInvocationOptions;
-  setState: (next: D | ActorStateReducer<D>) => void;
-  patchState: (partial: Partial<D>) => void;
-  reduceState: (reducer: ActorStateReducer<D>) => void;
-  setDurableState: (next: D | ActorStateReducer<D>) => void;
-  patchDurableState: (partial: Partial<D>) => void;
-  reduceDurableState: (reducer: ActorStateReducer<D>) => void;
-  setRuntimeState: (next: R | ActorStateReducer<R>) => void;
-  patchRuntimeState: (partial: Partial<R>) => void;
-  reduceRuntimeState: (reducer: ActorStateReducer<R>) => void;
-}
-
-export type ActorInitHandler<
-  D extends Record<string, any>,
-  R = AnyObject,
-> = (
-  context: ActorInitContext<D, R>,
-) =>
-  | D
-  | ActorInitResult<D, R>
-  | void
-  | Promise<D | ActorInitResult<D, R> | void>;
-
-export interface ActorRuntimeFactoryContext<
-  D extends Record<string, any> = Record<string, any>,
-  R = AnyObject,
-> {
-  definition: ActorDefinition<D, R>;
-  actor: {
-    name: string;
-    key: string;
-    kind: ActorKind;
-  };
-  input: AnyObject;
-  config?: AnyObject;
-}
-
-export type ActorRuntimeFactory<
-  R = AnyObject,
-  D extends Record<string, any> = Record<string, any>,
-> = (
-  context: ActorRuntimeFactoryContext<D, R>,
-) => R | Promise<R>;
-
-export interface ActorDefinitionFactoryOptions<
-  D extends Record<string, any> = Record<string, any>,
-  R = AnyObject,
-> {
-  isMeta?: boolean;
-  runtimeFactories?: Record<string, ActorRuntimeFactory<R, D>>;
-  initHandlers?: Record<string, ActorInitHandler<D, R>>;
-}
 
 interface ActorStateRecord<
   D extends Record<string, any>,
@@ -367,21 +268,6 @@ function deepClone<T>(value: T): T {
 
 function cloneForDurableState<T>(value: T): T {
   return deepClone(value);
-}
-
-function cloneForRuntimeState<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return [...value] as T;
-  }
-
-  if (isObject(value)) {
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype === Object.prototype || prototype === null) {
-      return { ...(value as AnyObject) } as T;
-    }
-  }
-
-  return value;
 }
 
 function cloneForIdempotency<T>(value: T): T {
@@ -477,8 +363,6 @@ export default class Actor<
   private readonly stateByKey: Map<string, ActorStateRecord<D, R>> = new Map();
   private readonly sessionByKey: Map<string, ActorSessionState> = new Map();
   private readonly idempotencyByKey: Map<string, IdempotencyRecord> = new Map();
-  private readonly initializedKeys: Set<string> = new Set();
-  private readonly initializationByKey: Map<string, Promise<void>> = new Map();
   private nextTaskBindingIndex = 0;
 
   constructor(spec: ActorSpec<D, R>, options: ActorFactoryOptions<D, R> = {}) {
@@ -501,7 +385,6 @@ export default class Actor<
 
     if ((this.spec.loadPolicy ?? "eager") === "eager") {
       this.ensureStateRecord(this.spec.defaultKey);
-      this.primeInitialization(this.spec.defaultKey);
     }
   }
 
@@ -531,12 +414,6 @@ export default class Actor<
       this.touchSession(actorKey, invocationOptions.touchSession, Date.now());
 
       const runTask = async (): Promise<TaskResult> => {
-        await this.ensureInitialized(
-          actorKey,
-          normalizedInput,
-          invocationOptions,
-        );
-
         const stateRecord = this.ensureStateRecord(actorKey);
         stateRecord.lastReadAt = Date.now();
 
@@ -759,6 +636,11 @@ export default class Actor<
       return cloneForIdempotency(this.sourceDefinition) as ActorDefinition<D, R>;
     }
 
+    const durableInitState =
+      this.spec.state?.durable?.initState ??
+      this.spec.initState ??
+      ({} as D);
+
     return {
       name: this.spec.name,
       description: this.spec.description ?? "",
@@ -772,19 +654,14 @@ export default class Actor<
       session: this.spec.session,
       runtimeReadGuard: this.spec.runtimeReadGuard,
       key: this.spec.key,
-      state: this.spec.state ?? {
+      state: {
+        ...(this.spec.state ?? {}),
         durable: {
-          initialState:
-            this.spec.initialDurableState ??
-            this.spec.initialState ??
-            ({} as D),
+          ...(this.spec.state?.durable ?? {}),
+          initState: durableInitState,
         },
-        runtime:
-          this.spec.initialRuntimeState !== undefined
-            ? { initialState: this.spec.initialRuntimeState }
-            : undefined,
+        runtime: this.spec.state?.runtime,
       },
-      lifecycle: this.spec.lifecycle,
       tasks: this.spec.taskBindings,
     };
   }
@@ -794,11 +671,8 @@ export default class Actor<
       this.stateByKey.clear();
       this.sessionByKey.clear();
       this.idempotencyByKey.clear();
-      this.initializedKeys.clear();
-      this.initializationByKey.clear();
       if ((this.spec.loadPolicy ?? "eager") === "eager") {
         this.ensureStateRecord(this.spec.defaultKey);
-        this.primeInitialization(this.spec.defaultKey);
       }
       return;
     }
@@ -810,8 +684,6 @@ export default class Actor<
 
     this.stateByKey.delete(normalizedKey);
     this.sessionByKey.delete(normalizedKey);
-    this.initializedKeys.delete(normalizedKey);
-    this.initializationByKey.delete(normalizedKey);
     for (const key of this.idempotencyByKey.keys()) {
       if (key.startsWith(`${normalizedKey}:`)) {
         this.idempotencyByKey.delete(key);
@@ -825,27 +697,6 @@ export default class Actor<
       return freezeForReadGuard(runtimeState);
     }
     return runtimeState;
-  }
-
-  private buildDefaultInvocationOptions(
-    actorKey: string,
-  ): ActorResolvedInvocationOptions {
-    return {
-      actorKey,
-      loadPolicy: this.spec.loadPolicy ?? "eager",
-      writeContract: this.spec.writeContract ?? "overwrite",
-      consistencyProfile: this.spec.consistencyProfile,
-      idempotencyKey: undefined,
-      touchSession: this.spec.session?.extendIdleTtlOnRead ?? true,
-    };
-  }
-
-  private primeInitialization(actorKey: string): void {
-    this.ensureInitialized(
-      actorKey,
-      {},
-      this.buildDefaultInvocationOptions(actorKey),
-    ).catch(() => undefined);
   }
 
   private normalizeInputContext(context: AnyObject): AnyObject {
@@ -919,9 +770,13 @@ export default class Actor<
   }
 
   private resolveInitialDurableState(): D {
-    const definitionInitialState = this.spec.state?.durable?.initialState;
+    const legacyDefinitionInitialState = (
+      this.spec.state?.durable as { initialState?: D | (() => D) } | undefined
+    )?.initialState;
     const initialDurableState =
-      definitionInitialState ?? this.spec.initialDurableState ?? this.spec.initialState;
+      this.spec.state?.durable?.initState ??
+      legacyDefinitionInitialState ??
+      this.spec.initState;
 
     if (initialDurableState === undefined) {
       return {} as D;
@@ -935,19 +790,7 @@ export default class Actor<
   }
 
   private resolveInitialRuntimeState(): R {
-    const definitionInitialRuntimeState = this.spec.state?.runtime?.initialState;
-    const initialRuntimeState =
-      definitionInitialRuntimeState ?? this.spec.initialRuntimeState;
-
-    if (initialRuntimeState === undefined) {
-      return {} as R;
-    }
-
-    if (typeof initialRuntimeState === "function") {
-      return cloneForRuntimeState((initialRuntimeState as () => R)());
-    }
-
-    return cloneForRuntimeState(initialRuntimeState);
+    return undefined as R;
   }
 
   private ensureStateRecord(actorKey: string): ActorStateRecord<D, R> {
@@ -971,184 +814,6 @@ export default class Actor<
     this.stateByKey.set(actorKey, record);
     this.touchSession(actorKey, true, now);
     return record;
-  }
-
-  private async ensureInitialized(
-    actorKey: string,
-    input: AnyObject,
-    options: ActorResolvedInvocationOptions,
-  ): Promise<void> {
-    this.ensureStateRecord(actorKey);
-
-    if (!this.spec.init) {
-      this.initializedKeys.add(actorKey);
-      return;
-    }
-
-    if (this.initializedKeys.has(actorKey)) {
-      return;
-    }
-
-    const inFlight = this.initializationByKey.get(actorKey);
-    if (inFlight) {
-      return inFlight;
-    }
-
-    const initializationPromise = Promise.resolve()
-      .then(async () => {
-        const record = this.ensureStateRecord(actorKey);
-        let nextDurableState = cloneForDurableState(record.durableState);
-        let nextRuntimeState = record.runtimeState;
-        let durableUpdatedViaSetter = false;
-        let runtimeUpdatedViaSetter = false;
-
-        const reduceDurableState = (reducer: ActorStateReducer<D>) => {
-          nextDurableState = cloneForDurableState(
-            reducer(cloneForDurableState(nextDurableState), input),
-          );
-          durableUpdatedViaSetter = true;
-        };
-
-        const setDurableState = (next: D | ActorStateReducer<D>) => {
-          if (typeof next === "function") {
-            reduceDurableState(next as ActorStateReducer<D>);
-            return;
-          }
-
-          nextDurableState = cloneForDurableState(next);
-          durableUpdatedViaSetter = true;
-        };
-
-        const patchDurableState = (partial: Partial<D>) => {
-          if (!isObject(nextDurableState) || !isObject(partial)) {
-            throw new Error(
-              `Actor "${this.spec.name}" patchDurableState requires object state and partial patch`,
-            );
-          }
-
-          nextDurableState = {
-            ...(nextDurableState as AnyObject),
-            ...(partial as AnyObject),
-          } as D;
-          durableUpdatedViaSetter = true;
-        };
-
-        const reduceRuntimeState = (reducer: ActorStateReducer<R>) => {
-          nextRuntimeState = reducer(nextRuntimeState, input);
-          runtimeUpdatedViaSetter = true;
-        };
-
-        const setRuntimeState = (next: R | ActorStateReducer<R>) => {
-          if (typeof next === "function") {
-            reduceRuntimeState(next as ActorStateReducer<R>);
-            return;
-          }
-
-          nextRuntimeState = next;
-          runtimeUpdatedViaSetter = true;
-        };
-
-        const patchRuntimeState = (partial: Partial<R>) => {
-          if (!isObject(nextRuntimeState) || !isObject(partial)) {
-            throw new Error(
-              `Actor "${this.spec.name}" patchRuntimeState requires object state and partial patch`,
-            );
-          }
-
-          nextRuntimeState = {
-            ...(nextRuntimeState as AnyObject),
-            ...(partial as AnyObject),
-          } as R;
-          runtimeUpdatedViaSetter = true;
-        };
-
-        const store: ActorInitStateStore<D, R> = {
-          durable: cloneForDurableState(record.durableState),
-          runtime: record.runtimeState,
-          setDurable: setDurableState,
-          patchDurable: patchDurableState,
-          reduceDurable: reduceDurableState,
-          setRuntime: setRuntimeState,
-          patchRuntime: patchRuntimeState,
-          reduceRuntime: reduceRuntimeState,
-        };
-
-        const initResult = await this.spec.init?.({
-          baseState: cloneForDurableState(record.durableState),
-          durableBaseState: cloneForDurableState(record.durableState),
-          runtimeBaseState: record.runtimeState,
-          store,
-          input,
-          actor: {
-            name: this.spec.name,
-            description: this.spec.description,
-            key: actorKey,
-            kind: this.kind,
-          },
-          options,
-          setState: setDurableState,
-          patchState: patchDurableState,
-          reduceState: reduceDurableState,
-          setDurableState,
-          patchDurableState,
-          reduceDurableState,
-          setRuntimeState,
-          patchRuntimeState,
-          reduceRuntimeState,
-        });
-
-        if (initResult !== undefined) {
-          if (
-            isObject(initResult) &&
-            ("durableState" in initResult ||
-              "runtimeState" in initResult ||
-              "state" in initResult)
-          ) {
-            const normalizedResult = initResult as ActorInitResult<D, R>;
-            if (normalizedResult.state !== undefined) {
-              nextDurableState = cloneForDurableState(normalizedResult.state);
-              durableUpdatedViaSetter = true;
-            }
-            if (normalizedResult.durableState !== undefined) {
-              nextDurableState = cloneForDurableState(
-                normalizedResult.durableState,
-              );
-              durableUpdatedViaSetter = true;
-            }
-            if (normalizedResult.runtimeState !== undefined) {
-              nextRuntimeState = normalizedResult.runtimeState;
-              runtimeUpdatedViaSetter = true;
-            }
-          } else {
-            nextDurableState = cloneForDurableState(initResult as D);
-            durableUpdatedViaSetter = true;
-          }
-        }
-
-        const writeTimestamp = Date.now();
-
-        if (durableUpdatedViaSetter) {
-          record.durableState = nextDurableState;
-          record.lastDurableWriteAt = writeTimestamp;
-        }
-
-        if (runtimeUpdatedViaSetter) {
-          record.runtimeState = nextRuntimeState;
-          record.lastRuntimeWriteAt = writeTimestamp;
-        }
-
-        this.initializedKeys.add(actorKey);
-      })
-      .catch((error) => {
-        this.initializedKeys.delete(actorKey);
-        throw error;
-      })
-      .finally(() => {
-        this.initializationByKey.delete(actorKey);
-      });
-
-    this.initializationByKey.set(actorKey, initializationPromise);
-    return initializationPromise;
   }
 
   private touchSession(

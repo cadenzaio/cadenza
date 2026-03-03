@@ -14,11 +14,7 @@ import { AnyObject } from "./types/global";
 import InquiryBroker, { InquiryOptions, Intent } from "./engine/InquiryBroker";
 import Actor, {
   ActorDefinition,
-  ActorDefinitionFactoryOptions,
   ActorFactoryOptions,
-  ActorInitContext,
-  ActorInitHandler,
-  ActorInitResult,
   ActorSpec,
   getActorTaskRuntimeMetadata,
 } from "./actors/Actor";
@@ -175,139 +171,6 @@ export default class Cadenza {
     };
   }
 
-  private static applyActorInitResult<
-    D extends Record<string, any>,
-    R = AnyObject,
-  >(
-    context: ActorInitContext<D, R>,
-    result: unknown,
-  ): void {
-    if (result === undefined) {
-      return;
-    }
-
-    if (
-      typeof result === "object" &&
-      result !== null &&
-      ("durableState" in result || "runtimeState" in result || "state" in result)
-    ) {
-      const normalizedResult = result as ActorInitResult<D, R>;
-      if (normalizedResult.state !== undefined) {
-        context.setState(normalizedResult.state);
-      }
-      if (normalizedResult.durableState !== undefined) {
-        context.setDurableState(normalizedResult.durableState);
-      }
-      if (normalizedResult.runtimeState !== undefined) {
-        context.setRuntimeState(normalizedResult.runtimeState);
-      }
-      return;
-    }
-
-    context.setState(result as D);
-  }
-
-  private static createActorInitHandlerFromDefinition<
-    D extends Record<string, any>,
-    R = AnyObject,
-  >(
-    definition: ActorDefinition<D, R>,
-    options: ActorDefinitionFactoryOptions<D, R>,
-  ): ActorInitHandler<D, R> | undefined {
-    const runtimeFactoryToken = definition.state?.runtime?.factoryToken;
-    const initHandlerToken = definition.lifecycle?.initHandlerToken;
-    const initTaskName = definition.lifecycle?.initTaskName;
-    const initRoutineName = definition.lifecycle?.initRoutineName;
-
-    if (
-      !runtimeFactoryToken &&
-      !initHandlerToken &&
-      !initTaskName &&
-      !initRoutineName
-    ) {
-      return undefined;
-    }
-
-    return async (context) => {
-      if (runtimeFactoryToken) {
-        const runtimeFactory = options.runtimeFactories?.[runtimeFactoryToken];
-        if (!runtimeFactory) {
-          throw new Error(
-            `Actor "${definition.name}" requires runtimeFactory token "${runtimeFactoryToken}"`,
-          );
-        }
-
-        const runtimeState = await runtimeFactory({
-          definition,
-          actor: {
-            name: context.actor.name,
-            key: context.actor.key,
-            kind: context.actor.kind,
-          },
-          input: context.input,
-          config: definition.state?.runtime?.factoryConfig,
-        });
-        context.setRuntimeState(runtimeState);
-      }
-
-      if (initHandlerToken) {
-        const initHandler = options.initHandlers?.[initHandlerToken];
-        if (!initHandler) {
-          throw new Error(
-            `Actor "${definition.name}" requires initHandler token "${initHandlerToken}"`,
-          );
-        }
-
-        const initHandlerResult = await initHandler(context);
-        this.applyActorInitResult(context, initHandlerResult);
-      }
-
-      if (initTaskName) {
-        const initTask = this.get(initTaskName);
-        if (!initTask) {
-          throw new Error(
-            `Actor "${definition.name}" initTask "${initTaskName}" is not registered`,
-          );
-        }
-
-        const initTaskResult = await initTask.taskFunction(
-          {
-            ...context.input,
-            __actorInit: {
-              actor: context.actor,
-              options: context.options,
-              durableBaseState: context.durableBaseState,
-              runtimeBaseState: context.runtimeBaseState,
-            },
-          },
-          () => undefined,
-          async () => ({}),
-          () => undefined,
-        );
-        this.applyActorInitResult(context, initTaskResult);
-      }
-
-      if (initRoutineName) {
-        const initRoutine = this.getRoutine(initRoutineName);
-        if (!initRoutine) {
-          throw new Error(
-            `Actor "${definition.name}" initRoutine "${initRoutineName}" is not registered`,
-          );
-        }
-
-        this.run(initRoutine, {
-          ...context.input,
-          __actorInit: {
-            actor: context.actor,
-            options: context.options,
-            durableBaseState: context.durableBaseState,
-            runtimeBaseState: context.runtimeBaseState,
-          },
-        });
-      }
-    };
-  }
-
   /**
    * Executes the specified task or GraphRoutine with the given context using an internal runner.
    *
@@ -424,7 +287,7 @@ export default class Cadenza {
     R = AnyObject,
   >(
     definition: ActorDefinition<D, R>,
-    options: ActorDefinitionFactoryOptions<D, R> = {},
+    options: ActorFactoryOptions<D, R> = {},
   ): Actor<D, R> {
     this.bootstrap();
 
@@ -448,11 +311,12 @@ export default class Cadenza {
       runtimeReadGuard: definition.runtimeReadGuard,
       key: definition.key,
       state: definition.state,
-      lifecycle: definition.lifecycle,
       taskBindings: definition.tasks,
-      initialDurableState: definition.state?.durable?.initialState,
-      initialRuntimeState: definition.state?.runtime?.initialState,
-      init: this.createActorInitHandlerFromDefinition(definition, options),
+      initState:
+        definition.state?.durable?.initState ??
+        (
+          definition.state?.durable as { initialState?: D | (() => D) } | undefined
+        )?.initialState,
     };
 
     const actorOptions: ActorFactoryOptions<D, R> = {
