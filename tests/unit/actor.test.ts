@@ -103,7 +103,9 @@ describe("Actor runtime", () => {
     const pathKeyTask = pathActor.task(({ actor }) => actor.key);
     const templateKeyTask = templateActor.task(({ actor }) => actor.key);
 
-    await expect(invokeTask(fieldKeyTask, { userId: "u1" })).resolves.toBe("u1");
+    await expect(invokeTask(fieldKeyTask, { userId: "u1" })).resolves.toBe(
+      "u1",
+    );
     await expect(invokeTask(pathKeyTask, { user: { id: "u2" } })).resolves.toBe(
       "u2",
     );
@@ -372,7 +374,7 @@ describe("Actor runtime", () => {
 
     expect(first).toBe(true);
     expect(second).toBe(true);
-    expect(actor.getRuntimeState().client.connected).toBe(true);
+    expect(actor.getRuntimeState()?.client.connected).toBe(true);
   });
 
   it("supports optional freeze-shallow runtime read guard", async () => {
