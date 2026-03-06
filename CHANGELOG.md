@@ -1,3 +1,10 @@
+# [3.24.0](https://github.com/cadenzaio/cadenza/compare/v3.23.0...v3.24.0) (2026-03-06)
+
+
+### Features
+
+* **actors:** add durable state persistence with timeout and strict mode handling ([2ff7f10](https://github.com/cadenzaio/cadenza/commit/2ff7f1041c02bede38a23ccac67457fc8e44c52e))
+
 # [3.23.0](https://github.com/cadenzaio/cadenza/compare/v3.22.0...v3.23.0) (2026-03-03)
 
 
