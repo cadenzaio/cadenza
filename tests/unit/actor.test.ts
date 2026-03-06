@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import Cadenza from "../../src/Cadenza";
+import { META_ACTOR_SESSION_STATE_PERSIST_INTENT } from "../../src/actors/Actor";
 import type { AnyObject } from "../../src/types/global";
 import type { InquiryOptions } from "../../src/engine/InquiryBroker";
 import type { TaskFunction } from "../../src/graph/definition/Task";
@@ -14,6 +15,19 @@ const noopInquire = async (
 
 async function invokeTask(task: TaskFunction, context: AnyObject = {}) {
   return task(context, noopEmit, noopInquire, noopProgress);
+}
+
+async function invokeTaskWithBrokerInquire(
+  task: TaskFunction,
+  context: AnyObject = {},
+) {
+  return task(
+    context,
+    noopEmit,
+    (inquiry, inquiryContext, options = {}) =>
+      Cadenza.inquire(inquiry, inquiryContext, options),
+    noopProgress,
+  );
 }
 
 async function nextTick() {
@@ -668,6 +682,162 @@ describe("Actor runtime", () => {
     Cadenza.reset();
     expect(Cadenza.getActor("CachedActor")).toBeUndefined();
     expect(Cadenza.getAllActors()).toHaveLength(0);
+  });
+
+  it("keeps durable persistence disabled by default", async () => {
+    const actor = Cadenza.createActor({
+      name: "DefaultPersistenceBehaviorActor",
+      defaultKey: "default-persistence",
+      initState: { count: 0 },
+    });
+
+    const writeTask = actor.task(
+      ({ state, setState }) => {
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await expect(invokeTaskWithBrokerInquire(writeTask)).resolves.toBeUndefined();
+    expect(actor.getState()).toEqual({ count: 1 });
+    expect(actor.getDurableVersion()).toBe(1);
+  });
+
+  it("persists durable state through strict write-through when enabled", async () => {
+    let capturedPersistenceRequest: AnyObject | undefined;
+
+    Cadenza.createMetaTask("Capture actor session persistence request", (ctx) => {
+      capturedPersistenceRequest = ctx;
+      return {
+        __success: true,
+        persisted: true,
+      };
+    }).respondsTo(META_ACTOR_SESSION_STATE_PERSIST_INTENT);
+
+    const actor = Cadenza.createActor({
+      name: "StrictPersistenceActor",
+      defaultKey: "strict-persistence",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+      },
+    });
+
+    const writeTask = actor.task(
+      ({ state, setState }) => {
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await expect(invokeTaskWithBrokerInquire(writeTask)).resolves.toBeUndefined();
+
+    expect(actor.getState()).toEqual({ count: 1 });
+    expect(actor.getDurableVersion()).toBe(1);
+    expect(capturedPersistenceRequest).toMatchObject({
+      actor_name: "StrictPersistenceActor",
+      actor_version: 1,
+      actor_key: "strict-persistence",
+      durable_state: { count: 1 },
+      durable_version: 1,
+      expires_at: null,
+    });
+  });
+
+  it("applies configured persistence timeout to strict write-through inquiries", async () => {
+    let capturedInquiry: string | undefined;
+    let capturedOptions: InquiryOptions | undefined;
+
+    const actor = Cadenza.createActor({
+      name: "ConfiguredPersistenceTimeoutActor",
+      defaultKey: "timeout-actor",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+        persistenceTimeoutMs: 1234,
+      },
+    });
+
+    const writeTask = actor.task(
+      ({ state, setState }) => {
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await expect(
+      writeTask(
+        {},
+        noopEmit,
+        async (inquiry, _context, options = {}) => {
+          capturedInquiry = inquiry;
+          capturedOptions = options;
+          return { __success: true, persisted: true };
+        },
+        noopProgress,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(capturedInquiry).toBe(META_ACTOR_SESSION_STATE_PERSIST_INTENT);
+    expect(capturedOptions).toMatchObject({
+      timeout: 1234,
+      rejectOnTimeout: true,
+    });
+    expect(actor.getState()).toEqual({ count: 1 });
+    expect(actor.getDurableVersion()).toBe(1);
+  });
+
+  it("fails durable writes when strict persistence is enabled but no responder succeeds", async () => {
+    const actor = Cadenza.createActor({
+      name: "FailingStrictPersistenceActor",
+      defaultKey: "strict-failing",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+      },
+    });
+
+    const writeTask = actor.task(
+      ({ state, setState }) => {
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await expect(invokeTask(writeTask)).rejects.toThrow(
+      "durable state persistence failed",
+    );
+
+    expect(actor.getState()).toEqual({ count: 0 });
+    expect(actor.getDurableVersion()).toBe(0);
+  });
+
+  it("does not call strict persistence for runtime-only writes", async () => {
+    const actor = Cadenza.createActor<
+      { count: number },
+      { connected: boolean } | undefined
+    >({
+      name: "RuntimeOnlyPersistenceBypassActor",
+      defaultKey: "runtime-only",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+      },
+    });
+
+    const runtimeOnlyWriteTask = actor.task(
+      ({ setRuntimeState }) => {
+        setRuntimeState({ connected: true });
+      },
+      { mode: "write" },
+    );
+
+    await expect(invokeTask(runtimeOnlyWriteTask)).resolves.toBeUndefined();
+
+    expect(actor.getState()).toEqual({ count: 0 });
+    expect(actor.getRuntimeState()).toEqual({ connected: true });
+    expect(actor.getDurableVersion()).toBe(0);
+    expect(actor.getRuntimeVersion()).toBe(1);
   });
 
   it("emits actor metadata and actor-task association metadata", async () => {

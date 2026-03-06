@@ -33,6 +33,7 @@ import Actor, {
   type RetryPolicy,
   type SessionPolicy,
   getActorTaskRuntimeMetadata,
+  META_ACTOR_SESSION_STATE_PERSIST_INTENT,
 } from "./actors/Actor";
 import Task, {
   TaskFunction,
@@ -95,6 +96,7 @@ export {
   DebounceTask,
   EphemeralTask,
   getActorTaskRuntimeMetadata,
+  META_ACTOR_SESSION_STATE_PERSIST_INTENT,
   SignalEmitter,
   GraphContext,
   GraphRegistry,

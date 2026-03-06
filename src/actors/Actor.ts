@@ -63,6 +63,8 @@ export interface SessionPolicy {
   idleTtlMs?: number;
   absoluteTtlMs?: number;
   extendIdleTtlOnRead?: boolean;
+  persistDurableState?: boolean;
+  persistenceTimeoutMs?: number;
 }
 
 /**
@@ -345,6 +347,8 @@ export interface ActorTaskRuntimeMetadata {
 
 const ACTOR_TASK_METADATA = Symbol.for("@cadenza.io/core/actor-task-meta");
 const ACTOR_INVOCATION_OPTIONS_KEY = "__actorOptions";
+export const META_ACTOR_SESSION_STATE_PERSIST_INTENT =
+  "meta-actor-session-state-persist";
 
 type ActorTaskFunction = TaskFunction & {
   [ACTOR_TASK_METADATA]?: ActorTaskRuntimeMetadata;
@@ -707,11 +711,22 @@ export default class Actor<
           reduceDurableState(handlerResult as ActorStateReducer<D>);
         }
 
+        const nextDurableVersion = stateRecord.version + (durableStateChanged ? 1 : 0);
+
+        if (durableStateChanged) {
+          await this.persistDurableStateIfConfigured(
+            actorKey,
+            nextDurableState,
+            nextDurableVersion,
+            inquire,
+          );
+        }
+
         const writeTimestamp = Date.now();
 
         if (durableStateChanged) {
           stateRecord.durableState = cloneForDurableState(nextDurableState);
-          stateRecord.version += 1;
+          stateRecord.version = nextDurableVersion;
           stateRecord.lastDurableWriteAt = writeTimestamp;
         }
 
@@ -1115,6 +1130,53 @@ export default class Actor<
     return record;
   }
 
+  private async persistDurableStateIfConfigured(
+    actorKey: string,
+    durableState: D,
+    durableVersion: number,
+    inquire: (
+      inquiry: string,
+      inquiryContext: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
+  ): Promise<void> {
+    const shouldPersist = this.spec.session?.persistDurableState ?? false;
+    if (!shouldPersist) {
+      return;
+    }
+
+    const timeoutMs =
+      normalizePositiveInteger(this.spec.session?.persistenceTimeoutMs) ?? 5000;
+
+    const response = await inquire(
+      META_ACTOR_SESSION_STATE_PERSIST_INTENT,
+      {
+        actor_name: this.spec.name,
+        actor_version: 1,
+        actor_key: actorKey,
+        durable_state: cloneForDurableState(durableState),
+        durable_version: durableVersion,
+        expires_at: null,
+      },
+      {
+        timeout: timeoutMs,
+        rejectOnTimeout: true,
+      },
+    );
+
+    if (
+      !isObject(response) ||
+      response.__success !== true ||
+      response.persisted !== true
+    ) {
+      const reason = isObject(response)
+        ? response.__error ?? response.error
+        : undefined;
+      throw new Error(
+        `Actor "${this.spec.name}" durable state persistence failed for key "${actorKey}"${reason ? `: ${String(reason)}` : ""}`,
+      );
+    }
+  }
   private emitActorCreatedSignal(): void {
     Cadenza.signalBroker.registerEmittedSignal("meta.actor.created");
 
