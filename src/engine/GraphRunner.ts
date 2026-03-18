@@ -90,6 +90,12 @@ export default class GraphRunner extends SignalEmitter {
     const routineExecId = context.__routineExecId ?? uuid();
     context.__routineExecId = routineExecId;
 
+    Cadenza.applyRuntimeValidationScopesToContext(
+      context,
+      routineName,
+      allTasks,
+    );
+
     const ctx = new GraphContext(context || {});
 
     if (!isSubMeta) {

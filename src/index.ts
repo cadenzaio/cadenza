@@ -1,4 +1,11 @@
-import Cadenza, { CadenzaMode, TaskOptions } from "./Cadenza";
+import Cadenza, {
+  CadenzaMode,
+  ResolvedRuntimeValidationPolicy,
+  RuntimeValidationMode,
+  RuntimeValidationPolicy,
+  RuntimeValidationScope,
+  TaskOptions,
+} from "./Cadenza";
 import GraphRun from "./engine/GraphRun";
 import GraphRunner from "./engine/GraphRunner";
 import InquiryBroker, { InquiryOptions, Intent } from "./engine/InquiryBroker";
@@ -88,6 +95,10 @@ export type {
   EphemeralTaskOptions,
   EmitOptions,
   InquiryOptions,
+  RuntimeValidationMode,
+  RuntimeValidationPolicy,
+  RuntimeValidationScope,
+  ResolvedRuntimeValidationPolicy,
 };
 export {
   Actor,

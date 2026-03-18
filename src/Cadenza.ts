@@ -39,6 +39,37 @@ export interface TaskOptions {
 }
 
 export type CadenzaMode = "dev" | "debug" | "verbose" | "production";
+export type RuntimeValidationMode = "off" | "warn" | "enforce";
+export interface RuntimeValidationPolicy {
+  metaInput?: RuntimeValidationMode;
+  metaOutput?: RuntimeValidationMode;
+  businessInput?: RuntimeValidationMode;
+  businessOutput?: RuntimeValidationMode;
+  warnOnMissingMetaInputSchema?: boolean;
+  warnOnMissingMetaOutputSchema?: boolean;
+  warnOnMissingBusinessInputSchema?: boolean;
+  warnOnMissingBusinessOutputSchema?: boolean;
+}
+export interface RuntimeValidationScope {
+  id: string;
+  active?: boolean;
+  startTaskNames?: string[];
+  startRoutineNames?: string[];
+  policy?: RuntimeValidationPolicy;
+}
+export interface ResolvedRuntimeValidationPolicy {
+  layer: "meta" | "business";
+  inputMode: RuntimeValidationMode;
+  outputMode: RuntimeValidationMode;
+  warnOnMissingInputSchema: boolean;
+  warnOnMissingOutputSchema: boolean;
+  activeScopeIds: string[];
+}
+export type RuntimeInquiryDelegate = (
+  inquiry: string,
+  context: AnyObject,
+  options?: InquiryOptions,
+) => Promise<any>;
 
 /**
  * Represents the core class of the Cadenza framework managing tasks, meta-tasks, signal emissions, and execution strategies.
@@ -53,6 +84,11 @@ export default class Cadenza {
   public static registry: GraphRegistry;
   private static taskCache: Map<string, Task> = new Map();
   private static actorCache: Map<string, Actor<any, any>> = new Map();
+  private static runtimeInquiryDelegate: RuntimeInquiryDelegate | undefined;
+  private static runtimeValidationPolicy: RuntimeValidationPolicy = {};
+  private static runtimeValidationScopes: Map<string, RuntimeValidationScope> =
+    new Map();
+  private static emittedMissingSchemaWarnings: Set<string> = new Set();
   static isBootstrapped = false;
   static mode: CadenzaMode = "production";
 
@@ -288,6 +324,218 @@ export default class Cadenza {
     options?: InquiryOptions,
   ): Promise<any> {
     return this.inquiryBroker?.inquire(inquiry, context, options);
+  }
+
+  public static setRuntimeInquiryDelegate(
+    delegate?: RuntimeInquiryDelegate,
+  ): void {
+    this.runtimeInquiryDelegate = delegate;
+  }
+
+  public static resolveRuntimeInquiryDelegate(): RuntimeInquiryDelegate {
+    return (
+      this.runtimeInquiryDelegate ??
+      ((inquiry: string, context: AnyObject, options?: InquiryOptions) =>
+        this.inquire(inquiry, context, options))
+    );
+  }
+
+  public static getRuntimeValidationPolicy(): RuntimeValidationPolicy {
+    return { ...this.runtimeValidationPolicy };
+  }
+
+  public static setRuntimeValidationPolicy(
+    policy: RuntimeValidationPolicy = {},
+  ): RuntimeValidationPolicy {
+    this.runtimeValidationPolicy = {
+      ...this.runtimeValidationPolicy,
+      ...policy,
+    };
+    this.emittedMissingSchemaWarnings.clear();
+    return this.getRuntimeValidationPolicy();
+  }
+
+  public static replaceRuntimeValidationPolicy(
+    policy: RuntimeValidationPolicy = {},
+  ): RuntimeValidationPolicy {
+    this.runtimeValidationPolicy = { ...policy };
+    this.emittedMissingSchemaWarnings.clear();
+    return this.getRuntimeValidationPolicy();
+  }
+
+  public static clearRuntimeValidationPolicy(): void {
+    this.runtimeValidationPolicy = {};
+    this.emittedMissingSchemaWarnings.clear();
+  }
+
+  public static getRuntimeValidationScopes(): RuntimeValidationScope[] {
+    return Array.from(this.runtimeValidationScopes.values()).map((scope) => ({
+      ...scope,
+      startTaskNames: scope.startTaskNames
+        ? [...scope.startTaskNames]
+        : undefined,
+      startRoutineNames: scope.startRoutineNames
+        ? [...scope.startRoutineNames]
+        : undefined,
+      policy: scope.policy ? { ...scope.policy } : undefined,
+    }));
+  }
+
+  public static upsertRuntimeValidationScope(
+    scope: RuntimeValidationScope,
+  ): RuntimeValidationScope {
+    if (!scope.id?.trim()) {
+      throw new Error("Runtime validation scope id is required");
+    }
+
+    const normalizedScope: RuntimeValidationScope = {
+      id: scope.id,
+      active: scope.active !== false,
+      startTaskNames: scope.startTaskNames
+        ? [...new Set(scope.startTaskNames)]
+        : undefined,
+      startRoutineNames: scope.startRoutineNames
+        ? [...new Set(scope.startRoutineNames)]
+        : undefined,
+      policy: scope.policy ? { ...scope.policy } : undefined,
+    };
+
+    this.runtimeValidationScopes.set(scope.id, normalizedScope);
+    this.emittedMissingSchemaWarnings.clear();
+    return {
+      ...normalizedScope,
+      startTaskNames: normalizedScope.startTaskNames
+        ? [...normalizedScope.startTaskNames]
+        : undefined,
+      startRoutineNames: normalizedScope.startRoutineNames
+        ? [...normalizedScope.startRoutineNames]
+        : undefined,
+      policy: normalizedScope.policy ? { ...normalizedScope.policy } : undefined,
+    };
+  }
+
+  public static removeRuntimeValidationScope(id: string): void {
+    this.runtimeValidationScopes.delete(id);
+    this.emittedMissingSchemaWarnings.clear();
+  }
+
+  public static clearRuntimeValidationScopes(): void {
+    this.runtimeValidationScopes.clear();
+    this.emittedMissingSchemaWarnings.clear();
+  }
+
+  public static applyRuntimeValidationScopesToContext(
+    context: AnyObject,
+    routineName: string,
+    tasks: Task[],
+  ): AnyObject {
+    const existingScopeIds = new Set<string>();
+    const metadataScopeIds = context.__metadata?.__runtimeValidationScopeIds;
+    const rootScopeIds = context.__runtimeValidationScopeIds;
+
+    if (Array.isArray(rootScopeIds)) {
+      rootScopeIds.forEach((id) => existingScopeIds.add(id));
+    }
+
+    if (Array.isArray(metadataScopeIds)) {
+      metadataScopeIds.forEach((id: string) => existingScopeIds.add(id));
+    }
+
+    const taskNames = new Set(tasks.map((task) => task.name));
+    for (const scope of this.runtimeValidationScopes.values()) {
+      if (scope.active === false) {
+        continue;
+      }
+
+      const matchesRoutine =
+        scope.startRoutineNames?.includes(routineName) === true;
+      const matchesTask =
+        scope.startTaskNames?.some((taskName) => taskNames.has(taskName)) ===
+        true;
+
+      if (matchesRoutine || matchesTask) {
+        existingScopeIds.add(scope.id);
+      }
+    }
+
+    if (existingScopeIds.size > 0) {
+      const scopeIds = Array.from(existingScopeIds);
+      context.__runtimeValidationScopeIds = scopeIds;
+      context.__metadata = {
+        ...(context.__metadata ?? {}),
+        __runtimeValidationScopeIds: scopeIds,
+      };
+    }
+
+    return context;
+  }
+
+  public static resolveRuntimeValidationPolicyForTask(
+    task: Task,
+    metadata: AnyObject = {},
+  ): ResolvedRuntimeValidationPolicy {
+    const layer: "meta" | "business" =
+      task.isMeta || task.isSubMeta || metadata.__isSubMeta
+        ? "meta"
+        : "business";
+    const activeScopeIds = new Set<string>();
+
+    const rootScopeIds = metadata.__runtimeValidationScopeIds;
+    const nestedScopeIds = metadata.__metadata?.__runtimeValidationScopeIds;
+
+    if (Array.isArray(rootScopeIds)) {
+      rootScopeIds.forEach((id) => activeScopeIds.add(id));
+    }
+
+    if (Array.isArray(nestedScopeIds)) {
+      nestedScopeIds.forEach((id: string) => activeScopeIds.add(id));
+    }
+
+    const mergedPolicy: RuntimeValidationPolicy = {
+      ...this.runtimeValidationPolicy,
+    };
+
+    for (const scopeId of activeScopeIds) {
+      const scope = this.runtimeValidationScopes.get(scopeId);
+      if (!scope?.policy || scope.active === false) {
+        continue;
+      }
+
+      Object.assign(mergedPolicy, scope.policy);
+    }
+
+    if (layer === "meta") {
+      return {
+        layer,
+        inputMode: mergedPolicy.metaInput ?? "off",
+        outputMode: mergedPolicy.metaOutput ?? "off",
+        warnOnMissingInputSchema:
+          mergedPolicy.warnOnMissingMetaInputSchema === true,
+        warnOnMissingOutputSchema:
+          mergedPolicy.warnOnMissingMetaOutputSchema === true,
+        activeScopeIds: Array.from(activeScopeIds),
+      };
+    }
+
+    return {
+      layer,
+      inputMode: mergedPolicy.businessInput ?? "off",
+      outputMode: mergedPolicy.businessOutput ?? "off",
+      warnOnMissingInputSchema:
+        mergedPolicy.warnOnMissingBusinessInputSchema === true,
+      warnOnMissingOutputSchema:
+        mergedPolicy.warnOnMissingBusinessOutputSchema === true,
+      activeScopeIds: Array.from(activeScopeIds),
+    };
+  }
+
+  public static shouldEmitMissingSchemaWarning(cacheKey: string): boolean {
+    if (this.emittedMissingSchemaWarnings.has(cacheKey)) {
+      return false;
+    }
+
+    this.emittedMissingSchemaWarnings.add(cacheKey);
+    return true;
   }
 
   /**
@@ -993,6 +1241,10 @@ export default class Cadenza {
     this.registry?.reset();
     this.taskCache.clear();
     this.actorCache.clear();
+    this.runtimeInquiryDelegate = undefined;
+    this.runtimeValidationPolicy = {};
+    this.runtimeValidationScopes.clear();
+    this.emittedMissingSchemaWarnings.clear();
     this.isBootstrapped = false;
   }
 }

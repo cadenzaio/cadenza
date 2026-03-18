@@ -440,7 +440,8 @@ export default class GraphNode extends SignalEmitter implements Graph {
       this.processing = true;
 
       const inputValidation = this.task.validateInput(
-        this.isMeta() ? this.context.getMetadata() : this.context.getContext(),
+        this.isMeta() ? this.context.getFullContext() : this.context.getContext(),
+        this.context.getMetadata(),
       );
       if (inputValidation !== true) {
         this.onError(inputValidation.__validationErrors);
@@ -552,7 +553,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
   }
 
   inquire(inquiry: string, context: AnyObject, options: InquiryOptions) {
-    return Cadenza.inquire(
+    return Cadenza.resolveRuntimeInquiryDelegate()(
       inquiry,
       { ...context, __executionTraceId: this.executionTraceId },
       options,
@@ -838,7 +839,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
       }
 
       while (!current.done && current.value !== undefined) {
-        const outputValidation = this.task.validateOutput(current.value as any);
+        const outputValidation = this.task.validateOutput(
+          current.value as any,
+          this.context.getMetadata(),
+        );
         if (outputValidation !== true) {
           this.onError(outputValidation.__validationErrors);
           break;
@@ -851,7 +855,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
       newNodes.push(...this.generateNewNodes(this.result));
 
       if (typeof this.result !== "boolean") {
-        const outputValidation = this.task.validateOutput(this.result as any);
+        const outputValidation = this.task.validateOutput(
+          this.result as any,
+          this.context.getMetadata(),
+        );
         if (outputValidation !== true) {
           this.onError(outputValidation.__validationErrors);
         }
@@ -891,7 +898,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     const nextNodes: GraphNode[] = [];
     const _current = await current;
 
-    const outputValidation = this.task.validateOutput(_current.value as any);
+    const outputValidation = this.task.validateOutput(
+      _current.value as any,
+      this.context.getMetadata(),
+    );
     if (outputValidation !== true) {
       this.onError(outputValidation.__validationErrors);
       return nextNodes;
@@ -900,7 +910,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     for await (const result of this.result as AsyncGenerator<any>) {
-      const outputValidation = this.task.validateOutput(result);
+      const outputValidation = this.task.validateOutput(
+        result,
+        this.context.getMetadata(),
+      );
       if (outputValidation !== true) {
         this.onError(outputValidation.__validationErrors);
         return [];

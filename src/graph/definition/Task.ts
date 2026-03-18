@@ -47,8 +47,10 @@ export default class Task extends SignalEmitter implements Graph {
   readonly isDebounce: boolean = false;
 
   inputContextSchema: Schema = { type: "object" };
+  hasExplicitInputContextSchema: boolean = false;
   validateInputContext: boolean = false;
   outputContextSchema: Schema = { type: "object" };
+  hasExplicitOutputContextSchema: boolean = false;
   validateOutputContext: boolean = false;
 
   readonly retryCount: number = 0;
@@ -111,9 +113,9 @@ export default class Task extends SignalEmitter implements Graph {
     isSubMeta: boolean = false,
     isHidden: boolean = false,
     getTagCallback: ThrottleTagGetter | undefined = undefined,
-    inputSchema: Schema = { type: "object" },
+    inputSchema?: Schema,
     validateInputContext: boolean = false,
-    outputSchema: Schema = { type: "object" },
+    outputSchema?: Schema,
     validateOutputContext: boolean = false,
     retryCount: number = 0,
     retryDelay: number = 0,
@@ -130,9 +132,11 @@ export default class Task extends SignalEmitter implements Graph {
     this.isMeta = isMeta;
     this.isSubMeta = isSubMeta;
     this.isHidden = isHidden;
-    this.inputContextSchema = inputSchema;
+    this.inputContextSchema = inputSchema ?? { type: "object" };
+    this.hasExplicitInputContextSchema = inputSchema !== undefined;
     this.validateInputContext = validateInputContext;
-    this.outputContextSchema = outputSchema;
+    this.outputContextSchema = outputSchema ?? { type: "object" };
+    this.hasExplicitOutputContextSchema = outputSchema !== undefined;
     this.validateOutputContext = validateOutputContext;
     this.retryCount = retryCount;
     this.retryDelay = retryDelay;
@@ -151,6 +155,8 @@ export default class Task extends SignalEmitter implements Graph {
       "meta.task.destroyed",
       "meta.task.output_validation_failed",
       "meta.task.input_validation_failed",
+      "meta.task.input_schema_missing",
+      "meta.task.output_schema_missing",
       "meta.task.relationship_added",
       "meta.task.relationship_removed",
       "meta.task.layer_index_changed",
@@ -243,9 +249,9 @@ export default class Task extends SignalEmitter implements Graph {
       this.isSubMeta,
       this.isHidden,
       this.getTag,
-      this.inputContextSchema,
+      this.hasExplicitInputContextSchema ? this.inputContextSchema : undefined,
       this.validateInputContext,
-      this.outputContextSchema,
+      this.hasExplicitOutputContextSchema ? this.outputContextSchema : undefined,
       this.validateOutputContext,
       this.retryCount,
       this.retryDelay,
@@ -301,10 +307,12 @@ export default class Task extends SignalEmitter implements Graph {
 
   public setInputContextSchema(schema: Schema): void {
     this.inputContextSchema = schema;
+    this.hasExplicitInputContextSchema = true;
   }
 
   public setOutputContextSchema(schema: Schema): void {
     this.outputContextSchema = schema;
+    this.hasExplicitOutputContextSchema = true;
   }
 
   public setValidateInputContext(value: boolean): void {
@@ -630,19 +638,123 @@ export default class Task extends SignalEmitter implements Graph {
    * @param {AnyObject} context - The input context to validate.
    * @return {true | AnyObject} - Returns `true` if validation succeeds, otherwise returns an error object containing details of the validation failure.
    */
-  public validateInput(context: AnyObject): true | AnyObject {
-    if (this.validateInputContext) {
-      const validationResult = this.validateSchema(
-        context,
-        this.inputContextSchema,
-      );
-      if (!validationResult.valid) {
-        this.emitWithMetadata("meta.task.input_validation_failed", {
-          __taskName: this.name,
-          __taskVersion: this.version,
-          __context: context,
-          __errors: validationResult.errors,
-        });
+  private getEffectiveValidationMode(
+    direction: "input" | "output",
+    metadata: AnyObject = {},
+  ) {
+    const resolvedPolicy = Cadenza.resolveRuntimeValidationPolicyForTask(
+      this,
+      metadata,
+    );
+    const policyMode =
+      direction === "input"
+        ? resolvedPolicy.inputMode
+        : resolvedPolicy.outputMode;
+    const isExplicit =
+      direction === "input"
+        ? this.validateInputContext
+        : this.validateOutputContext;
+
+    return {
+      resolvedPolicy,
+      mode: isExplicit ? "enforce" : policyMode,
+      warnOnMissingSchema:
+        direction === "input"
+          ? resolvedPolicy.warnOnMissingInputSchema
+          : resolvedPolicy.warnOnMissingOutputSchema,
+      hasExplicitSchema:
+        direction === "input"
+          ? this.hasExplicitInputContextSchema
+          : this.hasExplicitOutputContextSchema,
+      schema:
+        direction === "input"
+          ? this.inputContextSchema
+          : this.outputContextSchema,
+    } as const;
+  }
+
+  private warnMissingSchema(
+    direction: "input" | "output",
+    metadata: AnyObject = {},
+  ): void {
+    const resolvedPolicy = Cadenza.resolveRuntimeValidationPolicyForTask(
+      this,
+      metadata,
+    );
+    const cacheKey = `${this.name}:${this.version}:${direction}:${resolvedPolicy.layer}`;
+    if (!Cadenza.shouldEmitMissingSchemaWarning(cacheKey)) {
+      return;
+    }
+
+    const ctx = {
+      __taskName: this.name,
+      __taskVersion: this.version,
+      __layer: resolvedPolicy.layer,
+      __activeScopeIds: resolvedPolicy.activeScopeIds,
+    };
+
+    this.emitWithMetadata(`meta.task.${direction}_schema_missing`, ctx);
+    console.warn(
+      `[CADENZA_VALIDATION] Missing ${direction} schema for task '${this.name}'`,
+      {
+        taskName: this.name,
+        taskVersion: this.version,
+        direction,
+        layer: resolvedPolicy.layer,
+        activeScopeIds: resolvedPolicy.activeScopeIds,
+      },
+    );
+  }
+
+  private logValidationFailure(
+    direction: "input" | "output",
+    validationErrors: Record<string, string>,
+    metadata: AnyObject = {},
+  ): void {
+    const resolvedPolicy = Cadenza.resolveRuntimeValidationPolicyForTask(
+      this,
+      metadata,
+    );
+    console.error(
+      `[CADENZA_VALIDATION] ${direction} validation failed for task '${this.name}'`,
+      {
+        taskName: this.name,
+        taskVersion: this.version,
+        direction,
+        layer: resolvedPolicy.layer,
+        activeScopeIds: resolvedPolicy.activeScopeIds,
+        errors: validationErrors,
+      },
+    );
+  }
+
+  public validateInput(
+    context: AnyObject,
+    metadata: AnyObject = {},
+  ): true | AnyObject {
+    const config = this.getEffectiveValidationMode("input", metadata);
+
+    if (config.mode === "off") {
+      return true;
+    }
+
+    if (!config.hasExplicitSchema) {
+      if (config.warnOnMissingSchema) {
+        this.warnMissingSchema("input", metadata);
+      }
+      return true;
+    }
+
+    const validationResult = this.validateSchema(context, config.schema);
+    if (!validationResult.valid) {
+      this.emitWithMetadata("meta.task.input_validation_failed", {
+        __taskName: this.name,
+        __taskVersion: this.version,
+        __context: context,
+        __errors: validationResult.errors,
+      });
+      this.logValidationFailure("input", validationResult.errors, metadata);
+      if (config.mode === "enforce") {
         return {
           errored: true,
           __error: "Input context validation failed",
@@ -650,6 +762,7 @@ export default class Task extends SignalEmitter implements Graph {
         };
       }
     }
+
     return true;
   }
 
@@ -660,19 +773,33 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {true | AnyObject} Returns `true` if the output context is valid; otherwise, returns an object
    * containing error information when validation fails.
    */
-  public validateOutput(context: AnyObject): true | AnyObject {
-    if (this.validateOutputContext) {
-      const validationResult = this.validateSchema(
-        context,
-        this.outputContextSchema,
-      );
-      if (!validationResult.valid) {
-        this.emitWithMetadata("meta.task.output_validation_failed", {
-          __taskName: this.name,
-          __taskVersion: this.version,
-          __result: context,
-          __errors: validationResult.errors,
-        });
+  public validateOutput(
+    context: AnyObject,
+    metadata: AnyObject = {},
+  ): true | AnyObject {
+    const config = this.getEffectiveValidationMode("output", metadata);
+
+    if (config.mode === "off") {
+      return true;
+    }
+
+    if (!config.hasExplicitSchema) {
+      if (config.warnOnMissingSchema) {
+        this.warnMissingSchema("output", metadata);
+      }
+      return true;
+    }
+
+    const validationResult = this.validateSchema(context, config.schema);
+    if (!validationResult.valid) {
+      this.emitWithMetadata("meta.task.output_validation_failed", {
+        __taskName: this.name,
+        __taskVersion: this.version,
+        __result: context,
+        __errors: validationResult.errors,
+      });
+      this.logValidationFailure("output", validationResult.errors, metadata);
+      if (config.mode === "enforce") {
         return {
           errored: true,
           __error: "Output context validation failed",
@@ -680,6 +807,7 @@ export default class Task extends SignalEmitter implements Graph {
         };
       }
     }
+
     return true;
   }
 
@@ -1128,6 +1256,7 @@ export default class Task extends SignalEmitter implements Graph {
           intentName,
           intent.input,
         );
+        this.hasExplicitInputContextSchema = true;
       }
       if (intent?.output) {
         this.outputContextSchema = this.mergeSchemaVariant(
@@ -1135,6 +1264,7 @@ export default class Task extends SignalEmitter implements Graph {
           intentName,
           intent.output,
         );
+        this.hasExplicitOutputContextSchema = true;
       }
     }
 
