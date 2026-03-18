@@ -1,3 +1,10 @@
+# [3.25.0](https://github.com/cadenzaio/cadenza/compare/v3.24.0...v3.25.0) (2026-03-18)
+
+
+### Features
+
+* **runtime:** add runtime validation policy controls ([a128720](https://github.com/cadenzaio/cadenza/commit/a12872089c5e2194b1fa5761be05251bd78e90d0))
+
 # [3.24.0](https://github.com/cadenzaio/cadenza/compare/v3.23.0...v3.24.0) (2026-03-06)
 
 
