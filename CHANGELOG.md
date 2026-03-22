@@ -1,3 +1,10 @@
+## [3.25.1](https://github.com/cadenzaio/cadenza/compare/v3.25.0...v3.25.1) (2026-03-22)
+
+
+### Bug Fixes
+
+* preserve inquiry lineage and task intent metadata ([06db87b](https://github.com/cadenzaio/cadenza/commit/06db87b883402b1b8bee257dc4e95f00a9dd80dd))
+
 # [3.25.0](https://github.com/cadenzaio/cadenza/compare/v3.24.0...v3.25.0) (2026-03-18)
 
 
