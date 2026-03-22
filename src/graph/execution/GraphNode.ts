@@ -236,6 +236,7 @@ export default class GraphNode extends SignalEmitter implements Graph {
             uuid: this.id,
             routineExecutionId: this.routineExecId,
             executionTraceId: this.executionTraceId,
+            inquiryId: context.__inquiryId ?? null,
             context: this.context.getContext(),
             metaContext: this.context.getMetadata(),
             taskName: this.task.name,
@@ -555,7 +556,17 @@ export default class GraphNode extends SignalEmitter implements Graph {
   inquire(inquiry: string, context: AnyObject, options: InquiryOptions) {
     return Cadenza.resolveRuntimeInquiryDelegate()(
       inquiry,
-      { ...context, __executionTraceId: this.executionTraceId },
+      {
+        ...context,
+        __executionTraceId:
+          context.__executionTraceId ??
+          context.__metadata?.__executionTraceId ??
+          this.executionTraceId,
+        __inquirySourceTaskName: this.task.name,
+        __inquirySourceTaskVersion: this.task.version,
+        __inquirySourceTaskExecutionId: this.id,
+        __inquirySourceRoutineExecutionId: this.routineExecId,
+      },
       options,
     );
   }

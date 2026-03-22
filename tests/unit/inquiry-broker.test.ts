@@ -72,6 +72,33 @@ describe("Inquiry Broker", () => {
     expect(Cadenza.inquiryBroker.inquiryObservers.get(intentName)).toBeUndefined();
   });
 
+  it("passes inquiry origin metadata through the runtime delegate", async () => {
+    const intentName = uniqueName("intent-origin");
+    const callerTaskName = uniqueName("task-caller");
+    let capturedContext: any;
+
+    Cadenza.setRuntimeInquiryDelegate(async (_inquiry, context) => {
+      capturedContext = context;
+      return { ok: true };
+    });
+
+    Cadenza.run(
+      Cadenza.createTask(callerTaskName, async (_ctx, _emit, inquire) => {
+        return inquire(intentName, { foo: "bar" }, { timeout: 50 });
+      }),
+      {},
+    );
+
+    await sleep(25);
+
+    expect(capturedContext.foo).toBe("bar");
+    expect(typeof capturedContext.__executionTraceId).toBe("string");
+    expect(capturedContext.__inquirySourceTaskName).toBe(callerTaskName);
+    expect(capturedContext.__inquirySourceTaskVersion).toBe(1);
+    expect(typeof capturedContext.__inquirySourceTaskExecutionId).toBe("string");
+    expect(typeof capturedContext.__inquirySourceRoutineExecutionId).toBe("string");
+  });
+
   it("reset clears inquiry and transient signal broker state", () => {
     const observedSignalName = uniqueName("signal-observed-reset");
     const transientSignalName = uniqueName("signal-transient-reset");

@@ -159,6 +159,7 @@ export default class Task extends SignalEmitter implements Graph {
       "meta.task.output_schema_missing",
       "meta.task.relationship_added",
       "meta.task.relationship_removed",
+      "meta.task.intent_associated",
       "meta.task.layer_index_changed",
       "meta.node.scheduled",
       "meta.node.mapped",
@@ -1247,8 +1248,20 @@ export default class Task extends SignalEmitter implements Graph {
 
   respondsTo(...inquires: string[]): this {
     for (const intentName of inquires) {
+      if (this.handlesIntents.has(intentName)) {
+        continue;
+      }
       this.handlesIntents.add(intentName);
       Cadenza.inquiryBroker.observe(intentName, this);
+      if (this.register) {
+        this.emitWithMetadata("meta.task.intent_associated", {
+          data: {
+            intentName,
+            taskName: this.name,
+            taskVersion: this.version,
+          },
+        });
+      }
       const intent = Cadenza.inquiryBroker.intents.get(intentName);
       if (intent?.input) {
         this.inputContextSchema = this.mergeSchemaVariant(

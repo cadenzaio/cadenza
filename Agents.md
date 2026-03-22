@@ -41,6 +41,14 @@ yarn install
 yarn build
 ```
 
+Local tarball packaging now has a guard:
+
+```bash
+npm pack
+```
+
+`prepack` runs `yarn build`, so a locally packed `@cadenza.io/core` tarball should never contain stale `dist` output.
+
 ## Test
 
 ```bash
