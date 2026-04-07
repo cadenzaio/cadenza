@@ -1,3 +1,10 @@
+# [3.26.0](https://github.com/cadenzaio/cadenza/compare/v3.25.1...v3.26.0) (2026-04-07)
+
+
+### Features
+
+* add signal delivery metadata ([53716fe](https://github.com/cadenzaio/cadenza/commit/53716fea6929411345ddddc8f1e706cd88c17e84))
+
 ## [3.25.1](https://github.com/cadenzaio/cadenza/compare/v3.25.0...v3.25.1) (2026-03-22)
 
 
