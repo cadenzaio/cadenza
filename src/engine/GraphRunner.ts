@@ -86,9 +86,17 @@ export default class GraphRunner extends SignalEmitter {
       uuid();
 
     context.__executionTraceId = executionTraceId;
+    context.__traceCreatedByRunner = isNewTrace;
 
+    const isNewRoutine = !context.__routineExecId;
     const routineExecId = context.__routineExecId ?? uuid();
     context.__routineExecId = routineExecId;
+    const routineCreatedAt = formatTimestamp(Date.now());
+    context.__routineCreatedByRunner = isNewRoutine;
+    context.__routineName = routineName;
+    context.__routineVersion = routineVersion;
+    context.__routineCreatedAt = routineCreatedAt;
+    context.__routineIsMeta = isMeta;
 
     Cadenza.applyRuntimeValidationScopesToContext(
       context,
@@ -127,11 +135,7 @@ export default class GraphRunner extends SignalEmitter {
           executionTraceId,
           context: ctx.getContext(),
           metaContext: ctx.getMetadata(),
-          previousRoutineExecution:
-            context.__localRoutineExecId ??
-            context.__metadata?.__routineExecId ??
-            null,
-          created: formatTimestamp(Date.now()),
+          created: routineCreatedAt,
         },
         __metadata: {
           __executionTraceId: executionTraceId,

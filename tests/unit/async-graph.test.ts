@@ -317,6 +317,23 @@ describe("Async Graph", () => {
     expect(result.__graph.elements[0].data.context.__retries).toBe(5);
   });
 
+  it("should preserve nested __error strings when a task returns an errored object", async () => {
+    const task = Cadenza.createTask("nested-error-task", () => {
+      return {
+        errored: true,
+        __error:
+          "No routeable internal transport available for IotDbService. Waiting for authority route updates before retrying.",
+      };
+    });
+
+    const run = await Cadenza.runner.run(task, {});
+    const result = run.export();
+
+    expect(result.__graph.elements[0].data.context.__error).toBe(
+      "No routeable internal transport available for IotDbService. Waiting for authority route updates before retrying.",
+    );
+  });
+
   it("should correctly handle progress callbacks", async () => {
     // TODO
   });

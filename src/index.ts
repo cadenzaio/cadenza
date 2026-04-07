@@ -9,7 +9,13 @@ import Cadenza, {
 import GraphRun from "./engine/GraphRun";
 import GraphRunner from "./engine/GraphRunner";
 import InquiryBroker, { InquiryOptions, Intent } from "./engine/InquiryBroker";
-import SignalBroker, { EmitOptions } from "./engine/SignalBroker";
+import SignalBroker, {
+  EmitOptions,
+  type SignalDefinitionInput,
+  type SignalDeliveryMode,
+  type SignalMetadata,
+  type SignalReceiverFilter,
+} from "./engine/SignalBroker";
 import GraphContext from "./graph/context/GraphContext";
 import DebounceTask, { DebounceOptions } from "./graph/definition/DebounceTask";
 import EphemeralTask, {
@@ -94,6 +100,10 @@ export type {
   DebounceOptions,
   EphemeralTaskOptions,
   EmitOptions,
+  SignalDefinitionInput,
+  SignalDeliveryMode,
+  SignalMetadata,
+  SignalReceiverFilter,
   InquiryOptions,
   RuntimeValidationMode,
   RuntimeValidationPolicy,

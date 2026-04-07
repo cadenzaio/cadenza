@@ -13,6 +13,34 @@ import { EmitOptions } from "../../engine/SignalBroker";
 import Cadenza from "../../Cadenza";
 import { InquiryOptions } from "../../engine/InquiryBroker";
 
+function normalizeGraphErrorMessage(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const record = error as Record<string, unknown>;
+
+    if (typeof record.__error === "string") {
+      return record.__error;
+    }
+
+    if (typeof record.error === "string") {
+      return record.error;
+    }
+
+    if (typeof record.message === "string") {
+      return record.message;
+    }
+  }
+
+  return String(error);
+}
+
 /**
  * Represents a node in a graph structure used for executing tasks.
  * A Node is a container for a task and its associated context, providing
@@ -261,6 +289,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
             data: {
               taskExecutionId: this.id,
               previousTaskExecutionId: node.id,
+              executionTraceId:
+                context.__metadata?.__executionTraceId ??
+                context.__executionTraceId ??
+                null,
             },
             filter: {
               taskName: this.task.name,
@@ -280,6 +312,10 @@ export default class GraphNode extends SignalEmitter implements Graph {
             data: {
               taskExecutionId: this.id,
               previousTaskExecutionId: context.__previousTaskExecutionId,
+              executionTraceId:
+                context.__metadata?.__executionTraceId ??
+                context.__executionTraceId ??
+                null,
             },
             filter: {
               taskName: this.task.name,
@@ -765,11 +801,12 @@ export default class GraphNode extends SignalEmitter implements Graph {
    * @return {void} This method does not return any value.
    */
   onError(error: unknown, errorData: AnyObject = {}) {
+    const normalizedError = normalizeGraphErrorMessage(error);
     this.result = {
       ...this.context.getFullContext(),
-      __error: `Node error: ${error}`,
+      __error: `Node error: ${normalizedError}`,
       __retries: this.retries,
-      error: `Node error: ${error}`,
+      error: `Node error: ${normalizedError}`,
       errored: true,
       returnedValue: this.result,
       ...errorData,

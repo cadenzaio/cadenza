@@ -9,6 +9,10 @@ import SignalEmitter from "../../interfaces/SignalEmitter";
 import Cadenza from "../../Cadenza";
 import { InquiryOptions } from "../../engine/InquiryBroker";
 import { getActorTaskRuntimeMetadata } from "../../actors/Actor";
+import type {
+  SignalDefinitionInput,
+  SignalMetadata,
+} from "../../engine/SignalBroker";
 
 export type TaskFunction = (
   context: AnyObject,
@@ -22,6 +26,24 @@ export type TaskFunction = (
 ) => TaskResult;
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
 export type ThrottleTagGetter = (context?: AnyObject, task?: Task) => string;
+
+function normalizeSignalDefinition(
+  input: SignalDefinitionInput,
+): { name: string; metadata?: SignalMetadata } {
+  if (typeof input === "string") {
+    return {
+      name: input,
+    };
+  }
+
+  return {
+    name: input.name,
+    metadata: {
+      deliveryMode: input.deliveryMode,
+      broadcastFilter: input.broadcastFilter ?? null,
+    },
+  };
+}
 
 /**
  * Represents a task with a specific behavior, configuration, and lifecycle management.
@@ -1086,10 +1108,11 @@ export default class Task extends SignalEmitter implements Graph {
    * @param {...string[]} signals - The array of signal names to observe.
    * @return {this} The current instance after adding the specified signals.
    */
-  doOn(...signals: string[]): this {
-    signals.forEach((signal) => {
+  doOn(...signals: SignalDefinitionInput[]): this {
+    signals.forEach((input) => {
+      const { name: signal, metadata } = normalizeSignalDefinition(input);
       if (this.observedSignals.has(signal)) return;
-      Cadenza.signalBroker.observe(signal, this as any);
+      Cadenza.signalBroker.observe(signal, this as any, metadata);
       this.observedSignals.add(signal);
       if (this.register) {
         this.emitWithMetadata("meta.task.observed_signal", {
@@ -1110,14 +1133,15 @@ export default class Task extends SignalEmitter implements Graph {
    * @param {...string} signals - The list of signals to be registered for emission.
    * @return {this} The current instance for method chaining.
    */
-  emits(...signals: string[]): this {
-    signals.forEach((signal) => {
+  emits(...signals: SignalDefinitionInput[]): this {
+    signals.forEach((input) => {
+      const { name: signal } = normalizeSignalDefinition(input);
       if (this.observedSignals.has(signal))
         throw new Error(
           `Detected signal loop for task ${this.name}. Signal name: ${signal}`,
         );
       this.signalsToEmitAfter.add(signal);
-      this.attachSignal(signal);
+      this.attachSignal(input);
     });
     return this;
   }
@@ -1129,10 +1153,11 @@ export default class Task extends SignalEmitter implements Graph {
    * @param {...string} signals - The names of the signals to emit upon failure.
    * @return {this} Returns the current instance for chaining.
    */
-  emitsOnFail(...signals: string[]): this {
-    signals.forEach((signal) => {
+  emitsOnFail(...signals: SignalDefinitionInput[]): this {
+    signals.forEach((input) => {
+      const { name: signal } = normalizeSignalDefinition(input);
       this.signalsToEmitOnFail.add(signal);
-      this.attachSignal(signal);
+      this.attachSignal(input);
     });
     return this;
   }
@@ -1143,10 +1168,11 @@ export default class Task extends SignalEmitter implements Graph {
    * @param {...string} signals - The names of the signals to attach.
    * @return {void} This method does not return a value.
    */
-  attachSignal(...signals: string[]): Task {
-    signals.forEach((signal) => {
+  attachSignal(...signals: SignalDefinitionInput[]): Task {
+    signals.forEach((input) => {
+      const { name: signal, metadata } = normalizeSignalDefinition(input);
       this.emitsSignals.add(signal);
-      Cadenza.signalBroker.registerEmittedSignal(signal);
+      Cadenza.signalBroker.registerEmittedSignal(signal, metadata);
       if (this.register) {
         const data: any = {
           signals: {

@@ -509,6 +509,7 @@ export default class Actor<
   private readonly stateByKey: Map<string, ActorStateRecord<D, R>> = new Map();
   private readonly sessionByKey: Map<string, ActorSessionState> = new Map();
   private readonly idempotencyByKey: Map<string, IdempotencyRecord> = new Map();
+  private readonly writeQueueByKey: Map<string, Promise<void>> = new Map();
   private nextTaskBindingIndex = 0;
 
   /**
@@ -753,7 +754,7 @@ export default class Actor<
         taskBindingId,
         actorKey,
         invocationOptions,
-        runTask,
+        () => this.runWithPerKeyWriteSerialization(actorKey, mode, runTask),
       );
     };
 
@@ -1114,6 +1115,36 @@ export default class Actor<
     return promise;
   }
 
+  private runWithPerKeyWriteSerialization(
+    actorKey: string,
+    mode: ActorTaskMode,
+    runTask: () => Promise<TaskResult>,
+  ): Promise<TaskResult> {
+    if (mode === "read") {
+      return runTask();
+    }
+
+    const previous = this.writeQueueByKey.get(actorKey) ?? Promise.resolve();
+    let releaseCurrent!: () => void;
+    const currentGate = new Promise<void>((resolve) => {
+      releaseCurrent = resolve;
+    });
+    const currentTail = previous.catch(() => undefined).then(() => currentGate);
+
+    this.writeQueueByKey.set(actorKey, currentTail);
+
+    return previous
+      .catch(() => undefined)
+      .then(runTask)
+      .finally(() => {
+        releaseCurrent();
+
+        if (this.writeQueueByKey.get(actorKey) === currentTail) {
+          this.writeQueueByKey.delete(actorKey);
+        }
+      });
+  }
+
   private getActiveIdempotencyRecord(
     compositeKey: string,
   ): IdempotencyRecord | undefined {
@@ -1148,18 +1179,21 @@ export default class Actor<
     const timeoutMs =
       normalizePositiveInteger(this.spec.session?.persistenceTimeoutMs) ?? 5000;
 
+    const persistenceContext = {
+      actor_name: this.spec.name,
+      actor_version: 1,
+      actor_key: actorKey,
+      durable_state: cloneForDurableState(durableState),
+      durable_version: durableVersion,
+      expires_at: null,
+    };
+
     const response = await inquire(
       META_ACTOR_SESSION_STATE_PERSIST_INTENT,
-      {
-        actor_name: this.spec.name,
-        actor_version: 1,
-        actor_key: actorKey,
-        durable_state: cloneForDurableState(durableState),
-        durable_version: durableVersion,
-        expires_at: null,
-      },
+      persistenceContext,
       {
         timeout: timeoutMs,
+        requireComplete: true,
         rejectOnTimeout: true,
       },
     );
@@ -1170,7 +1204,14 @@ export default class Actor<
       response.persisted !== true
     ) {
       const reason = isObject(response)
-        ? response.__error ?? response.error
+        ? response.__error ??
+          response.error ??
+          response.internalError ??
+          (response.errored === true
+            ? `errored response keys: ${Object.keys(response).join(",")}`
+            : response.failed === true
+              ? `failed response keys: ${Object.keys(response).join(",")}`
+              : undefined)
         : undefined;
       throw new Error(
         `Actor "${this.spec.name}" durable state persistence failed for key "${actorKey}"${reason ? `: ${String(reason)}` : ""}`,

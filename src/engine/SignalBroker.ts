@@ -25,6 +25,28 @@ export interface EmitOptions {
   flushStrategy?: string; // New: choose which flush interval bucket to use
 }
 
+export type SignalDeliveryMode = "single" | "broadcast";
+
+export type SignalReceiverFilter = {
+  serviceNames?: string[];
+  serviceInstanceIds?: string[];
+  origins?: string[];
+  roles?: string[];
+  protocols?: string[];
+  runtimeStates?: string[];
+};
+
+export type SignalMetadata = {
+  deliveryMode?: SignalDeliveryMode;
+  broadcastFilter?: SignalReceiverFilter | null;
+};
+
+export type SignalDefinitionInput =
+  | string
+  | ({
+      name: string;
+    } & SignalMetadata);
+
 type FlushStrategyName = string;
 
 interface FlushStrategy {
@@ -81,6 +103,7 @@ export default class SignalBroker {
   > = new Map();
 
   emittedSignalsRegistry: Set<string> = new Set();
+  signalMetadataRegistry: Map<string, SignalMetadata> = new Map();
 
   // ── Flush Strategy Management ───────────────────────────────────────
   private flushStrategies = new Map<FlushStrategyName, FlushStrategy>();
@@ -100,6 +123,66 @@ export default class SignalBroker {
       intervalMs: 350,
       maxBatchSize: 80,
     });
+  }
+
+  private resolveSignalMetadataKey(signal: unknown): string {
+    const normalizedSignal = typeof signal === "string" ? signal.trim() : "";
+    if (!normalizedSignal) {
+      return "";
+    }
+
+    return normalizedSignal.split(":")[0] ?? normalizedSignal;
+  }
+
+  private normalizeSignalMetadata(
+    metadata?: SignalMetadata | null,
+  ): SignalMetadata | undefined {
+    if (!metadata) {
+      return undefined;
+    }
+
+    const deliveryMode =
+      metadata.deliveryMode === "broadcast" ? "broadcast" : "single";
+    const broadcastFilter =
+      metadata.broadcastFilter &&
+      typeof metadata.broadcastFilter === "object" &&
+      !Array.isArray(metadata.broadcastFilter)
+        ? merge({}, metadata.broadcastFilter)
+        : null;
+
+    return {
+      deliveryMode,
+      broadcastFilter,
+    };
+  }
+
+  setSignalMetadata(signal: string, metadata?: SignalMetadata | null): void {
+    const metadataKey = this.resolveSignalMetadataKey(signal);
+    if (!metadataKey) {
+      return;
+    }
+
+    const normalized = this.normalizeSignalMetadata(metadata);
+    if (!normalized) {
+      this.signalMetadataRegistry.delete(metadataKey);
+      return;
+    }
+
+    this.signalMetadataRegistry.set(metadataKey, normalized);
+  }
+
+  getSignalMetadata(signal: string): SignalMetadata | undefined {
+    const metadataKey = this.resolveSignalMetadataKey(signal);
+    if (!metadataKey) {
+      return undefined;
+    }
+
+    const metadata = this.signalMetadataRegistry.get(metadataKey);
+    if (!metadata) {
+      return undefined;
+    }
+
+    return merge({}, metadata);
   }
 
   // Dor debugging
@@ -198,6 +281,7 @@ export default class SignalBroker {
         signal,
         data: {
           registered: this.signalObservers.get(signal)?.registered ?? false,
+          metadata: this.getSignalMetadata(signal) ?? null,
         },
       }));
 
@@ -684,7 +768,13 @@ export default class SignalBroker {
   execute(signal: string, context: AnyObject): boolean {
     const isMeta = signal.includes("meta.");
     const isSubMeta = signal.includes("sub_meta.") || context.__isSubMeta;
+    const isReceivedSignalTransmission =
+      context.__receivedSignalTransmission === true;
     const isMetric = context.__signalEmission?.isMetric;
+    const isNewTrace =
+      !context.__signalEmission?.executionTraceId &&
+      !context.__metadata?.__executionTraceId &&
+      !context.__executionTraceId;
 
     const executionTraceId =
       context.__signalEmission?.executionTraceId ??
@@ -693,11 +783,6 @@ export default class SignalBroker {
       uuid();
 
     if (!isSubMeta && (!isMeta || this.debug)) {
-      const isNewTrace =
-        !context.__signalEmission?.executionTraceId &&
-        !context.__metadata?.__executionTraceId &&
-        !context.__executionTraceId;
-
       if (isNewTrace) {
         this.emit("sub_meta.signal_broker.new_trace", {
           data: {
@@ -729,22 +814,43 @@ export default class SignalBroker {
       const signalParts = signal.split(":");
       const signalName = signalParts[0];
       const signalTag = signalParts.length > 1 ? signalParts[1] : null;
+      const existingSignalEmission =
+        context.__signalEmission && typeof context.__signalEmission === "object"
+          ? context.__signalEmission
+          : {};
       context.__signalEmission = {
-        ...(context.__signalEmission ?? {}),
-        uuid: uuid(),
-        executionTraceId,
-        signalName,
-        signalTag,
-        emittedAt: formatTimestamp(emittedAt),
-        consumed: false,
-        consumedBy: null,
-        isMeta,
+        ...existingSignalEmission,
+        fullSignalName: existingSignalEmission.fullSignalName ?? signal,
+        uuid: existingSignalEmission.uuid ?? uuid(),
+        executionTraceId:
+          existingSignalEmission.executionTraceId ?? executionTraceId,
+        signalName: existingSignalEmission.signalName ?? signalName,
+        signalTag: existingSignalEmission.signalTag ?? signalTag,
+        emittedAt:
+          existingSignalEmission.emittedAt ?? formatTimestamp(emittedAt),
+        consumed: existingSignalEmission.consumed ?? false,
+        consumedBy: existingSignalEmission.consumedBy ?? null,
+        isMeta: existingSignalEmission.isMeta ?? isMeta,
+        __traceCreatedBySignalBroker:
+          existingSignalEmission.__traceCreatedBySignalBroker ?? isNewTrace,
       };
 
-      this.emit("sub_meta.signal_broker.emitting_signal", { ...context });
+      if (!isReceivedSignalTransmission) {
+        if (isNewTrace) {
+          context.__traceCreatedBySignalBroker = true;
+        }
+
+        this.emit("sub_meta.signal_broker.emitting_signal", { ...context });
+
+        if (isNewTrace) {
+          delete context.__traceCreatedBySignalBroker;
+        }
+      }
     } else if (isSubMeta) {
       context.__isSubMeta = true;
     }
+
+    delete context.__receivedSignalTransmission;
 
     context.__metadata = {
       ...context.__metadata,
@@ -825,8 +931,11 @@ export default class SignalBroker {
    * @param {string} signal - The name of the signal to be added.
    * @return {void} This method does not return any value.
    */
-  addSignal(signal: string): void {
+  addSignal(signal: string, metadata?: SignalMetadata | null): void {
     let _signal = signal;
+    if (metadata) {
+      this.setSignalMetadata(signal, metadata);
+    }
     if (!this.signalObservers.has(_signal)) {
       this.validateSignalName(_signal);
       this.signalObservers.set(_signal, {
@@ -868,12 +977,19 @@ export default class SignalBroker {
    * @param routineOrTask The observer.
    * @edge Duplicates ignored; supports wildcards for broad listening.
    */
-  observe(signal: string, routineOrTask: Task | GraphRoutine): void {
-    this.addSignal(signal);
+  observe(
+    signal: string,
+    routineOrTask: Task | GraphRoutine,
+    metadata?: SignalMetadata | null,
+  ): void {
+    this.addSignal(signal, metadata);
     this.signalObservers.get(signal)!.tasks.add(routineOrTask);
   }
 
-  registerEmittedSignal(signal: string): void {
+  registerEmittedSignal(signal: string, metadata?: SignalMetadata | null): void {
+    if (metadata) {
+      this.setSignalMetadata(signal, metadata);
+    }
     this.emittedSignalsRegistry.add(signal);
   }
 
@@ -912,6 +1028,7 @@ export default class SignalBroker {
     this.clearThrottleState();
     this.signalObservers.clear();
     this.emittedSignalsRegistry.clear();
+    this.signalMetadataRegistry.clear();
   }
 
   public shutdown(): void {

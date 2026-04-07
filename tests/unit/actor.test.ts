@@ -744,6 +744,87 @@ describe("Actor runtime", () => {
     });
   });
 
+  it("serializes concurrent write tasks for the same actor key", async () => {
+    const persistenceVersions: number[] = [];
+
+    Cadenza.createMetaTask("Capture serialized actor persistence", async (ctx) => {
+      persistenceVersions.push(Number(ctx.durable_version));
+      await nextTick();
+      return {
+        __success: true,
+        persisted: true,
+      };
+    }).respondsTo(META_ACTOR_SESSION_STATE_PERSIST_INTENT);
+
+    const actor = Cadenza.createActor({
+      name: "SerializedPersistenceActor",
+      defaultKey: "device-1",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+      },
+    });
+
+    const writeTask = actor.task(
+      async ({ state, setState }) => {
+        await nextTick();
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await Promise.all([
+      invokeTaskWithBrokerInquire(writeTask),
+      invokeTaskWithBrokerInquire(writeTask),
+    ]);
+
+    expect(actor.getState()).toEqual({ count: 2 });
+    expect(actor.getDurableVersion()).toBe(2);
+    expect(persistenceVersions).toEqual([1, 2]);
+  });
+
+  it("keeps writes for different actor keys parallel", async () => {
+    let activeWrites = 0;
+    let peakWrites = 0;
+    let releaseWrites!: () => void;
+
+    const releaseGate = new Promise<void>((resolve) => {
+      releaseWrites = resolve;
+    });
+
+    const actor = Cadenza.createActor({
+      name: "ParallelActor",
+      defaultKey: "default-key",
+      initState: { count: 0 },
+      keyResolver: (input) => input.deviceId,
+    });
+
+    const writeTask = actor.task(
+      async ({ state, setState }) => {
+        activeWrites += 1;
+        peakWrites = Math.max(peakWrites, activeWrites);
+        await releaseGate;
+        setState({ count: state.count + 1 });
+        activeWrites -= 1;
+      },
+      { mode: "write" },
+    );
+
+    const first = invokeTask(writeTask, { deviceId: "device-a" });
+    const second = invokeTask(writeTask, { deviceId: "device-b" });
+
+    await nextTick();
+    await nextTick();
+
+    expect(peakWrites).toBe(2);
+
+    releaseWrites();
+    await Promise.all([first, second]);
+
+    expect(actor.getState("device-a")).toEqual({ count: 1 });
+    expect(actor.getState("device-b")).toEqual({ count: 1 });
+  });
+
   it("applies configured persistence timeout to strict write-through inquiries", async () => {
     let capturedInquiry: string | undefined;
     let capturedOptions: InquiryOptions | undefined;
@@ -781,8 +862,46 @@ describe("Actor runtime", () => {
     expect(capturedInquiry).toBe(META_ACTOR_SESSION_STATE_PERSIST_INTENT);
     expect(capturedOptions).toMatchObject({
       timeout: 1234,
+      requireComplete: true,
       rejectOnTimeout: true,
     });
+    expect(actor.getState()).toEqual({ count: 1 });
+    expect(actor.getDurableVersion()).toBe(1);
+  });
+
+  it("waits for complete persistence responder graphs before committing durable state", async () => {
+    const finalizePersistenceTask = Cadenza.createMetaTask(
+      "Finalize nested actor persistence",
+      async () => {
+        await nextTick();
+        return {
+          __success: true,
+          persisted: true,
+        };
+      },
+    );
+
+    Cadenza.createMetaTask("Prepare nested actor persistence", (ctx) => ctx)
+      .then(finalizePersistenceTask)
+      .respondsTo(META_ACTOR_SESSION_STATE_PERSIST_INTENT);
+
+    const actor = Cadenza.createActor({
+      name: "NestedPersistenceActor",
+      defaultKey: "nested-persistence",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+      },
+    });
+
+    const writeTask = actor.task(
+      ({ state, setState }) => {
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await expect(invokeTaskWithBrokerInquire(writeTask)).resolves.toBeUndefined();
     expect(actor.getState()).toEqual({ count: 1 });
     expect(actor.getDurableVersion()).toBe(1);
   });

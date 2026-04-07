@@ -18,6 +18,7 @@ export interface InquiryOptions {
   timeout?: number;
   rejectOnTimeout?: boolean;
   includePendingTasks?: boolean;
+  requireComplete?: boolean;
 }
 
 export default class InquiryBroker extends SignalEmitter {
