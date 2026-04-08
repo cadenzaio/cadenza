@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import Cadenza from "../../src/Cadenza";
 import { META_ACTOR_SESSION_STATE_PERSIST_INTENT } from "../../src/actors/Actor";
 import type { AnyObject } from "../../src/types/global";
@@ -544,6 +544,105 @@ describe("Actor runtime", () => {
     });
 
     await expect(invokeTask(readRuntimeTask)).resolves.toBeUndefined();
+  });
+
+  it("evicts expired actor keys when the idle session TTL elapses", async () => {
+    vi.useFakeTimers();
+
+    try {
+      const actor = Cadenza.createActor({
+        name: "IdleSessionExpiryActor",
+        defaultKey: "default-idle-session",
+        loadPolicy: "lazy",
+        initState: { count: 0 },
+        keyResolver: (input) => input.userId,
+        session: {
+          enabled: true,
+          idleTtlMs: 100,
+        },
+      });
+
+      const incrementTask = actor.task(
+        ({ state, setState }) => {
+          setState({ count: state.count + 1 });
+        },
+        { mode: "write" },
+      );
+
+      await invokeTask(incrementTask, { userId: "user-1" });
+
+      expect(actor.getState("user-1")).toEqual({ count: 1 });
+      expect((actor as any).stateByKey.size).toBe(1);
+      expect((actor as any).sessionByKey.size).toBe(1);
+
+      await vi.advanceTimersByTimeAsync(150);
+
+      expect(actor.getState("user-1")).toEqual({ count: 0 });
+      expect(actor.getDurableVersion("user-1")).toBe(0);
+      expect((actor as any).stateByKey.size).toBe(1);
+      expect((actor as any).sessionByKey.size).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not evict expired actor keys while a write is still in flight", async () => {
+    vi.useFakeTimers();
+
+    try {
+      let releaseWrite!: () => void;
+      const writeGate = new Promise<void>((resolve) => {
+        releaseWrite = resolve;
+      });
+
+      const actor = Cadenza.createActor({
+        name: "ActiveWriteRetentionActor",
+        defaultKey: "default-active-write",
+        loadPolicy: "lazy",
+        initState: { count: 0 },
+        keyResolver: (input) => input.deviceId,
+        session: {
+          enabled: true,
+          idleTtlMs: 100,
+        },
+      });
+
+      const writeTask = actor.task(
+        async ({ input, state, setState }) => {
+          if (input.wait === true) {
+            await writeGate;
+          }
+
+          setState({ count: state.count + 1 });
+        },
+        { mode: "write" },
+      );
+
+      const pendingWrite = invokeTask(writeTask, {
+        deviceId: "device-a",
+        wait: true,
+      });
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect((actor as any).writeQueueByKey.has("device-a")).toBe(true);
+
+      await vi.advanceTimersByTimeAsync(150);
+      await invokeTask(writeTask, { deviceId: "device-b" });
+
+      expect((actor as any).stateByKey.has("device-a")).toBe(true);
+      expect((actor as any).sessionByKey.has("device-a")).toBe(true);
+
+      releaseWrite();
+      await pendingWrite;
+
+      expect((actor as any).stateByKey.get("device-a")?.durableState).toEqual({
+        count: 1,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps idempotency disabled by default", async () => {

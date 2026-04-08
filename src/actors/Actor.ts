@@ -566,7 +566,9 @@ export default class Actor<
         bindingOptions.touchSession,
       );
       const actorKey = this.resolveActorKey(normalizedInput, invocationOptions);
-      this.touchSession(actorKey, invocationOptions.touchSession, Date.now());
+      const now = Date.now();
+      this.pruneExpiredActorKeys(now);
+      this.touchSession(actorKey, invocationOptions.touchSession, now);
 
       const runTask = async (): Promise<TaskResult> => {
         const stateRecord = this.ensureStateRecord(actorKey);
@@ -781,6 +783,7 @@ export default class Actor<
    */
   public getDurableState(actorKey?: string): D {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
+    this.pruneExpiredActorKeys(Date.now());
     return cloneForDurableState(this.ensureStateRecord(key).durableState);
   }
 
@@ -789,6 +792,7 @@ export default class Actor<
    */
   public getRuntimeState(actorKey?: string): R {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
+    this.pruneExpiredActorKeys(Date.now());
     return this.ensureStateRecord(key).runtimeState;
   }
 
@@ -804,6 +808,7 @@ export default class Actor<
    */
   public getDurableVersion(actorKey?: string): number {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
+    this.pruneExpiredActorKeys(Date.now());
     return this.ensureStateRecord(key).version;
   }
 
@@ -812,6 +817,7 @@ export default class Actor<
    */
   public getRuntimeVersion(actorKey?: string): number {
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
+    this.pruneExpiredActorKeys(Date.now());
     return this.ensureStateRecord(key).runtimeVersion;
   }
 
@@ -1037,6 +1043,38 @@ export default class Actor<
     if (existing.absoluteExpiresAt === null && absoluteTtlMs) {
       existing.absoluteExpiresAt = touchedAt + absoluteTtlMs;
     }
+  }
+
+  private pruneExpiredActorKeys(now: number): void {
+    if (!this.spec.session?.enabled || this.sessionByKey.size === 0) {
+      return;
+    }
+
+    for (const [actorKey, session] of this.sessionByKey.entries()) {
+      if (!this.isSessionExpired(session, now)) {
+        continue;
+      }
+
+      // Active writes must keep their state record until the queue drains.
+      if (this.writeQueueByKey.has(actorKey)) {
+        continue;
+      }
+
+      this.stateByKey.delete(actorKey);
+      this.sessionByKey.delete(actorKey);
+    }
+  }
+
+  private isSessionExpired(session: ActorSessionState, now: number): boolean {
+    if (session.absoluteExpiresAt !== null && now >= session.absoluteExpiresAt) {
+      return true;
+    }
+
+    if (session.idleExpiresAt !== null && now >= session.idleExpiresAt) {
+      return true;
+    }
+
+    return false;
   }
 
   private runWithOptionalIdempotency(
