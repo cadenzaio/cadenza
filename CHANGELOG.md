@@ -1,3 +1,10 @@
+## [3.26.1](https://github.com/cadenzaio/cadenza/compare/v3.26.0...v3.26.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **actor:** evict expired actor session state ([b2fb580](https://github.com/cadenzaio/cadenza/commit/b2fb5807fe7d8ca8c0d530fe5ab5f2936f90b0ab))
+
 # [3.26.0](https://github.com/cadenzaio/cadenza/compare/v3.25.1...v3.26.0) (2026-04-07)
 
 
