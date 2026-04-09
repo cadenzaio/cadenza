@@ -189,6 +189,9 @@ export interface ActorFactoryOptions<
 > {
   isMeta?: boolean;
   definitionSource?: ActorDefinition<D, R>;
+  hydrateDurableState?: (
+    actorKey: string,
+  ) => Promise<ActorDurableStateHydration<D> | null>;
 }
 
 /**
@@ -303,6 +306,13 @@ export type ActorTaskHandler<
   | ActorStateReducer<D>
   | Promise<TaskResult | ActorStateReducer<D>>;
 
+export interface ActorDurableStateHydration<
+  D extends Record<string, any>,
+> {
+  durableState: D;
+  durableVersion: number;
+}
+
 interface ActorStateRecord<
   D extends Record<string, any>,
   R = AnyObject,
@@ -311,6 +321,7 @@ interface ActorStateRecord<
   runtimeState: R;
   version: number;
   runtimeVersion: number;
+  hydrationResolved: boolean;
   createdAt: number;
   lastReadAt: number;
   lastDurableWriteAt: number;
@@ -506,9 +517,16 @@ export default class Actor<
   readonly kind: ActorKind;
 
   private readonly sourceDefinition?: ActorDefinition<D, R>;
+  private readonly hydrateDurableState?: (
+    actorKey: string,
+  ) => Promise<ActorDurableStateHydration<D> | null>;
   private readonly stateByKey: Map<string, ActorStateRecord<D, R>> = new Map();
   private readonly sessionByKey: Map<string, ActorSessionState> = new Map();
   private readonly idempotencyByKey: Map<string, IdempotencyRecord> = new Map();
+  private readonly pendingHydrationByKey: Map<
+    string,
+    Promise<ActorStateRecord<D, R>>
+  > = new Map();
   private readonly writeQueueByKey: Map<string, Promise<void>> = new Map();
   private nextTaskBindingIndex = 0;
 
@@ -527,6 +545,7 @@ export default class Actor<
 
     this.kind = options.isMeta || spec.kind === "meta" ? "meta" : "standard";
     this.sourceDefinition = options.definitionSource;
+    this.hydrateDurableState = options.hydrateDurableState;
     this.spec = {
       ...spec,
       defaultKey: normalizedDefaultKey,
@@ -571,7 +590,7 @@ export default class Actor<
       this.touchSession(actorKey, invocationOptions.touchSession, now);
 
       const runTask = async (): Promise<TaskResult> => {
-        const stateRecord = this.ensureStateRecord(actorKey);
+        const stateRecord = await this.maybeHydrateStateRecord(actorKey);
         stateRecord.lastReadAt = Date.now();
 
         let durableStateChanged = false;
@@ -867,6 +886,7 @@ export default class Actor<
       this.stateByKey.clear();
       this.sessionByKey.clear();
       this.idempotencyByKey.clear();
+      this.pendingHydrationByKey.clear();
       if ((this.spec.loadPolicy ?? "eager") === "eager") {
         this.ensureStateRecord(this.spec.defaultKey);
       }
@@ -880,6 +900,7 @@ export default class Actor<
 
     this.stateByKey.delete(normalizedKey);
     this.sessionByKey.delete(normalizedKey);
+    this.pendingHydrationByKey.delete(normalizedKey);
     for (const key of this.idempotencyByKey.keys()) {
       if (key.startsWith(`${normalizedKey}:`)) {
         this.idempotencyByKey.delete(key);
@@ -1003,6 +1024,7 @@ export default class Actor<
       runtimeState: this.resolveInitialRuntimeState(),
       version: 0,
       runtimeVersion: 0,
+      hydrationResolved: this.hydrateDurableState === undefined,
       createdAt: now,
       lastReadAt: now,
       lastDurableWriteAt: now,
@@ -1012,6 +1034,64 @@ export default class Actor<
     this.stateByKey.set(actorKey, record);
     this.touchSession(actorKey, true, now);
     return record;
+  }
+
+  private async maybeHydrateStateRecord(
+    actorKey: string,
+  ): Promise<ActorStateRecord<D, R>> {
+    const record = this.ensureStateRecord(actorKey);
+    if (record.hydrationResolved || !this.hydrateDurableState) {
+      return record;
+    }
+
+    const pending = this.pendingHydrationByKey.get(actorKey);
+    if (pending) {
+      return pending;
+    }
+
+    let hydrationPromise!: Promise<ActorStateRecord<D, R>>;
+    hydrationPromise = (async () => {
+      const current = this.ensureStateRecord(actorKey);
+      if (current.hydrationResolved || !this.hydrateDurableState) {
+        return current;
+      }
+
+      const snapshot = await this.hydrateDurableState(actorKey);
+      const latest = this.ensureStateRecord(actorKey);
+      if (latest.hydrationResolved) {
+        return latest;
+      }
+
+      if (snapshot) {
+        const durableVersion = Number(snapshot.durableVersion);
+        if (!Number.isInteger(durableVersion) || durableVersion < 0) {
+          throw new Error(
+            `Actor "${this.spec.name}" received invalid hydrated durable version for key "${actorKey}"`,
+          );
+        }
+        if (!isObject(snapshot.durableState) || Array.isArray(snapshot.durableState)) {
+          throw new Error(
+            `Actor "${this.spec.name}" received invalid hydrated durable state for key "${actorKey}"`,
+          );
+        }
+
+        const hydratedAt = Date.now();
+        latest.durableState = cloneForDurableState(snapshot.durableState);
+        latest.version = durableVersion;
+        latest.lastReadAt = hydratedAt;
+        latest.lastDurableWriteAt = hydratedAt;
+      }
+
+      latest.hydrationResolved = true;
+      return latest;
+    })().finally(() => {
+      if (this.pendingHydrationByKey.get(actorKey) === hydrationPromise) {
+        this.pendingHydrationByKey.delete(actorKey);
+      }
+    });
+
+    this.pendingHydrationByKey.set(actorKey, hydrationPromise);
+    return hydrationPromise;
   }
 
   private touchSession(

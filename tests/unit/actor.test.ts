@@ -882,6 +882,74 @@ describe("Actor runtime", () => {
     expect(persistenceVersions).toEqual([1, 2]);
   });
 
+  it("hydrates durable state and version once before the first write for a key", async () => {
+    const hydrateDurableState = vi.fn(async (actorKey: string) => {
+      expect(actorKey).toBe("hydrated-device");
+      return {
+        durableState: { count: 41 },
+        durableVersion: 4,
+      };
+    });
+    const persistenceVersions: number[] = [];
+
+    Cadenza.createMetaTask("Capture hydrated actor persistence", async (ctx) => {
+      persistenceVersions.push(Number(ctx.durable_version));
+      return {
+        __success: true,
+        persisted: true,
+      };
+    }).respondsTo(META_ACTOR_SESSION_STATE_PERSIST_INTENT);
+
+    const actor = Cadenza.createActor({
+      name: "HydratedPersistenceActor",
+      defaultKey: "hydrated-device",
+      initState: { count: 0 },
+      session: {
+        persistDurableState: true,
+      },
+    }, {
+      hydrateDurableState,
+    });
+
+    const writeTask = actor.task(
+      ({ state, setState }) => {
+        setState({ count: state.count + 1 });
+      },
+      { mode: "write" },
+    );
+
+    await invokeTaskWithBrokerInquire(writeTask);
+    await invokeTaskWithBrokerInquire(writeTask);
+
+    expect(hydrateDurableState).toHaveBeenCalledTimes(1);
+    expect(actor.getState()).toEqual({ count: 43 });
+    expect(actor.getDurableVersion()).toBe(6);
+    expect(persistenceVersions).toEqual([5, 6]);
+  });
+
+  it("hydrates durable state before the first read task for a key", async () => {
+    const actor = Cadenza.createActor({
+      name: "HydratedReadActor",
+      defaultKey: "read-device",
+      initState: { count: 0 },
+    }, {
+      hydrateDurableState: async () => ({
+        durableState: { count: 7 },
+        durableVersion: 3,
+      }),
+    });
+
+    const readTask = actor.task(({ state, actor: actorContext }) => ({
+      count: state.count,
+      durableVersion: actorContext.durableVersion,
+    }));
+
+    await expect(invokeTask(readTask)).resolves.toEqual({
+      count: 7,
+      durableVersion: 3,
+    });
+  });
+
   it("keeps writes for different actor keys parallel", async () => {
     let activeWrites = 0;
     let peakWrites = 0;

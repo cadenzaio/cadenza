@@ -602,6 +602,7 @@ export default class Cadenza {
     const actorOptions: ActorFactoryOptions<D, R> = {
       isMeta: options.isMeta,
       definitionSource: definition,
+      hydrateDurableState: options.hydrateDurableState,
     };
 
     return this.createActor(spec, actorOptions);
