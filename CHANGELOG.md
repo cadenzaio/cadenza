@@ -1,3 +1,10 @@
+# [3.27.0](https://github.com/cadenzaio/cadenza/compare/v3.26.1...v3.27.0) (2026-04-09)
+
+
+### Features
+
+* **actors:** add support for durable state hydration ([26bd4e0](https://github.com/cadenzaio/cadenza/commit/26bd4e0708f04313d37b3aa2b4aef327cee7b70e))
+
 ## [3.26.1](https://github.com/cadenzaio/cadenza/compare/v3.26.0...v3.26.1) (2026-04-08)
 
 
