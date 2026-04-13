@@ -1,3 +1,15 @@
+# [3.28.0](https://github.com/cadenzaio/cadenza/compare/v3.27.0...v3.28.0) (2026-04-13)
+
+
+### Bug Fixes
+
+* harden signal and ephemeral task cleanup ([6734aac](https://github.com/cadenzaio/cadenza/commit/6734aac2e91693156b3b0d09b1b2cd5e8f4b7786))
+
+
+### Features
+
+* add runtime host and shared tool definitions ([c4f156d](https://github.com/cadenzaio/cadenza/commit/c4f156d8aa083d8b22d99fb29a386181506bfe3f))
+
 # [3.27.0](https://github.com/cadenzaio/cadenza/compare/v3.26.1...v3.27.0) (2026-04-09)
 
 
