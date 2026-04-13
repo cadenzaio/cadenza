@@ -99,6 +99,22 @@ export default class EphemeralTask extends Task {
       nodeData,
     );
 
+    if (result instanceof Promise) {
+      return result
+        .then((resolved) => {
+          if (this.once || this.condition(resolved)) {
+            this.destroy();
+          }
+          return resolved;
+        })
+        .catch((error) => {
+          if (this.once || this.condition(error)) {
+            this.destroy();
+          }
+          throw error;
+        });
+    }
+
     if (this.once || this.condition(result)) {
       this.destroy();
     }

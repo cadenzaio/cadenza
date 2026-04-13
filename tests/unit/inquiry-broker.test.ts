@@ -72,6 +72,63 @@ describe("Inquiry Broker", () => {
     expect(Cadenza.inquiryBroker.inquiryObservers.get(intentName)).toBeUndefined();
   });
 
+  it("removes destroyed ephemeral tasks from the task cache", async () => {
+    const signalName = uniqueName("signal-ephemeral");
+    const taskName = uniqueName("task-ephemeral");
+
+    Cadenza.createEphemeralMetaTask(
+      taskName,
+      () => ({ ok: true }),
+      "",
+      {
+        once: true,
+        register: false,
+      },
+    ).doOn(signalName);
+
+    expect(Cadenza.get(taskName)).toBeDefined();
+
+    Cadenza.signalBroker.emit(signalName, {});
+    await sleep(20);
+
+    expect(Cadenza.get(taskName)).toBeUndefined();
+    expect(
+      Array.from(Cadenza.snapshotRuntime().tasks).some(
+        (task) => task.name === taskName,
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps async ephemeral tasks alive until their promise settles", async () => {
+    const signalName = uniqueName("signal-ephemeral-async");
+    const taskName = uniqueName("task-ephemeral-async");
+
+    let resolveExecution: ((value: { ok: true }) => void) | null = null;
+
+    Cadenza.createEphemeralMetaTask(
+      taskName,
+      () =>
+        new Promise<{ ok: true }>((resolve) => {
+          resolveExecution = resolve;
+        }),
+      "",
+      {
+        once: true,
+        register: false,
+      },
+    ).doOn(signalName);
+
+    Cadenza.signalBroker.emit(signalName, {});
+    await sleep(20);
+
+    expect(Cadenza.get(taskName)).toBeDefined();
+
+    resolveExecution?.({ ok: true });
+    await sleep(20);
+
+    expect(Cadenza.get(taskName)).toBeUndefined();
+  });
+
   it("passes inquiry origin metadata through the runtime delegate", async () => {
     const intentName = uniqueName("intent-origin");
     const callerTaskName = uniqueName("task-caller");

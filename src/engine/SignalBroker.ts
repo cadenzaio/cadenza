@@ -41,6 +41,12 @@ export type SignalMetadata = {
   broadcastFilter?: SignalReceiverFilter | null;
 };
 
+export type PassiveSignalListener = (
+  signal: string,
+  context: AnyObject,
+  metadata: SignalMetadata | null,
+) => void;
+
 export type SignalDefinitionInput =
   | string
   | ({
@@ -104,6 +110,7 @@ export default class SignalBroker {
 
   emittedSignalsRegistry: Set<string> = new Set();
   signalMetadataRegistry: Map<string, SignalMetadata> = new Map();
+  passiveSignalListeners: Map<string, PassiveSignalListener> = new Map();
 
   // ── Flush Strategy Management ───────────────────────────────────────
   private flushStrategies = new Map<FlushStrategyName, FlushStrategy>();
@@ -192,6 +199,25 @@ export default class SignalBroker {
     console.log(
       `  • emittedSignalsRegistry size: ${this.emittedSignalsRegistry.size}`,
     );
+
+    const exactSignalEntries = Array.from(this.signalObservers.entries())
+      .filter(([signal]) => signal.includes(":"))
+      .sort((left, right) => {
+        const taskDelta = right[1].tasks.size - left[1].tasks.size;
+        if (taskDelta !== 0) {
+          return taskDelta;
+        }
+        return left[0].localeCompare(right[0]);
+      });
+    console.log(`  • exact signal observer entries: ${exactSignalEntries.length}`);
+    for (const [signal, observer] of exactSignalEntries.slice(0, 8)) {
+      const sampleTaskNames = Array.from(observer.tasks)
+        .slice(0, 3)
+        .map((task) => task.name);
+      console.log(
+        `    - ${signal} (${observer.tasks.size} tasks) sample=${sampleTaskNames.join(", ")}`,
+      );
+    }
 
     let totalSquashContexts = 0;
     let totalSquashGroups = 0;
@@ -752,7 +778,7 @@ export default class SignalBroker {
       return;
     }
 
-    this.addSignal(signal);
+    this.validateSignalName(signal);
     this.execute(signal, context);
   }
 
@@ -856,6 +882,8 @@ export default class SignalBroker {
       ...context.__metadata,
       __executionTraceId: executionTraceId,
     };
+
+    this.notifyPassiveSignalListeners(signal, context);
 
     if (this.debug && ((!isMetric && !isSubMeta) || this.verbose)) {
       console.log(
@@ -986,11 +1014,45 @@ export default class SignalBroker {
     this.signalObservers.get(signal)!.tasks.add(routineOrTask);
   }
 
-  registerEmittedSignal(signal: string, metadata?: SignalMetadata | null): void {
-    if (metadata) {
-      this.setSignalMetadata(signal, metadata);
+  addPassiveSignalListener(listener: PassiveSignalListener): () => void {
+    const listenerId = uuid();
+    this.passiveSignalListeners.set(listenerId, listener);
+
+    return () => {
+      this.passiveSignalListeners.delete(listenerId);
+    };
+  }
+
+  private notifyPassiveSignalListeners(
+    signal: string,
+    context: AnyObject,
+  ): void {
+    if (this.passiveSignalListeners.size === 0) {
+      return;
     }
-    this.emittedSignalsRegistry.add(signal);
+
+    const metadata = this.getSignalMetadata(signal) ?? null;
+    for (const listener of this.passiveSignalListeners.values()) {
+      try {
+        listener(signal, context, metadata);
+      } catch (error) {
+        if (this.debug) {
+          console.error("Passive signal listener failed", error);
+        }
+      }
+    }
+  }
+
+  registerEmittedSignal(signal: string, metadata?: SignalMetadata | null): void {
+    const signalKey = this.resolveSignalMetadataKey(signal);
+    if (!signalKey) {
+      return;
+    }
+
+    if (metadata) {
+      this.setSignalMetadata(signalKey, metadata);
+    }
+    this.emittedSignalsRegistry.add(signalKey);
   }
 
   /**
