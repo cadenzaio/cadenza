@@ -48,6 +48,12 @@ import Actor, {
   getActorTaskRuntimeMetadata,
   META_ACTOR_SESSION_STATE_PERSIST_INTENT,
 } from "./actors/Actor";
+import {
+  GlobalDefinition,
+  HelperDefinition,
+  type HelperFunction,
+  type RuntimeTools,
+} from "./tools/definitions";
 import Task, {
   TaskFunction,
   TaskResult,
@@ -62,6 +68,32 @@ import {
   Schema,
   SchemaType,
 } from "./types/schema";
+import {
+  RuntimeHost,
+} from "./runtime/RuntimeHost";
+import type {
+  RuntimeActorTaskDefinition,
+  RuntimeGlobalDefinition,
+  RuntimeHandlerLanguage,
+  RuntimeHelperDefinition,
+  RuntimeInfo,
+  RuntimeNextEventResult,
+  RuntimePollEventsResult,
+  RuntimeProtocolError,
+  RuntimeProtocolHandshake,
+  RuntimeProtocolOperation,
+  RuntimeProtocolRequest,
+  RuntimeProtocolResponse,
+  RuntimeRoutineDefinition,
+  RuntimeSignalEvent,
+  RuntimeSignalEmissionMode,
+  RuntimeSessionRole,
+  RuntimeSharingMode,
+  RuntimeSnapshot,
+  RuntimeSubscription,
+  RuntimeTaskDefinition,
+  RuntimeTaskOptions,
+} from "./runtime/types";
 
 export default Cadenza;
 export type {
@@ -97,6 +129,7 @@ export type {
   ThrottleTagGetter,
   CadenzaMode,
   TaskFunction,
+  HelperFunction,
   DebounceOptions,
   EphemeralTaskOptions,
   EmitOptions,
@@ -109,9 +142,33 @@ export type {
   RuntimeValidationPolicy,
   RuntimeValidationScope,
   ResolvedRuntimeValidationPolicy,
+  RuntimeTaskDefinition,
+  RuntimeHelperDefinition,
+  RuntimeGlobalDefinition,
+  RuntimeRoutineDefinition,
+  RuntimeActorTaskDefinition,
+  RuntimeSnapshot,
+  RuntimeProtocolRequest,
+  RuntimeProtocolResponse,
+  RuntimeProtocolHandshake,
+  RuntimeProtocolOperation,
+  RuntimeProtocolError,
+  RuntimeSubscription,
+  RuntimeSignalEvent,
+  RuntimeNextEventResult,
+  RuntimePollEventsResult,
+  RuntimeInfo,
+  RuntimeHandlerLanguage,
+  RuntimeSignalEmissionMode,
+  RuntimeSharingMode,
+  RuntimeSessionRole,
+  RuntimeTaskOptions,
+  RuntimeTools,
 };
 export {
   Actor,
+  HelperDefinition,
+  GlobalDefinition,
   Task,
   GraphRoutine,
   DebounceTask,
@@ -126,4 +183,5 @@ export {
   InquiryBroker,
   Intent,
   GraphRunner,
+  RuntimeHost,
 };

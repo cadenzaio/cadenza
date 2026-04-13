@@ -120,11 +120,11 @@ describe("Basic Task", () => {
     expect(result.__graph.numberOfNodes).toBe(1);
     expect(result.__graph.elements[0].data.context).toHaveProperty(
       "error",
-      "Node error: Error: error",
+      "Node error: error",
     );
     expect(result.__graph.elements[0].data.context).toHaveProperty(
       "__error",
-      "Node error: Error: error",
+      "Node error: error",
     );
   });
 });

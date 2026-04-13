@@ -10,6 +10,16 @@ import Cadenza from "../../Cadenza";
 import { InquiryOptions } from "../../engine/InquiryBroker";
 import { getActorTaskRuntimeMetadata } from "../../actors/Actor";
 import type {
+  GlobalDefinition,
+  HelperDefinition,
+  RuntimeTools,
+  ToolDependencyOwner,
+} from "../../tools/definitions";
+import {
+  attachGlobalDependency,
+  attachHelperDependency,
+} from "../../tools/definitions";
+import type {
   SignalDefinitionInput,
   SignalMetadata,
 } from "../../engine/SignalBroker";
@@ -22,6 +32,7 @@ export type TaskFunction = (
     context: AnyObject,
     options: InquiryOptions,
   ) => Promise<AnyObject>,
+  tools: RuntimeTools,
   progressCallback: (progress: number) => void,
 ) => TaskResult;
 export type TaskResult = boolean | AnyObject | Generator | Promise<any> | void;
@@ -51,7 +62,10 @@ function normalizeSignalDefinition(
  * Tasks can specify input/output validation, concurrency, retry policies, and more.
  * This class extends SignalEmitter and implements Graph, allowing tasks to emit and observe signals.
  */
-export default class Task extends SignalEmitter implements Graph {
+export default class Task
+  extends SignalEmitter
+  implements Graph, ToolDependencyOwner
+{
   readonly name: string;
   readonly description: string;
   version: number = 1;
@@ -97,6 +111,8 @@ export default class Task extends SignalEmitter implements Graph {
 
   handlesIntents: Set<string> = new Set();
   inquiresIntents: Set<string> = new Set();
+  helperAliases: Map<string, string> = new Map();
+  globalAliases: Map<string, string> = new Map();
 
   readonly taskFunction: TaskFunction;
 
@@ -182,6 +198,8 @@ export default class Task extends SignalEmitter implements Graph {
       "meta.task.relationship_added",
       "meta.task.relationship_removed",
       "meta.task.intent_associated",
+      "meta.task.helper_associated",
+      "meta.task.global_associated",
       "meta.task.layer_index_changed",
       "meta.node.scheduled",
       "meta.node.mapped",
@@ -855,10 +873,20 @@ export default class Task extends SignalEmitter implements Graph {
     progressCallback: (progress: number) => void,
     nodeData: { nodeId: string; routineExecId: string },
   ): TaskResult {
+    const executionContext = this.isMeta
+      ? context.getClonedFullContext()
+      : context.getClonedContext();
     return this.taskFunction(
-      this.isMeta ? context.getClonedFullContext() : context.getClonedContext(),
+      executionContext,
       emit,
       inquire,
+      Cadenza.resolveToolsForOwner(
+        this,
+        executionContext,
+        emit,
+        inquire,
+        progressCallback,
+      ),
       progressCallback,
     );
   }
@@ -873,6 +901,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @throws {Error} Throws an error if adding a predecessor creates a cycle in the task structure.
    */
   public doAfter(...tasks: (Task | undefined)[]): this {
+    Cadenza.assertGraphMutationAllowed("Task#doAfter");
     for (const pred of tasks) {
       if (!pred) continue;
       if (this.predecessorTasks.has(pred)) continue;
@@ -909,6 +938,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @throws {Error} Throws an error if adding a task causes a cyclic dependency.
    */
   public then(...tasks: (Task | undefined)[]): this {
+    Cadenza.assertGraphMutationAllowed("Task#then");
     for (const next of tasks) {
       if (!next) continue;
       if (this.nextTasks.has(next)) continue;
@@ -1109,6 +1139,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} The current instance after adding the specified signals.
    */
   doOn(...signals: SignalDefinitionInput[]): this {
+    Cadenza.assertGraphMutationAllowed("Task#doOn");
     signals.forEach((input) => {
       const { name: signal, metadata } = normalizeSignalDefinition(input);
       if (this.observedSignals.has(signal)) return;
@@ -1134,6 +1165,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} The current instance for method chaining.
    */
   emits(...signals: SignalDefinitionInput[]): this {
+    Cadenza.assertGraphMutationAllowed("Task#emits");
     signals.forEach((input) => {
       const { name: signal } = normalizeSignalDefinition(input);
       if (this.observedSignals.has(signal))
@@ -1154,6 +1186,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {this} Returns the current instance for chaining.
    */
   emitsOnFail(...signals: SignalDefinitionInput[]): this {
+    Cadenza.assertGraphMutationAllowed("Task#emitsOnFail");
     signals.forEach((input) => {
       const { name: signal } = normalizeSignalDefinition(input);
       this.signalsToEmitOnFail.add(signal);
@@ -1169,6 +1202,7 @@ export default class Task extends SignalEmitter implements Graph {
    * @return {void} This method does not return a value.
    */
   attachSignal(...signals: SignalDefinitionInput[]): Task {
+    Cadenza.assertGraphMutationAllowed("Task#attachSignal");
     signals.forEach((input) => {
       const { name: signal, metadata } = normalizeSignalDefinition(input);
       this.emitsSignals.add(signal);
@@ -1273,6 +1307,7 @@ export default class Task extends SignalEmitter implements Graph {
   }
 
   respondsTo(...inquires: string[]): this {
+    Cadenza.assertGraphMutationAllowed("Task#respondsTo");
     for (const intentName of inquires) {
       if (this.handlesIntents.has(intentName)) {
         continue;
@@ -1307,6 +1342,32 @@ export default class Task extends SignalEmitter implements Graph {
       }
     }
 
+    return this;
+  }
+
+  usesHelpers(
+    helpers: Record<string, HelperDefinition | undefined>,
+  ): this {
+    attachHelperDependency(
+      this,
+      this.name,
+      this.version,
+      helpers,
+      "meta.task.helper_associated",
+    );
+    return this;
+  }
+
+  usesGlobals(
+    globals: Record<string, GlobalDefinition | undefined>,
+  ): this {
+    attachGlobalDependency(
+      this,
+      this.name,
+      this.version,
+      globals,
+      "meta.task.global_associated",
+    );
     return this;
   }
 
@@ -1413,6 +1474,7 @@ export default class Task extends SignalEmitter implements Graph {
     this.predecessorTasks.clear();
 
     this.destroyed = true;
+    Cadenza.forgetTask(this.name);
 
     if (this.register) {
       Cadenza.registry.tasks.delete(this.name);
@@ -1458,6 +1520,8 @@ export default class Task extends SignalEmitter implements Graph {
       __validateInputContext: this.validateInputContext,
       __outputSchema: this.outputContextSchema,
       __validateOutputContext: this.validateOutputContext,
+      __helperAliases: Object.fromEntries(this.helperAliases),
+      __globalAliases: Object.fromEntries(this.globalAliases),
       __nextTasks: Array.from(this.nextTasks).map((t) => t.name),
       __previousTasks: Array.from(this.predecessorTasks).map((t) => t.name),
     };

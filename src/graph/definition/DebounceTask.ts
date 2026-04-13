@@ -3,6 +3,7 @@ import GraphContext from "../context/GraphContext";
 import { Schema } from "../../types/schema";
 import { AnyObject } from "../../types/global";
 import { InquiryOptions } from "../../engine/InquiryBroker";
+import Cadenza from "../../Cadenza";
 
 export interface DebounceOptions {
   leading?: boolean;
@@ -99,6 +100,13 @@ export default class DebounceTask extends Task {
         this.lastContext!.getClonedContext(),
         this.lastEmitFunction!,
         this.lastInquireFunction!,
+        Cadenza.resolveToolsForOwner(
+          this,
+          this.lastContext!.getClonedContext(),
+          this.lastEmitFunction!,
+          this.lastInquireFunction!,
+          this.lastProgressCallback!,
+        ),
         this.lastProgressCallback!,
       );
     } catch (error) {

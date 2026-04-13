@@ -18,6 +18,29 @@ import Actor, {
   ActorSpec,
   getActorTaskRuntimeMetadata,
 } from "./actors/Actor";
+import {
+  GlobalDefinition,
+  HelperDefinition,
+  type HelperFunction,
+  type RuntimeTools,
+  type ToolDependencyOwner,
+} from "./tools/definitions";
+import {
+  runtimeDefinitionRegistry,
+} from "./runtime/RuntimeDefinitionRegistry";
+import {
+  compileRuntimeHelperFunction,
+  compileRuntimeTaskFunction,
+} from "./runtime/sandbox";
+import { sanitizeForJson } from "./runtime/sanitize";
+import type {
+  RuntimeActorTaskDefinition,
+  RuntimeGlobalDefinition,
+  RuntimeHelperDefinition,
+  RuntimeRoutineDefinition,
+  RuntimeSnapshot,
+  RuntimeTaskDefinition,
+} from "./runtime/types";
 
 export interface TaskOptions {
   concurrency?: number;
@@ -83,12 +106,16 @@ export default class Cadenza {
   public static metaRunner: GraphRunner;
   public static registry: GraphRegistry;
   private static taskCache: Map<string, Task> = new Map();
+  private static routineCache: Map<string, GraphRoutine> = new Map();
   private static actorCache: Map<string, Actor<any, any>> = new Map();
+  private static helperCache: Map<string, HelperDefinition> = new Map();
+  private static globalCache: Map<string, GlobalDefinition> = new Map();
   private static runtimeInquiryDelegate: RuntimeInquiryDelegate | undefined;
   private static runtimeValidationPolicy: RuntimeValidationPolicy = {};
   private static runtimeValidationScopes: Map<string, RuntimeValidationScope> =
     new Map();
   private static emittedMissingSchemaWarnings: Set<string> = new Set();
+  private static helperExecutionDepth = 0;
   static isBootstrapped = false;
   static mode: CadenzaMode = "production";
 
@@ -189,6 +216,103 @@ export default class Cadenza {
     // Further uniqueness check delegated to GraphRegistry.register*
   }
 
+  public static assertGraphMutationAllowed(operationName: string): void {
+    if (this.helperExecutionDepth > 0) {
+      throw new Error(
+        `${operationName} is not allowed during helper execution`,
+      );
+    }
+  }
+
+  public static executeHelper(
+    helper: HelperDefinition,
+    context: AnyObject,
+    emit: (signal: string, context: AnyObject) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
+    progressCallback: (progress: number) => void,
+  ) {
+    const helperContext =
+      context && typeof context === "object" ? context : {};
+    const tools = this.resolveToolsForOwner(
+      helper,
+      helperContext,
+      emit,
+      inquire,
+      progressCallback,
+    );
+
+    this.helperExecutionDepth += 1;
+    try {
+      return helper.helperFunction(
+        helperContext,
+        emit,
+        inquire,
+        tools,
+        progressCallback,
+      );
+    } finally {
+      this.helperExecutionDepth = Math.max(0, this.helperExecutionDepth - 1);
+    }
+  }
+
+  public static resolveToolsForOwner(
+    owner: ToolDependencyOwner,
+    context: AnyObject,
+    emit: (signal: string, context: AnyObject) => void,
+    inquire: (
+      inquiry: string,
+      context: AnyObject,
+      options: InquiryOptions,
+    ) => Promise<AnyObject>,
+    progressCallback: (progress: number) => void,
+  ): RuntimeTools {
+    const helpers: RuntimeTools["helpers"] = {};
+    const globals: RuntimeTools["globals"] = {};
+
+    for (const [alias, helperName] of owner.helperAliases.entries()) {
+      const helper = this.getHelper(helperName);
+      if (!helper) {
+        continue;
+      }
+      if (helper.isMeta !== owner.isMeta) {
+        throw new Error(
+          `Tool alias "${alias}" resolves across layer boundaries`,
+        );
+      }
+
+      helpers[alias] = (helperContext: AnyObject = context) =>
+        this.executeHelper(
+          helper,
+          helperContext,
+          emit,
+          inquire,
+          progressCallback,
+        );
+    }
+
+    for (const [alias, globalName] of owner.globalAliases.entries()) {
+      const globalDefinition = this.getGlobal(globalName);
+      if (!globalDefinition) {
+        continue;
+      }
+      if (globalDefinition.isMeta !== owner.isMeta) {
+        throw new Error(
+          `Global alias "${alias}" resolves across layer boundaries`,
+        );
+      }
+      globals[alias] = globalDefinition.value;
+    }
+
+    return {
+      helpers,
+      globals,
+    };
+  }
+
   private static resolveTaskOptionsForActorTask(
     func: TaskFunction,
     options: TaskOptions = {},
@@ -210,6 +334,26 @@ export default class Cadenza {
 
   private static registerActor(actor: Actor<any, any>): void {
     this.actorCache.set(actor.spec.name, actor);
+  }
+
+  public static getHelper(name: string): HelperDefinition | undefined {
+    return this.helperCache.get(name);
+  }
+
+  public static getAllHelpers(): HelperDefinition[] {
+    return Array.from(this.helperCache.values()).filter(
+      (helper) => !helper.destroyed,
+    );
+  }
+
+  public static getGlobal(name: string): GlobalDefinition | undefined {
+    return this.globalCache.get(name);
+  }
+
+  public static getAllGlobals(): GlobalDefinition[] {
+    return Array.from(this.globalCache.values()).filter(
+      (globalDefinition) => !globalDefinition.destroyed,
+    );
   }
 
   /**
@@ -295,6 +439,10 @@ export default class Cadenza {
     return this.registry?.tasks.get(taskName) ?? this.taskCache.get(taskName);
   }
 
+  public static forgetTask(taskName: string): void {
+    this.taskCache.delete(taskName);
+  }
+
   public static getActor<
     D extends Record<string, any> = AnyObject,
     R = AnyObject,
@@ -310,10 +458,13 @@ export default class Cadenza {
   }
 
   public static getRoutine(routineName: string): GraphRoutine | undefined {
-    return this.registry?.routines.get(routineName);
+    return (
+      this.registry?.routines.get(routineName) ?? this.routineCache.get(routineName)
+    );
   }
 
   public static defineIntent(intent: Intent): Intent {
+    this.assertGraphMutationAllowed("Cadenza.defineIntent");
     this.inquiryBroker?.addIntent(intent);
     return intent;
   }
@@ -548,6 +699,7 @@ export default class Cadenza {
     D extends Record<string, any> = AnyObject,
     R = AnyObject,
   >(spec: ActorSpec<D, R>, options: ActorFactoryOptions = {}): Actor<D, R> {
+    this.assertGraphMutationAllowed("Cadenza.createActor");
     this.bootstrap();
     const actor = new Actor<D, R>(spec, options as ActorFactoryOptions<D, R>);
     this.registerActor(actor);
@@ -686,6 +838,7 @@ export default class Cadenza {
     description?: string,
     options: TaskOptions = {},
   ): Task {
+    this.assertGraphMutationAllowed("Cadenza.createTask");
     this.bootstrap();
     this.validateName(name);
 
@@ -737,6 +890,215 @@ export default class Cadenza {
     );
     this.taskCache.set(name, createdTask);
     return createdTask;
+  }
+
+  public static createTaskFromDefinition(
+    definition: RuntimeTaskDefinition,
+  ): Task {
+    this.bootstrap();
+    this.validateName(definition.name);
+
+    const existing = this.get(definition.name);
+    if (existing) {
+      if (!runtimeDefinitionRegistry.isRuntimeOwnedTask(definition.name)) {
+        throw new Error(
+          `Task "${definition.name}" already exists and is not runtime-owned`,
+        );
+      }
+      existing.destroy();
+    }
+
+    const taskFunction = compileRuntimeTaskFunction(definition);
+    const createdTask =
+      definition.kind === "metaTask"
+        ? this.createMetaTask(
+            definition.name,
+            taskFunction,
+            definition.description ?? "",
+            definition.options ?? {},
+          )
+        : this.createTask(
+            definition.name,
+            taskFunction,
+            definition.description ?? "",
+            definition.options ?? {},
+          );
+
+    runtimeDefinitionRegistry.setTaskDefinition(definition);
+    return createdTask;
+  }
+
+  public static createHelper(
+    name: string,
+    func: HelperFunction,
+    description: string = "",
+  ): HelperDefinition {
+    this.bootstrap();
+    this.validateName(name);
+    this.assertGraphMutationAllowed("Cadenza.createHelper");
+    if (this.helperCache.has(name)) {
+      throw new Error(`Helper "${name}" already exists`);
+    }
+
+    const helper = new HelperDefinition(name, func, description, false);
+    this.helperCache.set(name, helper);
+    this.emit("meta.helper.created", {
+      data: {
+        name,
+        version: helper.version,
+        description,
+        functionString: func.toString(),
+        isMeta: false,
+      },
+    });
+    return helper;
+  }
+
+  public static createMetaHelper(
+    name: string,
+    func: HelperFunction,
+    description: string = "",
+  ): HelperDefinition {
+    this.bootstrap();
+    this.validateName(name);
+    this.assertGraphMutationAllowed("Cadenza.createMetaHelper");
+    if (this.helperCache.has(name)) {
+      throw new Error(`Helper "${name}" already exists`);
+    }
+
+    const helper = new HelperDefinition(name, func, description, true);
+    this.helperCache.set(name, helper);
+    this.emit("meta.helper.created", {
+      data: {
+        name,
+        version: helper.version,
+        description,
+        functionString: func.toString(),
+        isMeta: true,
+      },
+    });
+    return helper;
+  }
+
+  public static createHelperFromDefinition(
+    definition: RuntimeHelperDefinition,
+  ): HelperDefinition {
+    this.bootstrap();
+    this.validateName(definition.name);
+
+    const existing = this.getHelper(definition.name);
+    if (existing) {
+      if (!runtimeDefinitionRegistry.isRuntimeOwnedHelper(definition.name)) {
+        throw new Error(
+          `Helper "${definition.name}" already exists and is not runtime-owned`,
+        );
+      }
+      existing.destroy();
+      this.helperCache.delete(definition.name);
+    }
+
+    const helperFunction = compileRuntimeHelperFunction(definition);
+    const helper =
+      definition.kind === "metaHelper"
+        ? this.createMetaHelper(
+            definition.name,
+            helperFunction,
+            definition.description ?? "",
+          )
+        : this.createHelper(
+            definition.name,
+            helperFunction,
+            definition.description ?? "",
+          );
+
+    runtimeDefinitionRegistry.setHelperDefinition(definition);
+    return helper;
+  }
+
+  public static createGlobal(
+    name: string,
+    value: unknown,
+    description: string = "",
+  ): GlobalDefinition {
+    this.bootstrap();
+    this.validateName(name);
+    this.assertGraphMutationAllowed("Cadenza.createGlobal");
+    if (this.globalCache.has(name)) {
+      throw new Error(`Global "${name}" already exists`);
+    }
+
+    const globalDefinition = new GlobalDefinition(name, value, description, false);
+    this.globalCache.set(name, globalDefinition);
+    this.emit("meta.global.created", {
+      data: {
+        name,
+        version: globalDefinition.version,
+        description,
+        isMeta: false,
+        value: globalDefinition.value,
+      },
+    });
+    return globalDefinition;
+  }
+
+  public static createMetaGlobal(
+    name: string,
+    value: unknown,
+    description: string = "",
+  ): GlobalDefinition {
+    this.bootstrap();
+    this.validateName(name);
+    this.assertGraphMutationAllowed("Cadenza.createMetaGlobal");
+    if (this.globalCache.has(name)) {
+      throw new Error(`Global "${name}" already exists`);
+    }
+
+    const globalDefinition = new GlobalDefinition(name, value, description, true);
+    this.globalCache.set(name, globalDefinition);
+    this.emit("meta.global.created", {
+      data: {
+        name,
+        version: globalDefinition.version,
+        description,
+        isMeta: true,
+        value: globalDefinition.value,
+      },
+    });
+    return globalDefinition;
+  }
+
+  public static createGlobalFromDefinition(
+    definition: RuntimeGlobalDefinition,
+  ): GlobalDefinition {
+    this.bootstrap();
+    this.validateName(definition.name);
+
+    const existing = this.getGlobal(definition.name);
+    if (existing) {
+      if (!runtimeDefinitionRegistry.isRuntimeOwnedGlobal(definition.name)) {
+        throw new Error(
+          `Global "${definition.name}" already exists and is not runtime-owned`,
+        );
+      }
+      existing.destroy();
+      this.globalCache.delete(definition.name);
+    }
+
+    const globalDefinition =
+      definition.kind === "metaGlobal"
+        ? this.createMetaGlobal(
+            definition.name,
+            definition.value,
+            definition.description ?? "",
+          )
+        : this.createGlobal(
+            definition.name,
+            definition.value,
+            definition.description ?? "",
+          );
+
+    runtimeDefinitionRegistry.setGlobalDefinition(definition);
+    return globalDefinition;
   }
 
   /**
@@ -815,6 +1177,7 @@ export default class Cadenza {
     description?: string,
     options: TaskOptions = {},
   ): Task {
+    this.assertGraphMutationAllowed("Cadenza.createUniqueTask");
     options.isUnique = true;
     return this.createTask(name, func, description, options);
   }
@@ -876,6 +1239,7 @@ export default class Cadenza {
     description?: string,
     options: TaskOptions = {},
   ): Task {
+    this.assertGraphMutationAllowed("Cadenza.createThrottledTask");
     options.concurrency = 1;
     options.getTagCallback = throttledIdGetter;
     return this.createTask(name, func, description, options);
@@ -949,6 +1313,7 @@ export default class Cadenza {
     debounceTime: number = 1000,
     options: TaskOptions & DebounceOptions = {},
   ): DebounceTask {
+    this.assertGraphMutationAllowed("Cadenza.createDebounceTask");
     this.bootstrap();
     this.validateName(name);
 
@@ -1093,6 +1458,7 @@ export default class Cadenza {
     description?: string,
     options: TaskOptions & EphemeralTaskOptions = {},
   ): EphemeralTask {
+    this.assertGraphMutationAllowed("Cadenza.createEphemeralTask");
     this.bootstrap();
     this.validateName(name);
 
@@ -1203,12 +1569,55 @@ export default class Cadenza {
     tasks: Task[],
     description: string = "",
   ): GraphRoutine {
+    this.assertGraphMutationAllowed("Cadenza.createRoutine");
     this.bootstrap();
     this.validateName(name);
     if (tasks.length === 0) {
       throw new Error(`Routine '${name}' created with no starting tasks.`);
     }
-    return new GraphRoutine(name, tasks, description);
+    const createdRoutine = new GraphRoutine(name, tasks, description);
+    this.routineCache.set(name, createdRoutine);
+    return createdRoutine;
+  }
+
+  public static createRoutineFromDefinition(
+    definition: RuntimeRoutineDefinition,
+  ): GraphRoutine {
+    const existing = this.getRoutine(definition.name);
+    if (existing) {
+      if (!runtimeDefinitionRegistry.isRuntimeOwnedRoutine(definition.name)) {
+        throw new Error(
+          `Routine "${definition.name}" already exists and is not runtime-owned`,
+        );
+      }
+      existing.destroy();
+    }
+
+    const startTasks = definition.startTaskNames.map((taskName) => {
+      const task = this.get(taskName);
+      if (!task) {
+        throw new Error(
+          `Routine "${definition.name}" references missing task "${taskName}"`,
+        );
+      }
+      return task;
+    });
+
+    const routine =
+      definition.isMeta === true
+        ? this.createMetaRoutine(
+            definition.name,
+            startTasks,
+            definition.description ?? "",
+          )
+        : this.createRoutine(
+            definition.name,
+            startTasks,
+            definition.description ?? "",
+          );
+
+    runtimeDefinitionRegistry.setRoutineDefinition(definition);
+    return routine;
   }
 
   /**
@@ -1228,12 +1637,228 @@ export default class Cadenza {
     tasks: Task[],
     description: string = "",
   ): GraphRoutine {
+    this.assertGraphMutationAllowed("Cadenza.createMetaRoutine");
     this.bootstrap();
     this.validateName(name);
     if (tasks.length === 0) {
       throw new Error(`Routine '${name}' created with no starting tasks.`);
     }
-    return new GraphRoutine(name, tasks, description, true);
+    const createdRoutine = new GraphRoutine(name, tasks, description, true);
+    this.routineCache.set(name, createdRoutine);
+    return createdRoutine;
+  }
+
+  public static snapshotRuntime(): RuntimeSnapshot {
+    const taskMap = new Map<string, Task>();
+    for (const task of this.taskCache.values()) {
+      taskMap.set(task.name, task);
+    }
+    for (const task of this.registry?.tasks.values() ?? []) {
+      taskMap.set(task.name, task);
+    }
+
+    const tasks = Array.from(taskMap.values()).map((task) => {
+      const runtimeTaskDefinition = runtimeDefinitionRegistry.taskDefinitions.get(
+        task.name,
+      );
+      const runtimeActorTaskDefinition =
+        runtimeDefinitionRegistry.actorTaskDefinitions.get(task.name);
+
+      return {
+        name: task.name,
+        version: task.version,
+        description: task.description,
+        kind: (runtimeActorTaskDefinition
+          ? "actorTask"
+          : task.isMeta
+            ? "metaTask"
+            : "task") as "task" | "metaTask" | "actorTask",
+        runtimeOwned:
+          runtimeDefinitionRegistry.isRuntimeOwnedTask(task.name) === true,
+        language:
+          runtimeTaskDefinition?.language ??
+          runtimeActorTaskDefinition?.language ??
+          null,
+        handlerSource:
+          runtimeTaskDefinition?.handlerSource ??
+          runtimeActorTaskDefinition?.handlerSource ??
+          null,
+        concurrency: task.concurrency,
+        timeout: task.timeout,
+        retryCount: task.retryCount,
+        retryDelay: task.retryDelay,
+        retryDelayMax: task.retryDelayMax,
+        retryDelayFactor: task.retryDelayFactor,
+        validateInputContext: task.validateInputContext,
+        validateOutputContext: task.validateOutputContext,
+        inputContextSchema: sanitizeForJson(task.inputContextSchema) as Record<
+          string,
+          unknown
+        >,
+        outputContextSchema: sanitizeForJson(task.outputContextSchema) as Record<
+          string,
+          unknown
+        >,
+        nextTaskNames: Array.from(task.nextTasks).map((nextTask) => nextTask.name),
+        predecessorTaskNames: Array.from(task.predecessorTasks).map(
+          (predecessorTask) => predecessorTask.name,
+        ),
+        signals: {
+          emits: Array.from(task.emitsSignals),
+          emitsAfter: Array.from(task.signalsToEmitAfter),
+          emitsOnFail: Array.from(task.signalsToEmitOnFail),
+          observed: Array.from(task.observedSignals),
+        },
+        intents: {
+          handles: Array.from(task.handlesIntents),
+          inquires: Array.from(task.inquiresIntents),
+        },
+        tools: {
+          helpers: Object.fromEntries(task.helperAliases),
+          globals: Object.fromEntries(task.globalAliases),
+        },
+        actorName: runtimeActorTaskDefinition?.actorName ?? null,
+        actorMode: runtimeActorTaskDefinition?.mode ?? null,
+      };
+    });
+
+    const helpers = this.getAllHelpers().map((helper) => {
+      const runtimeHelperDefinition =
+        runtimeDefinitionRegistry.helperDefinitions.get(helper.name);
+
+      return {
+        name: helper.name,
+        version: helper.version,
+        description: helper.description,
+        kind: (helper.isMeta ? "metaHelper" : "helper") as
+          | "helper"
+          | "metaHelper",
+        runtimeOwned: runtimeDefinitionRegistry.isRuntimeOwnedHelper(helper.name),
+        language: runtimeHelperDefinition?.language ?? null,
+        handlerSource: runtimeHelperDefinition?.handlerSource ?? null,
+        tools: {
+          helpers: Object.fromEntries(helper.helperAliases),
+          globals: Object.fromEntries(helper.globalAliases),
+        },
+      };
+    });
+
+    const globals = this.getAllGlobals().map((globalDefinition) => ({
+      name: globalDefinition.name,
+      version: globalDefinition.version,
+      description: globalDefinition.description,
+      kind: (globalDefinition.isMeta ? "metaGlobal" : "global") as
+        | "global"
+        | "metaGlobal",
+      runtimeOwned: runtimeDefinitionRegistry.isRuntimeOwnedGlobal(
+        globalDefinition.name,
+      ),
+      value: sanitizeForJson(globalDefinition.value),
+    }));
+
+    const routineMap = new Map<string, GraphRoutine>();
+    for (const routine of this.routineCache.values()) {
+      routineMap.set(routine.name, routine);
+    }
+    for (const routine of this.registry?.routines.values() ?? []) {
+      routineMap.set(routine.name, routine);
+    }
+
+    const routines = Array.from(routineMap.values()).map(
+      (routine) => ({
+        name: routine.name,
+        version: routine.version,
+        description: routine.description,
+        isMeta: routine.isMeta,
+        runtimeOwned:
+          runtimeDefinitionRegistry.isRuntimeOwnedRoutine(routine.name) === true,
+        startTaskNames: Array.from(routine.tasks).map((task) => task.name),
+        observedSignals: Array.from(routine.observedSignals),
+      }),
+    );
+
+    const intents = Array.from(this.inquiryBroker?.intents.values() ?? []).map(
+      (intent) => {
+        const sanitizedIntent = sanitizeForJson(intent) as Record<
+          string,
+          unknown
+        >;
+        return {
+          ...sanitizedIntent,
+          runtimeOwned: runtimeDefinitionRegistry.intentDefinitions.has(
+            intent.name,
+          ),
+        };
+      },
+    );
+
+    const signals = Array.from(
+      this.signalBroker?.emittedSignalsRegistry.values() ?? [],
+    ).map((signalName) => ({
+      name: signalName,
+      metadata:
+        (sanitizeForJson(
+          this.signalBroker?.signalMetadataRegistry.get(signalName) ?? null,
+        ) as Record<string, unknown> | null) ?? null,
+    }));
+
+    const actors = this.getAllActors().map((actor) => {
+      const definition = actor.toDefinition() as ActorDefinition<
+        Record<string, any>,
+        Record<string, any>
+      >;
+      const actorKeys = actor.listActorKeys().map((actorKey) => ({
+        actorKey,
+        durableState: sanitizeForJson(actor.getDurableState(actorKey)),
+        runtimeState: sanitizeForJson(actor.getRuntimeState(actorKey)),
+        durableVersion: actor.getDurableVersion(actorKey),
+        runtimeVersion: actor.getRuntimeVersion(actorKey),
+      }));
+
+      return {
+        name: actor.spec.name,
+        description: actor.spec.description ?? "",
+        runtimeOwned: runtimeDefinitionRegistry.isRuntimeOwnedActor(
+          actor.spec.name,
+        ),
+        definition: sanitizeForJson(definition) as ActorDefinition<
+          Record<string, any>,
+          Record<string, any>
+        >,
+        actorKeys,
+      };
+    });
+
+    const actorTasks = Array.from(
+      runtimeDefinitionRegistry.actorTaskDefinitions.values(),
+    ).map((definition: RuntimeActorTaskDefinition) => ({
+      actorName: definition.actorName,
+      taskName: definition.taskName,
+      description: definition.description ?? "",
+      mode: definition.mode ?? "read",
+      language: definition.language,
+      handlerSource: definition.handlerSource,
+      runtimeOwned: true,
+    }));
+
+    const links = Array.from(runtimeDefinitionRegistry.taskLinks.values()).map(
+      (link) => ({ ...link }),
+    );
+
+    return {
+      runtimeMode: "core",
+      bootstrapped: this.isBootstrapped,
+      mode: this.mode,
+      tasks,
+      helpers,
+      globals,
+      routines,
+      intents: intents as RuntimeSnapshot["intents"],
+      signals,
+      actors: actors as RuntimeSnapshot["actors"],
+      actorTasks,
+      links,
+    };
   }
 
   static reset() {
@@ -1241,11 +1866,16 @@ export default class Cadenza {
     this.inquiryBroker?.reset();
     this.registry?.reset();
     this.taskCache.clear();
+    this.routineCache.clear();
     this.actorCache.clear();
+    this.helperCache.clear();
+    this.globalCache.clear();
     this.runtimeInquiryDelegate = undefined;
     this.runtimeValidationPolicy = {};
     this.runtimeValidationScopes.clear();
     this.emittedMissingSchemaWarnings.clear();
+    this.helperExecutionDepth = 0;
+    runtimeDefinitionRegistry.reset();
     this.isBootstrapped = false;
   }
 }

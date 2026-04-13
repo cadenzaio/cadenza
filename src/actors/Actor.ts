@@ -2,6 +2,7 @@ import { AnyObject } from "../types/global";
 import { InquiryOptions } from "../engine/InquiryBroker";
 import Cadenza from "../Cadenza";
 import type { TaskFunction, TaskResult } from "../graph/definition/Task";
+import type { RuntimeTools } from "../tools/definitions";
 
 /**
  * Determines when an actor key should be materialized in memory.
@@ -291,6 +292,7 @@ export interface ActorTaskContext<
     context?: AnyObject,
     options?: InquiryOptions,
   ) => Promise<AnyObject>;
+  tools: RuntimeTools;
 }
 
 /**
@@ -577,8 +579,26 @@ export default class Actor<
         inquiryContext: AnyObject,
         options: InquiryOptions,
       ) => Promise<AnyObject>,
+      tools: RuntimeTools,
       progressCallback: (progress: number) => void,
     ): TaskResult => {
+      const resolvedTools =
+        tools &&
+        typeof tools === "object" &&
+        !Array.isArray(tools) &&
+        "helpers" in tools &&
+        "globals" in tools
+          ? tools
+          : {
+              helpers: {},
+              globals: {},
+            };
+      const resolvedProgressCallback =
+        typeof progressCallback === "function"
+          ? progressCallback
+          : typeof (tools as unknown) === "function"
+            ? (tools as unknown as (progress: number) => void)
+            : () => {};
       const normalizedInput = this.normalizeInputContext(context);
       const invocationOptions = this.resolveInvocationOptions(
         context,
@@ -722,6 +742,7 @@ export default class Actor<
             inquiryContext: AnyObject = {},
             options: InquiryOptions = {},
           ) => inquire(inquiryName, inquiryContext, options),
+          tools: resolvedTools,
         };
 
         const handlerResult = await handler(actorContext);
@@ -759,7 +780,7 @@ export default class Actor<
         }
 
         this.touchSession(actorKey, invocationOptions.touchSession, Date.now());
-        progressCallback(100);
+        resolvedProgressCallback(100);
 
         if (
           invocationOptions.writeContract === "reducer" &&
@@ -813,6 +834,14 @@ export default class Actor<
     const key = normalizeActorKey(actorKey) ?? this.spec.defaultKey;
     this.pruneExpiredActorKeys(Date.now());
     return this.ensureStateRecord(key).runtimeState;
+  }
+
+  /**
+   * Lists all currently materialized actor keys.
+   */
+  public listActorKeys(): string[] {
+    this.pruneExpiredActorKeys(Date.now());
+    return Array.from(this.stateByKey.keys()).sort();
   }
 
   /**

@@ -776,17 +776,19 @@ export default class GraphNode extends SignalEmitter implements Graph {
    * @return {void} Does not return a value.
    */
   finalize() {
+    const context = this.context?.getFullContext?.() ?? {};
+
     if (this.nextNodes.length === 0) {
       this.completeSubgraph();
     }
 
     if (this.errored || this.failed) {
       this.task.mapOnFailSignals((signal: string) =>
-        this.emitWithMetadata(signal, this.context.getFullContext()),
+        this.emitWithMetadata(signal, { ...context }),
       );
     } else if (this.result !== undefined && this.result !== false) {
       this.task.mapSignals((signal: string) =>
-        this.emitWithMetadata(signal, this.context.getFullContext()),
+        this.emitWithMetadata(signal, { ...context }),
       );
     }
 
@@ -802,8 +804,9 @@ export default class GraphNode extends SignalEmitter implements Graph {
    */
   onError(error: unknown, errorData: AnyObject = {}) {
     const normalizedError = normalizeGraphErrorMessage(error);
+    const context = this.context?.getFullContext?.() ?? {};
     this.result = {
-      ...this.context.getFullContext(),
+      ...context,
       __error: `Node error: ${normalizedError}`,
       __retries: this.retries,
       error: `Node error: ${normalizedError}`,

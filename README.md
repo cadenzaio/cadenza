@@ -134,11 +134,114 @@ Cadenza.emit('meta.some.event', {foo: 'bar'}); // Emit from anywhere
 
 For full examples, see the cadenza-service package (https://github.com/cadenzaio/cadenza-service) or the test suite.
 
+### Layer-Scoped Tools
+
+Tasks and helpers can now declare helper and global dependencies and consume them through a dedicated `tools` argument.
+
+```typescript
+import Cadenza from "@cadenza.io/core";
+
+const currency = Cadenza.createGlobal("Currency config", {
+  code: "EUR",
+  locale: "sv-SE",
+});
+
+const normalizeAmount = Cadenza.createHelper(
+  "Normalize amount",
+  (context, emit, inquire, tools) => ({
+    ...context,
+    normalizedAmount: Number(context.amount).toFixed(2),
+    currencyCode: tools.globals.currency.code,
+  }),
+).usesGlobals({
+  currency,
+});
+
+const formatAmount = Cadenza.createTask(
+  "Format amount",
+  (context, emit, inquire, tools) => {
+    const normalized = tools.helpers.normalize({
+      amount: context.amount,
+    });
+    return {
+      ...context,
+      label: `${normalized.normalizedAmount} ${tools.globals.currency.code}`,
+    };
+  },
+).usesHelpers({
+  normalize: normalizeAmount,
+}).usesGlobals({
+  currency,
+});
+```
+
+Contract rules:
+
+- task and helper handlers use `(context, emit, inquire, tools, progressCallback)`
+- only explicitly declared same-layer dependencies appear in `tools`
+- `tools.helpers.<alias>` is the callable helper entrypoint
+- `tools.globals.<alias>` is a deep-frozen JSON-serializable value
+- helpers are definition artifacts, not graph nodes
+- helpers may call declared helpers and read declared globals, but may not mutate graph structure
+
+### Runtime-Direct CLI
+
+`@cadenza.io/core` now ships an official machine-facing CLI for local runtime authoring.
+
+Start the stdio host:
+
+```bash
+cadenza runtime stdio
+```
+
+Start or attach to a named shared local runtime:
+
+```bash
+cadenza runtime shared start --runtime multi-agent-demo
+cadenza runtime shared stdio --runtime multi-agent-demo
+```
+
+The host speaks JSON lines over stdio and is intended for agent/tool integrations. It supports:
+
+- runtime bootstrap, reset, and snapshot inspection
+- runtime subscriptions for queued signal delivery (`runtime.subscribe`, `runtime.unsubscribe`, `runtime.nextEvent`, `runtime.pollEvents`)
+- task, routine, intent, actor, actor-task, helper, and global upserts
+- task links, observed signals, emitted signals, intent bindings, and helper/global dependency bindings
+- direct `run`, `emit`, and `inquire` operations against the live in-process runtime
+
+Example handshake:
+
+```json
+{"ready":true,"protocol":"cadenza-runtime-jsonl","protocolVersion":"1","runtimeMode":"core","runtimeSharing":"isolated","runtimeName":null,"sessionId":null,"sessionRole":null,"supportedOperations":["runtime.bootstrap","runtime.info","runtime.detach","runtime.shutdown","runtime.reset","runtime.snapshot","runtime.subscribe","runtime.unsubscribe","runtime.nextEvent","runtime.pollEvents","task.upsert","task.link","task.observeSignal","task.emitSignal","task.respondToIntent","helper.upsert","global.upsert","task.useHelper","task.useGlobal","helper.useHelper","helper.useGlobal","routine.upsert","routine.observeSignal","intent.upsert","actor.upsert","actorTask.upsert","run","emit","inquire"]}
+```
+
+Runtime-authored handlers are supplied as JS/TS source strings and compiled inside a restricted local sandbox. They are session-local and inspectable through `runtime.snapshot`, but v1 does not persist them to disk.
+
+Runtime snapshots now also include helper/global definitions and direct task/helper tool bindings.
+
+Signal subscriptions are pull-based rather than push-streamed. Agents subscribe to signal patterns, then drain queued events with `runtime.nextEvent` or `runtime.pollEvents`. This keeps the stdio transport request/response only while still allowing reactive agent behavior for both business and runtime meta signals.
+
+Shared mode adds a local daemon-backed collaboration path for multiple agents:
+
+- `runtime.info` reports whether the session is isolated or shared and which role it has
+- `runtime.detach` disconnects the current attached shared session without stopping the runtime
+- `runtime.shutdown` shuts down the current runtime process or shared daemon
+- shared sessions use one named in-memory runtime per daemon process
+- roles are `owner`, `writer`, and `observer`
+
+Shared mode keeps Cadenza semantics intact:
+
+- prefer `emit` to trigger system flows
+- prefer `inquire` to retrieve values from the system
+- treat `run` as a manual debugging or direct execution tool
+
 ## Features
 - **Graph-Based Orchestration**: Define tasks and routines with chaining for dependencies and layering.
 - **Event-Driven Choreography**: Signals for loose coupling with meta-signals for self-management.
 - **Context Management**: Immutable contexts with metadata separation and schema validation.
 - **Execution Engine**: Sync/async strategies, throttling, debouncing, fan-in/fan-out merging, dynamic task creation/chaining/deletion.
+- **Layer-Scoped Tools**: Explicit helper/global definitions, alias-scoped runtime injection, and immutable global values.
+- **Runtime-Direct Authoring**: Agent/tool-friendly stdio host for defining and executing local primitives without file writes.
 
 ## Architecture Overview
 Cadenza's core is divided into:
@@ -148,6 +251,8 @@ Cadenza's core is divided into:
 - **Context Layer**: GraphContext for data flow.
 - **Registry Layer**: GraphRegistry for introspection.
 - **Factory**: Cadenza for creation and bootstrap.
+- **Tool Layer**: Helper/global definitions, alias maps, and runtime tool resolution for tasks and helpers.
+- **Runtime Host Layer**: JSONL stdio protocol + runtime-definition helpers for agent-driven local authoring.
 
 ## Contributing
 Contributions are welcome! Please fork the repo, create a branch, and submit a PR. Follow the code style and add tests for new features.

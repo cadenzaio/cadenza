@@ -10,6 +10,7 @@ It provides:
 - signal-driven choreography
 - inquiry/intent request-response
 - in-memory actor state with task-based access
+- layer-scoped helpers and immutable globals
 
 ## Target Users
 
@@ -23,6 +24,7 @@ It provides:
 2. Trigger workflows through signals.
 3. Query workflow results through intents/inquiries.
 4. Model stateful logic using actors while keeping graph participation task-centric.
+5. Reuse low-level logic and immutable configuration through declared helper/global aliases without widening graph-node scope.
 
 ## Actor Product Contract (Current)
 
@@ -44,6 +46,12 @@ It provides:
 - `Cadenza.inquire(...)`
 - `Cadenza.createActor(...)`
 - `actor.task(...)`
+- `Cadenza.createHelper(...)`
+- `Cadenza.createMetaHelper(...)`
+- `Cadenza.createGlobal(...)`
+- `Cadenza.createMetaGlobal(...)`
+- `task.usesHelpers(...)`
+- `task.usesGlobals(...)`
 
 ## Product Boundaries
 
@@ -65,3 +73,12 @@ Core acts as the contract authority for primitive semantics consumed by:
 - future DB-native engine materializers
 
 Changes to primitive contracts should remain additive when possible and propagate to downstream repos when contract shape changes.
+
+## Layer-Scoped Tools Product Contract
+
+- Helpers and globals are structural definition artifacts, not graph nodes.
+- Runtime access is alias-scoped through `tools.helpers` and `tools.globals`.
+- Only explicitly declared same-layer dependencies are injected.
+- Globals must be JSON-serializable and are immutable at runtime.
+- The task/helper function contract is `(context, emit, inquire, tools, progressCallback)`.
+- Runtime-host snapshots and upsert APIs treat helpers/globals as first-class inspectable structures.
