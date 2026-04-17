@@ -203,6 +203,58 @@ export default class GraphNode extends SignalEmitter implements Graph {
     return this.task.getTag(this.context);
   }
 
+  private classifyBusinessRoutineLifecycle() {
+    const fullContext = this.context?.getFullContext?.() ?? {};
+    const metadata =
+      fullContext.__metadata && typeof fullContext.__metadata === "object"
+        ? (fullContext.__metadata as Record<string, unknown>)
+        : {};
+
+    if (this.task.isMeta || this.task.isSubMeta || this.task.isHidden) {
+      return false;
+    }
+
+    if (
+      fullContext.__isInquiry === true ||
+      fullContext.__isDeputy === true ||
+      metadata.__isInquiry === true ||
+      metadata.__isDeputy === true ||
+      metadata.__isSubMeta === true
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private getBusinessRoutineLifecycleDecision() {
+    const fullContext = this.context?.getFullContext?.() ?? {};
+    const metadata = this.context?.getMetadata?.() ?? {};
+
+    if (typeof metadata.__emitBusinessRoutineLifecycle === "boolean") {
+      return metadata.__emitBusinessRoutineLifecycle;
+    }
+
+    if (typeof fullContext.__emitBusinessRoutineLifecycle === "boolean") {
+      return fullContext.__emitBusinessRoutineLifecycle;
+    }
+
+    return this.classifyBusinessRoutineLifecycle();
+  }
+
+  private rememberBusinessRoutineLifecycleDecision(value: boolean) {
+    const fullContext = this.context?.getFullContext?.();
+    const metadata = this.context?.getMetadata?.();
+
+    if (fullContext && typeof fullContext === "object") {
+      fullContext.__emitBusinessRoutineLifecycle = value;
+    }
+
+    if (metadata && typeof metadata === "object") {
+      metadata.__emitBusinessRoutineLifecycle = value;
+    }
+  }
+
   /**
    * Schedules the current node/task on the specified graph layer if applicable.
    *
@@ -349,17 +401,25 @@ export default class GraphNode extends SignalEmitter implements Graph {
     }
 
     if (this.previousNodes.length === 0) {
-      this.emitMetricsWithMetadata(
-        "meta.node.started_routine_execution",
-        {
-          data: {
-            isRunning: true,
-            started: formatTimestamp(this.executionStart),
-          },
-          filter: { uuid: this.routineExecId },
-        },
-        { squash: true, squashId: this.routineExecId },
+      const shouldEmitBusinessRoutineLifecycle =
+        this.getBusinessRoutineLifecycleDecision();
+      this.rememberBusinessRoutineLifecycleDecision(
+        shouldEmitBusinessRoutineLifecycle,
       );
+
+      if (shouldEmitBusinessRoutineLifecycle) {
+        this.emitMetricsWithMetadata(
+          "meta.node.started_routine_execution",
+          {
+            data: {
+              isRunning: true,
+              started: formatTimestamp(this.executionStart),
+            },
+            filter: { uuid: this.routineExecId },
+          },
+          { squash: true, squashId: this.routineExecId },
+        );
+      }
     }
 
     if (
@@ -443,22 +503,24 @@ export default class GraphNode extends SignalEmitter implements Graph {
           context,
         );
 
-      // TODO Reminder, Service registry should be listening to this event, (updateSelf)
-      this.emitMetricsWithMetadata(
-        "meta.node.ended_routine_execution",
-        {
-          data: {
-            isRunning: false,
-            isComplete: true,
-            resultContext: this.context.getContext(),
-            metaResultContext: this.context.getMetadata(),
-            progress: 1.0,
-            ended: formatTimestamp(end),
+      if (this.getBusinessRoutineLifecycleDecision()) {
+        // TODO Reminder, Service registry should be listening to this event, (updateSelf)
+        this.emitMetricsWithMetadata(
+          "meta.node.ended_routine_execution",
+          {
+            data: {
+              isRunning: false,
+              isComplete: true,
+              resultContext: this.context.getContext(),
+              metaResultContext: this.context.getMetadata(),
+              progress: 1.0,
+              ended: formatTimestamp(end),
+            },
+            filter: { uuid: this.routineExecId },
           },
-          filter: { uuid: this.routineExecId },
-        },
-        { squash: true, squashId: this.routineExecId },
-      );
+          { squash: true, squashId: this.routineExecId },
+        );
+      }
     }
 
     return end;

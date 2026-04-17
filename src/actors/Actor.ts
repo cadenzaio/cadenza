@@ -303,6 +303,14 @@ export type ActorTaskHandler<
   R = AnyObject,
 > = (
   context: ActorTaskContext<D, R>,
+  emit: (signal: string, payload?: AnyObject) => void,
+  inquire: (
+    inquiry: string,
+    context?: AnyObject,
+    options?: InquiryOptions,
+  ) => Promise<AnyObject>,
+  tools: RuntimeTools,
+  progressCallback: (progress: number) => void,
 ) =>
   | TaskResult
   | ActorStateReducer<D>
@@ -745,7 +753,13 @@ export default class Actor<
           tools: resolvedTools,
         };
 
-        const handlerResult = await handler(actorContext);
+        const handlerResult = await handler(
+          actorContext,
+          actorContext.emit,
+          actorContext.inquire,
+          resolvedTools,
+          resolvedProgressCallback,
+        );
 
         if (
           invocationOptions.writeContract === "reducer" &&

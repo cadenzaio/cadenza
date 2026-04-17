@@ -106,7 +106,7 @@ export default class GraphRunner extends SignalEmitter {
 
     const ctx = new GraphContext(context || {});
 
-    if (!isSubMeta) {
+    if (!isSubMeta && (!isMeta || this.debug)) {
       if (isNewTrace) {
         this.emitMetrics("meta.runner.new_trace", {
           data: {

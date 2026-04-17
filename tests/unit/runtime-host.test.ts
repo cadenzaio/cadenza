@@ -401,6 +401,106 @@ describe("RuntimeHost", () => {
       });
   });
 
+  it("passes declared helpers and globals into runtime-authored actor tasks", async () => {
+    const host = new RuntimeHost();
+
+    await host.handle({
+      operation: "actor.upsert",
+      payload: {
+        name: "RuntimeToolActor",
+        description: "Tracks helper-driven writes",
+        defaultKey: "runtime-tool-actor",
+        loadPolicy: "eager",
+        writeContract: "overwrite",
+        state: {
+          durable: {
+            initState: {
+              value: 0,
+            },
+          },
+        },
+      },
+    });
+
+    await host.handle({
+      operation: "helper.upsert",
+      payload: {
+        name: "NormalizeRuntimeActorAmount",
+        language: "js",
+        handlerSource:
+          "(ctx) => ({ ...ctx, normalizedValue: Number(ctx.value ?? 0) })",
+      },
+    });
+
+    await host.handle({
+      operation: "global.upsert",
+      payload: {
+        name: "RuntimeActorMultiplierConfig",
+        value: {
+          multiplier: 4,
+        },
+      },
+    });
+
+    await host.handle({
+      operation: "actorTask.upsert",
+      payload: {
+        actorName: "RuntimeToolActor",
+        taskName: "RuntimeToolActor.Apply",
+        description: "Applies helper and global driven updates",
+        mode: "write",
+        language: "js",
+        handlerSource:
+          "({ input, setState }, _emit, _inquire, tools) => { const normalized = tools.helpers.normalize({ value: input.value }); const nextValue = normalized.normalizedValue * tools.globals.config.multiplier; setState({ value: nextValue }); return { nextValue }; }",
+      },
+    });
+
+    await host.handle({
+      operation: "task.useHelper",
+      payload: {
+        taskName: "RuntimeToolActor.Apply",
+        alias: "normalize",
+        helperName: "NormalizeRuntimeActorAmount",
+      },
+    });
+
+    await host.handle({
+      operation: "task.useGlobal",
+      payload: {
+        taskName: "RuntimeToolActor.Apply",
+        alias: "config",
+        globalName: "RuntimeActorMultiplierConfig",
+      },
+    });
+
+    await host.handle({
+      operation: "run",
+      payload: {
+        targetName: "RuntimeToolActor.Apply",
+        context: {
+          value: 3,
+        },
+      },
+    });
+
+    const snapshot = await host.handle({
+      operation: "runtime.snapshot",
+    });
+    const actors = responseResult<{
+      actors: Array<{
+        name: string;
+        actorKeys: Array<{ durableState: { value: number } }>;
+      }>;
+    }>(snapshot).actors;
+
+    expect(
+      actors.find((actor) => actor.name === "RuntimeToolActor")?.actorKeys[0]
+        ?.durableState,
+    ).toEqual({
+      value: 12,
+    });
+  });
+
   it("resets runtime state and rejects forbidden sandbox access", async () => {
     const host = new RuntimeHost();
 

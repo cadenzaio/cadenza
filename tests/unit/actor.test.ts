@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Cadenza from "../../src/Cadenza";
 import { META_ACTOR_SESSION_STATE_PERSIST_INTENT } from "../../src/actors/Actor";
+import GraphContext from "../../src/graph/context/GraphContext";
+import type Task from "../../src/graph/definition/Task";
 import type { AnyObject } from "../../src/types/global";
 import type { InquiryOptions } from "../../src/engine/InquiryBroker";
 import type { TaskFunction } from "../../src/graph/definition/Task";
@@ -15,6 +17,22 @@ const noopInquire = async (
 
 async function invokeTask(task: TaskFunction, context: AnyObject = {}) {
   return task(context, noopEmit, noopInquire, noopProgress);
+}
+
+async function executeRegisteredTask(
+  task: Task,
+  context: AnyObject = {},
+) {
+  return task.execute(
+    new GraphContext(context),
+    noopEmit,
+    noopInquire,
+    noopProgress,
+    {
+      nodeId: "test-node",
+      routineExecId: "test-routine",
+    },
+  );
 }
 
 async function invokeTaskWithBrokerInquire(
@@ -253,6 +271,72 @@ describe("Actor runtime", () => {
 
     const actor = Cadenza.createActorFromDefinition(definition);
     expect(actor.toDefinition()).toEqual(definition);
+  });
+
+  it("keeps existing context-only actor handlers working", async () => {
+    const actor = Cadenza.createActor({
+      name: "ContextOnlyActor",
+      defaultKey: "context-only",
+      initState: { count: 0 },
+    });
+
+    const incrementTask = actor.task(({ state, setState }) => {
+      const next = { count: state.count + 1 };
+      setState(next);
+      return next;
+    }, { mode: "write" });
+
+    const result = await invokeTask(incrementTask);
+
+    expect(result).toEqual({ count: 1 });
+    expect(actor.getState()).toEqual({ count: 1 });
+  });
+
+  it("passes declared helpers and globals into actor-bound task handlers", async () => {
+    const actor = Cadenza.createActor({
+      name: "ToolAwareActor",
+      defaultKey: "tool-aware",
+      initState: { value: 0 },
+    });
+
+    const config = Cadenza.createGlobal("Actor tool config", {
+      multiplier: 5,
+    });
+    const normalizeAmount = Cadenza.createHelper(
+      "Normalize actor amount",
+      (context) => ({
+        ...context,
+        normalizedValue: Number(context.value ?? 0),
+      }),
+    );
+
+    const task = Cadenza.createTask(
+      "Actor task with declared tools",
+      actor.task(
+        ({ input, setState }, _emit, _inquire, tools) => {
+          const normalized = tools.helpers.normalize({
+            value: input.value,
+          }) as { normalizedValue: number };
+          const nextValue =
+            normalized.normalizedValue *
+            (tools.globals.config as { multiplier: number }).multiplier;
+          setState({ value: nextValue });
+          return { nextValue };
+        },
+        { mode: "write" },
+      ),
+    )
+      .usesHelpers({
+        normalize: normalizeAmount,
+      })
+      .usesGlobals({
+        config,
+      });
+
+    const result = await executeRegisteredTask(task, { value: 3 });
+
+    expect(result).toEqual({ nextValue: 15 });
+    expect(actor.getState()).toEqual({ value: 15 });
   });
 
   it("applies patch writes as shallow merge by default", async () => {
