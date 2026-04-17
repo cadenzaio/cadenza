@@ -1,3 +1,10 @@
+## [3.28.1](https://github.com/cadenzaio/cadenza/compare/v3.28.0...v3.28.1) (2026-04-17)
+
+
+### Bug Fixes
+
+* restore actor tools and business observability ([d331191](https://github.com/cadenzaio/cadenza/commit/d331191a2820e0c2547632c64afd26877e2ea5ae))
+
 # [3.28.0](https://github.com/cadenzaio/cadenza/compare/v3.27.0...v3.28.0) (2026-04-13)
 
 
